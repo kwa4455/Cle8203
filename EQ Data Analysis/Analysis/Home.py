@@ -273,7 +273,7 @@ st.markdown("### 🔗 Quick Links")
 st.markdown(
     """
     <div style="display: flex; gap: 20px; flex-wrap: wrap;">
-        <a href="https://www.epa.gov/" target="_blank" style="padding: 10px 20px; background: #00796b; color: white; border-radius: 8px; text-decoration: none;">🌐 EPA Website</a>
+        <a href="https://www.epa.gov.gh/" target="_blank" style="padding: 10px 20px; background: #00796b; color: white; border-radius: 8px; text-decoration: none;">🌐 EPA Website</a>
         <a href="https://www.airnow.gov/aqi/aqi-basics/" target="_blank" style="padding: 10px 20px; background: #00695c; color: white; border-radius: 8px; text-decoration: none;">📖 Learn about AQI</a>
     </div>
     """,
