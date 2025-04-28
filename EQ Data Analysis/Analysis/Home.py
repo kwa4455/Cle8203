@@ -319,7 +319,7 @@ st.markdown("""
 - **AirQo Data:** `datetime`, `pm25`, `pm10`, `site`
 
 ⚠️ Notes:
-- Use `YYYY-MM-DD HH:MM:SS' or`YYYY-MM-DD' format for date/time.
+- Use `YYYY-MM-DD HH:MM:SS' format for date/time.
 - Make sure column names are lowercase and match exactly.
 - Avoid spaces or special characters in column names.
 """, unsafe_allow_html=True)
