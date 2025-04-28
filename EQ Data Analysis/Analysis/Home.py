@@ -10,24 +10,23 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 if st.experimental_user.is_logged_in:
-    st.write(st.experimental_user)
-{
-    "is_logged_in":true
-    "iss":"https://accounts.google.com"
-    "azp":"{client_id}.apps.googleusercontent.com"
-    "aud":"{client_id}.apps.googleusercontent.com"
-    "sub":"{unique_user_id}"
-    "email":"{user}@gmail.com"
-    "email_verified":true
-    "at_hash":"{access_token_hash}"
-    "nonce":"{nonce_string}"
-    "name":"{full_name}"
-    "picture":"https://lh3.googleusercontent.com/a/{content_path}"
-    "given_name":"{given_name}"
-    "family_name":"{family_name}"
-    "iat":{issued_time}
-    "exp":{expiration_time}
-}
+    st.write({
+        "is_logged_in": True,
+        "iss": "https://accounts.google.com",
+        "azp": "{client_id}.apps.googleusercontent.com",
+        "aud": "{client_id}.apps.googleusercontent.com",
+        "sub": "{unique_user_id}",
+        "email": "{user}@gmail.com",
+        "email_verified": True,
+        "at_hash": "{access_token_hash}",
+        "nonce": "{nonce_string}",
+        "name": "{full_name}",
+        "picture": "https://lh3.googleusercontent.com/a/{content_path}",
+        "given_name": "{given_name}",
+        "family_name": "{family_name}",
+        "iat": "{issued_time}",
+        "exp": "{expiration_time}"
+    })
 # -------- Custom Background and Font --------
 st.markdown(
     """
