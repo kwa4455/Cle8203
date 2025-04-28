@@ -9,24 +9,26 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded"
 )
-if st.experimental_user.is_logged_in:
-    st.write({
-        "is_logged_in": True,
-        "iss": "https://accounts.google.com",
-        "azp": "{client_id}.apps.googleusercontent.com",
-        "aud": "{client_id}.apps.googleusercontent.com",
-        "sub": "{unique_user_id}",
-        "email": "{user}@gmail.com",
-        "email_verified": True,
-        "at_hash": "{access_token_hash}",
-        "nonce": "{nonce_string}",
-        "name": "{full_name}",
-        "picture": "https://lh3.googleusercontent.com/a/{content_path}",
-        "given_name": "{given_name}",
-        "family_name": "{family_name}",
-        "iat": "{issued_time}",
-        "exp": "{expiration_time}"
-    })
+# Safely fetch user info
+user_info = st.experimental_user or {}
+
+# Check if "is_logged_in" is True
+if user_info.get("is_logged_in", False):
+    # Greet user safely
+    name = user_info.get('name', 'there')  # Default to 'there' if name missing
+    st.success(f"👋 Welcome, {name}!")
+
+    # Show profile picture if available
+    picture_url = user_info.get('picture')
+    if picture_url:
+        st.image(picture_url, width=100)
+
+    # Show user details (optional)
+    with st.expander("See your login details"):
+        st.json(user_info)
+
+else:
+    st.warning("⚠️ You are not logged in.")
 # -------- Custom Background and Font --------
 st.markdown(
     """
