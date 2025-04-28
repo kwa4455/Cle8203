@@ -163,7 +163,7 @@ st.markdown("""
   ➔ Columns: `datetime`, `pm25`, `pm10`, `site`
   
 - **Quant AQ Data**  
-  ➔ Columns: `datetime`, `temp`, `rh`, `pm1`, `pm2_5`, `pm10`, `site`
+  ➔ Columns: `datetime`, `temp`, `rh`, `pm1`, `pm25`, `pm10`, `site`
   
 - **Gravimetric Data**  
   ➔ Columns: `date`, `pm25`, `pm10`, `site`
