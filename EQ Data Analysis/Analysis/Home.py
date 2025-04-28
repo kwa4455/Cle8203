@@ -83,9 +83,9 @@ with st.sidebar:
     st.markdown("""
     - **Developed by:** Clement Mensah Ackaah
     - **Email:** clement.ackaah@epa.gov.gh / clementackaah70@gmail.com
-    - **GitHub:** [Visit GitHub](https://github.com/yourusername)
-    - **LinkedIn:** [Visit LinkedIn](https://www.linkedin.com/in/yourname)
-    - **Project Repo:** [Air Quality Dashboard](https://github.com/yourusername/air-quality-dashboard)
+    - **GitHub:** [Visit GitHub](https://github.com/kwa4455)
+    - **LinkedIn:** [Visit LinkedIn](https://www.linkedin.com/in/clementmensahackaah)
+    - **Project Repo:** [Air Quality Dashboard](https://github.com/kwa4455/air-quality-analysis-dashboard)
     """)
 
 # -------- Welcome Banner --------
@@ -121,8 +121,8 @@ with col1:
 
 with col2:
     st.markdown("""
-    ### 📈 Powerful Air Quality Analysis Tool
-    Explore, visualize, and monitor air quality data collected from:
+    ### 📈 Air Quality Analysis Tool
+    Upload, visualize, and monitor air quality data collected from:
     
     - 🏛️ Reference Grade Instruments
     - 🛰️ Quant AQ Monitors
@@ -186,7 +186,7 @@ st.markdown("""
 - **AirQo Data:** `datetime`, `pm25`, `pm10`, `site`
 
 ⚠️ Notes:
-- Use `YYYY-MM-DD HH:MM:SS` format for date/time.
+- Use `YYYY-MM-DD HH:MM:SS', `YYYY-MM-DD' format for date/time.
 - Make sure column names are lowercase and match exactly.
 - Avoid spaces or special characters in column names.
 """, unsafe_allow_html=True)
