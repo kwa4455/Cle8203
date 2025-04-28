@@ -98,16 +98,6 @@ components.html(
 )
 
 # -------- Main Image --------
-try:
-    image = Image.open("air-quality.jpg")
-    st.image(image, use_column_width=True, caption="Monitoring Air Quality for a Healthier Environment")
-except FileNotFoundError:
-    st.warning("⚠️ 'air-quality.jpg' not found. Please upload the image.")
-
-# -------- Chat Input --------
-prompt = st.chat_input("Say something to the dashboard...")
-if prompt:
-    st.success(f"📨 You said: {prompt}")
 
 # -------- Introduction Section --------
 col1, col2 = st.columns(2)
