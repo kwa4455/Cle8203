@@ -319,7 +319,7 @@ st.markdown("""
 - **AirQo Data:** `datetime`, `pm25`, `pm10`, `site`
 
 ⚠️ Notes:
-- Use `YYYY-MM-DD HH:MM:SS', `YYYY-MM-DD' format for date/time.
+- Use `YYYY-MM-DD HH:MM:SS' or`YYYY-MM-DD' format for date/time.
 - Make sure column names are lowercase and match exactly.
 - Avoid spaces or special characters in column names.
 """, unsafe_allow_html=True)
@@ -327,6 +327,11 @@ st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
 
+sentiment_mapping = ["one", "two", "three", "four", "five"]
+selected = st.feedback("stars")
+if selected is not None:
+    st.markdown(f"You selected {sentiment_mapping[selected]} star(s).")
+    
 # -------- Info Banner --------
 st.success("📢 New updates coming soon! Stay tuned for enhanced analysis features and interactive visualizations.")
 
