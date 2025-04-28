@@ -8,7 +8,7 @@ from io import BytesIO
 st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
 # Inject the CSS
 try:
-    with open("assets/style.css") as f:
+    with open("style.css") as f:
         st.markdown("<style>" + f.read() + "</style>", unsafe_allow_html=True)
 except FileNotFoundError:
     st.warning("⚠️ style.css not found. Using default Streamlit styles.")
