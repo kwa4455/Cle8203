@@ -326,7 +326,16 @@ st.markdown("""
 st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("---")
-
+prompt = st.chat_input(
+    "Say something and/or attach an image",
+    accept_file=True,
+    file_type=["jpg", "jpeg", "png"],
+)
+if prompt and prompt.text:
+    st.markdown(prompt.text)
+if prompt and prompt["files"]:
+    st.image(prompt["files"][0])
+    
 sentiment_mapping = ["one", "two", "three", "four", "five"]
 selected = st.feedback("stars")
 if selected is not None:
