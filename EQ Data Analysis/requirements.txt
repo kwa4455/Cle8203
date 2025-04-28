@@ -3,4 +3,4 @@ pandas
 numpy
 altair
 Pillow
-
+Image
