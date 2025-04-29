@@ -523,32 +523,62 @@ if uploaded_files:
             if not valid_pollutants:
                 st.warning(f"No valid pollutants found in {label}")
 
-            if not valid_pollutants:
-                st.warning(f"No valid pollutants found in {label}")
-                continue
-            for pollutant in valid_pollutants:
-                aggregates = compute_aggregates(filtered_df, label, pollutant)
-                for agg_label, agg_df in aggregates.items():
-                    display_cols = [agg_df.columns[0], "site", pollutant]
-                    editable_df = agg_df[display_cols]
-                    st.data_editor(
-                        editable_df,
-                        use_container_width=True,
-                        column_config={col: {"disabled": True} for col in editable_df.columns},
-                        num_rows="dynamic",
-                        key=f"editor_{label}_{agg_label}"
-                    )
-                    st.download_button(
-                        label=f"📥 Download {agg_label}",
-                        data=to_csv_download(editable_df),
-                        file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
-                         mime="text/csv"
-                    )
-                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
-                    x_axis = agg_df.columns[0]
-                    chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=f"{agg_label} - {pollutant}")  # Assumes function is defined elsewhere
-                    st.altair_chart(chart, use_container_width=True)
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=f"pollutants_{label}"
+            )
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
 
+            aggregate_levels = [
+                ('Daily Avg', ['day', 'site']),
+                ('Monthly Avg', ['month', 'site']),
+                ('Quarterly Avg', ['quarter', 'site']),
+                ('Yearly Avg', ['year', 'site']),
+                ('Day of Week Avg', ['dayofweek', 'site']),
+                ('Weekday Type Avg', ['weekday_type', 'site']),
+                ('Season Avg', ['season', 'site'])
+            ]
+            for level_name, group_keys in aggregate_levels:
+                agg_label = f"{label} - {level_name}"
+                agg_dfs = []
+                for pollutant in valid_pollutants:
+                    agg_df = filtered_df.groupby(group_keys)[pollutant].mean().reset_index().round(1)
+                    agg_dfs.append(agg_df)
+                from functools import reduce
+                merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
+                display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
+                editable_df = merged_df[display_cols]
+                
+                st.data_editor(
+                    editable_df,
+                    use_container_width=True,
+                    column_config={col: {"disabled": True} for col in editable_df.columns},
+                    num_rows="dynamic",
+                    key=f"editor_{label}_{agg_label}"
+                )
+                st.download_button(
+                    label=f"📥 Download {agg_label}",
+                    data=to_csv_download(editable_df),
+                    file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
+                    mime="text/csv"
+                )
+                chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
+                x_axis = agg_df.columns[0]
+                for pollutant in selected_display_pollutants:
+                    if pollutant not in merged_df.columns:
+                        continue
+                    chart = plot_chart(
+                        merged_df,
+                        x=x_axis,
+                        y=pollutant,
+                        color="site",
+                        chart_type=chart_type,
+                        title=f"{agg_label} - {pollutant}"
+                    )
+                    st.altair_chart(chart, use_container_width=True)
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
