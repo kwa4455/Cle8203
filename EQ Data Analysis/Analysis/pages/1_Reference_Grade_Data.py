@@ -433,19 +433,29 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
+import altair as alt
+import streamlit as st
+
 def plot_chart(df, x, y, color, chart_type="line", title=""):
-    # Automatically detect Streamlit theme
+    # Detect Streamlit theme
     streamlit_theme = st.get_option("theme.base")
     theme = streamlit_theme if streamlit_theme else "Light"
     
     background = '#1c1c1c' if theme == 'dark' else 'white'
     font_color = 'white' if theme == 'dark' else 'black'
-    
+
+    # Optional: dropdown selector for filtering
+    if color and df[color].nunique() > 1:
+        dropdown = alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: ")
+        selector = alt.selection_single(fields=[color], bind=dropdown, init={color: df[color].iloc[0]})
+    else:
+        selector = None
+
     base = alt.Chart(df).encode(
-        x=x,
-        y=y,
-        color=color,
-        tooltip=[x, y, color]
+        x=alt.X(x, title=x),
+        y=alt.Y(y, title=y),
+        color=alt.Color(color, legend=alt.Legend(title=color)) if color else alt.value("steelblue"),
+        tooltip=[x, y, color] if color else [x, y]
     ).properties(
         width=700,
         height=400,
@@ -456,10 +466,13 @@ def plot_chart(df, x, y, color, chart_type="line", title=""):
         axis={"labelColor": font_color, "titleColor": font_color}
     )
 
-    if chart_type == "line":
-        return base.mark_line(point=True)
-    else:
-        return base.mark_bar()
+    if selector:
+        base = base.add_selection(selector).transform_filter(selector)
+
+    chart = base.mark_line(point=True) if chart_type == "line" else base.mark_bar()
+    
+    return chart.interactive()
+
 
 
 # --- Main App ---
