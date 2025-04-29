@@ -433,23 +433,20 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-import altair as alt
-import streamlit as st
-
 def plot_chart(df, x, y, color, chart_type="line", title=""):
-    # Detect Streamlit theme
     streamlit_theme = st.get_option("theme.base")
     theme = streamlit_theme if streamlit_theme else "Light"
-    
+
     background = '#1c1c1c' if theme == 'dark' else 'white'
     font_color = 'white' if theme == 'dark' else 'black'
 
-    # Optional: dropdown selector for filtering
+    # Use param-based filtering for Altair v5+
     if color and df[color].nunique() > 1:
-        dropdown = alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: ")
-        selector = alt.selection_single(fields=[color], bind=dropdown, init={color: df[color].iloc[0]})
+        selector_param = alt.param(name="selector", bind=alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: "), value=df[color].iloc[0])
+        filter_condition = alt.datum[color] == selector_param
     else:
-        selector = None
+        selector_param = None
+        filter_condition = True
 
     base = alt.Chart(df).encode(
         x=alt.X(x, title=x),
@@ -457,20 +454,20 @@ def plot_chart(df, x, y, color, chart_type="line", title=""):
         color=alt.Color(color, legend=alt.Legend(title=color)) if color else alt.value("steelblue"),
         tooltip=[x, y, color] if color else [x, y]
     ).properties(
+        title=alt.TitleParams(text=title, color=font_color),
         width=700,
-        height=400,
-        title=alt.TitleParams(text=title, color=font_color)
+        height=400
     ).configure(
         background=background,
         view={"stroke": None},
         axis={"labelColor": font_color, "titleColor": font_color}
     )
 
-    if selector:
-        base = base.add_selection(selector).transform_filter(selector)
-
     chart = base.mark_line(point=True) if chart_type == "line" else base.mark_bar()
-    
+
+    if selector_param:
+        chart = chart.add_params(selector_param).transform_filter(filter_condition)
+
     return chart.interactive()
 
 
