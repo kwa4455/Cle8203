@@ -12,18 +12,45 @@ st.set_page_config(
 
 
 
-# User selects theme and font size
-theme = st.selectbox("Choose Theme", ["Light", "Dark"])
-font_size = st.selectbox("Font Size", ["Small", "Medium", "Large"])
+# ----------------------------
+# SESSION STATE DEFAULTS
+# ----------------------------
+if "theme" not in st.session_state:
+    st.session_state.theme = "Light"
+if "font_size" not in st.session_state:
+    st.session_state.font_size = "Medium"
 
-# Map font sizes
+# ----------------------------
+# SIDEBAR SETTINGS
+# ----------------------------
+st.sidebar.header("🎨 Appearance Settings")
+
+# Theme toggle
+dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=(st.session_state.theme == "Dark"))
+st.session_state.theme = "Dark" if dark_mode else "Light"
+
+# Font size radio
+font_choice = st.sidebar.radio("🔠 Font Size", ["Small", "Medium", "Large"], index=["Small", "Medium", "Large"].index(st.session_state.font_size))
+st.session_state.font_size = font_choice
+
+# Reset to defaults
+if st.sidebar.button("🔄 Reset to Defaults"):
+    st.session_state.theme = "Light"
+    st.session_state.font_size = "Medium"
+    st.rerun()
+
+# ----------------------------
+# THEME AND FONT SETTINGS
+# ----------------------------
+theme = st.session_state.theme
+font_size = st.session_state.font_size
+
 font_map = {
     "Small": "14px",
     "Medium": "16px",
     "Large": "18px"
 }
 
-# Apply the chosen theme and font
 if theme == "Light":
     background = "linear-gradient(135deg, #e0f7fa, #ffffff)"
     text_color = "#004d40"
@@ -35,7 +62,9 @@ else:
     button_color = "#26a69a"
     button_hover = "#00897b"
 
-# Inject custom CSS
+# ----------------------------
+# CUSTOM CSS INJECTION
+# ----------------------------
 st.markdown(
     f"""
     <style>
@@ -144,6 +173,14 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# ----------------------------
+# MAIN UI DEMO
+# ----------------------------
+st.title("🎛️ Stylish Streamlit App")
+st.write(f"Theme: **{theme}**, Font Size: **{font_size}**")
+st.button("Test Button")
+
 
 
 # -------- Sidebar Content --------
