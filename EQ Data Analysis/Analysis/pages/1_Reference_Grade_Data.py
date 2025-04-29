@@ -565,20 +565,22 @@ if uploaded_files:
                     file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
                     mime="text/csv"
                 )
-                chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
-                x_axis = agg_df.columns[0]
-                for pollutant in selected_display_pollutants:
-                    if pollutant not in merged_df.columns:
-                        continue
-                    chart = plot_chart(
-                        merged_df,
-                        x=x_axis,
-                        y=pollutant,
-                        color="site",
-                        chart_type=chart_type,
-                        title=f"{agg_label} - {pollutant}"
-                    )
-                    st.altair_chart(chart, use_container_width=True)
+                st.markdown("---")
+                with st.expander(f"📈 Show Charts for {agg_label}", expanded=False):
+                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
+                    x_axis = agg_df.columns[0]
+                    for pollutant in selected_display_pollutants:
+                        if pollutant not in merged_df.columns:
+                            continue
+                        chart = plot_chart(
+                            merged_df,
+                            x=x_axis,
+                            y=pollutant,
+                            color="site",
+                            chart_type=chart_type,
+                            title=f"{agg_label} - {pollutant}"
+                        )
+                        st.altair_chart(chart, use_container_width=True)
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
