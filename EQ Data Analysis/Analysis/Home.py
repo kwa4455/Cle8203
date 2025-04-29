@@ -87,18 +87,19 @@ font_size = font_map[st.session_state.font_size]
 def generate_css(theme: dict, font_size: str) -> str:
     return f"""
     <style>
+    html, body, .stApp, [class^="css"], button, input, label, textarea, select {{
+        font-size: {font_size} !important;
+        color: {theme["text"]} !important;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+    }}
     .stApp {{
         background: {theme["background"]};
         background-attachment: fixed;
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-        font-size: {font_size};
-        color: {theme["text"]};
     }}
-    html, body, [class^="css"] {{
+    html, body, [class*="css"] {{
         background-color: transparent !important;
-        color: {theme["text"]} !important;
     }}
-    h1, h2, h3 {{
+    h1, h2, h3, h4, h5, h6 {{
         font-weight: bold;
         color: {theme["text"]};
     }}
@@ -106,7 +107,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     .stSelectbox > div > div,
     .stRadio > div,
     textarea {{
-        background-color: {theme["input_bg"]} !important;
+        background-color: #37474f !important;
         color: {theme["text"]} !important;
         border: 1px solid {theme["button"]};
     }}
@@ -116,6 +117,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         padding: 0.5em 1.5em;
         border-radius: 8px;
         transition: background-color 0.3s ease;
+        font-size: {font_size} !important;
     }}
     div.stButton > button:hover {{
         background-color: {theme["hover"]};
@@ -128,7 +130,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         padding: 20px;
         margin-bottom: 20px;
         box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s, box-shadow 0.3s;
+        transition: 0.3s;
     }}
     .aqi-card:hover, .instruction-card:hover {{
         transform: scale(1.02);
@@ -143,6 +145,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         border: 1px solid {theme["button"]};
         padding: 8px;
         text-align: center;
+        font-size: {font_size} !important;
     }}
     .aqi-table th {{
         background-color: {theme["button"]};
@@ -163,9 +166,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
     </style>
     """
-
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
-
 # ---------- UI Content ----------
 st.title("✨ Customizable Theme & Font")
 st.write(f"Theme: **{st.session_state.theme}**")
