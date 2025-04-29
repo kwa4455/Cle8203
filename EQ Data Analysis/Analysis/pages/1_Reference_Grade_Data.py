@@ -518,13 +518,17 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            selected_pollutants = ['pm25', 'pm10']
+            pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
 
             for pollutant in ['pm25', 'pm10']:
                 if pollutant not in filtered_df.columns:
-                    continue
+                continue
                 aggregates = compute_aggregates(filtered_df, label, pollutant)
                 for agg_label, agg_df in aggregates.items():
-                    display_cols = [agg_df.columns[0], "site"] + valid_pollutants
+                    display_cols = [agg_df.columns[0], "site"] + pollutant
                     editable_df = agg_df[display_cols]
                     st.data_editor(
                         editable_df,
