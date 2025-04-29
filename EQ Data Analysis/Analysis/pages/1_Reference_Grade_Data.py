@@ -436,32 +436,24 @@ def to_csv_download(df):
 
 
 
-def plot_chart(df, x, y, color=None, chart_type="line", title=""):
+import altair as alt
+import streamlit as st
 
-    params = []
-    filters = []
+def plot_chart(df, x, y, color, chart_type="line", title=""):
+    streamlit_theme = st.get_option("theme.base")
+    theme = streamlit_theme if streamlit_theme else "Light"
 
-    # --- Multi-select filter for color field ---
+    background = '#1c1c1c' if theme == 'dark' else 'white'
+    font_color = 'white' if theme == 'dark' else 'black'
+
+    # Use param-based filtering for Altair v5+
     if color and df[color].nunique() > 1:
-        multi_param = alt.param(
-            name="site_selector",
-            bind=alt.binding_checkbox(options=sorted(df[color].unique()), name=f"Select {color}:"),
-            value=list(df[color].unique())[:2]  # pre-select first 2 sites
-        )
-        filters.append(alt.datum[color].isin(multi_param))
-        params.append(multi_param)
+        selector_param = alt.param(name="selector", bind=alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: "), value=df[color].iloc[0])
+        filter_condition = alt.datum[color] == selector_param
+    else:
+        selector_param = None
+        filter_condition = True
 
-    # --- Time slider filter (only if x is datetime) ---
-    if pd.api.types.is_datetime64_any_dtype(df[x]):
-        time_param = alt.param(
-            name="time_slider",
-            bind=alt.binding_range(min=df[x].min().timestamp()*1000, max=df[x].max().timestamp()*1000, step=86400000, name="Time Range"),
-            value=df[x].min().timestamp()*1000
-        )
-        filters.append(alt.datum[x] >= time_param)
-        params.append(time_param)
-
-    # --- Chart Base ---
     base = alt.Chart(df).encode(
         x=alt.X(x, title=x),
         y=alt.Y(y, title=y),
@@ -479,12 +471,8 @@ def plot_chart(df, x, y, color=None, chart_type="line", title=""):
 
     chart = base.mark_line(point=True) if chart_type == "line" else base.mark_bar()
 
-    # Apply parameters and filters
-    if params:
-        chart = chart.add_params(*params)
-    if filters:
-        for f in filters:
-            chart = chart.transform_filter(f)
+    if selector_param:
+        chart = chart.add_params(selector_param).transform_filter(filter_condition)
 
     return chart.interactive()
 
