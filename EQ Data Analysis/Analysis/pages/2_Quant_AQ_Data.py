@@ -202,7 +202,7 @@ st.title("📊 Quant LCS Data Analysis")
 
 def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['datetime', 'site', 'pm25', 'pm10','temp', 'rh']
+    required_columns = ['datetime', 'site', 'pm25', 'pm10','sample_temp', 'sample_rh']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
 
@@ -213,7 +213,7 @@ def cleaned(df):
 
     # Apply correction formula for PM2.5 if applicable
     if all(col in df.columns for col in ['pm25', 'temp', 'rh']):
-        df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['temp'] - 0.08 * df['rh'] + 19.82
+        df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['sample_temp'] - 0.08 * df['sample_rh'] + 19.82
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
