@@ -433,22 +433,10 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-if color and df[color].nunique() > 1:
-    multi_param = alt.param(
-        name="site_selector",
-        bind=alt.binding_multi(options=sorted(df[color].unique()), name=f"Select {color}:"),
-        value=list(df[color].unique())[:2]  # initial selection
-    )
-    filters.append(alt.datum[color].in_(multi_param))
-    params.append(multi_param)
+
 
 
 def plot_chart(df, x, y, color=None, chart_type="line", title=""):
-    streamlit_theme = st.get_option("theme.base")
-    theme = streamlit_theme if streamlit_theme else "Light"
-    
-    background = '#1c1c1c' if theme == 'dark' else 'white'
-    font_color = 'white' if theme == 'dark' else 'black'
 
     params = []
     filters = []
