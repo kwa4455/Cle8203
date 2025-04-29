@@ -8,53 +8,131 @@ from io import BytesIO
 st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
 
 
-import streamlit as st
+theme_choice = st.sidebar.selectbox(
+    "Choose Theme",
+    ["Light", "Dark", "Blue", "Green", "Purple"],
+    index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
+)
+st.session_state.theme = theme_choice
 
-# Define a sample theme and font size (replace or update dynamically in your app)
-theme = {
-    "background": "#ffffff",
-    "text": "#1b4332",
-    "input_bg": "#e9f7ef",
-    "button": "#40916c",
-    "hover": "#2d6a4f"
+# Font size selection
+font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
+                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
+st.session_state.font_size = font_choice
+
+# Reset to default
+if st.sidebar.button("🔄 Reset to Defaults"):
+    st.session_state.theme = "Light"
+    st.session_state.font_size = "Medium"
+    st.success("Reset to Light theme and Medium font!")
+    st.rerun()
+
+# Theme settings dictionary
+themes = {
+    "Light": {
+        "background": "linear-gradient(135deg, #e0f7fa, #ffffff)",
+        "text": "#004d40",
+        "button": "#00796b",
+        "hover": "#004d40",
+        "input_bg": "#ffffff"
+    },
+    "Dark": {
+        "background": "linear-gradient(135deg, #263238, #37474f)",
+        "text": "#e0f2f1",
+        "button": "#26a69a",
+        "hover": "#00897b",
+        "input_bg": "#37474f"
+    },
+    "Blue": {
+        "background": "linear-gradient(135deg, #e3f2fd, #90caf9)",
+        "text": "#0d47a1",
+        "button": "#1e88e5",
+        "hover": "#1565c0",
+        "input_bg": "#ffffff"
+    },
+    "Green": {
+        "background": "linear-gradient(135deg, #dcedc8, #aed581)",
+        "text": "#33691e",
+        "button": "#689f38",
+        "hover": "#558b2f",
+        "input_bg": "#ffffff"
+    },
+    "Purple": {
+        "background": "linear-gradient(135deg, #f3e5f5, #ce93d8)",
+        "text": "#4a148c",
+        "button": "#8e24aa",
+        "hover": "#6a1b9a",
+        "input_bg": "#ffffff"
+    },
 }
-font_size = "16px"
 
-# Static Global Styles
-st.markdown("""
+# Font size mapping
+font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
+
+# Apply theme and inject CSS
+theme = themes[st.session_state.theme]
+font_size = font_map[st.session_state.font_size]
+
+def generate_css(theme: dict, font_size: str) -> str:
+    return f"""
     <style>
-    /* Base Styling */
-    body, .stApp {
+    html, body, .stApp, [class^="css"], button, input, label, textarea, select {{
+        font-size: {font_size} !important;
+        color: {theme["text"]} !important;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+    }}
+    .stApp {{
+        background: {theme["background"]};
+        background-attachment: fixed;
+    }}
+    html, body, [class^="css"] {{
+        background-color: transparent !important;
+    }}
+    h1, h2, h3 {{
+        font-weight: bold;
+    }}
+    .stTextInput > div > input,
+    .stSelectbox > div > div,
+    .stRadio > div,
+    textarea {{
+        background-color: {theme["input_bg"]} !important;
+        color: {theme["text"]} !important;
+        border: 1px solid {theme["button"]};
+    }}
+    div.stButton > button {{
+        background-color: {theme["button"]};
+        color: white;
+        padding: 0.5em 1.5em;
+        border-radius: 8px;
+        transition: background-color 0.3s ease;
+    }}
+    div.stButton > button:hover {{
+        background-color: {theme["hover"]};
+    }}
+
+    body, .stApp {{
         font-family: 'Poppins', sans-serif;
         transition: all 0.5s ease;
-    }
+    }}
 
-    html, body, .stApp {
-        transition: background 0.5s ease, color 0.5s ease;
-    }
-
-    /* Light Mode */
-    body.light-mode, .stApp.light-mode {
+    body.light-mode, .stApp.light-mode {{
         background: linear-gradient(135deg, #f8fdfc, #d8f3dc);
         color: #1b4332;
-    }
+    }}
 
-    /* Dark Mode */
-    body.dark-mode, .stApp.dark-mode {
+    body.dark-mode, .stApp.dark-mode {{
         background: linear-gradient(135deg, #0e1117, #161b22);
         color: #e6edf3;
-    }
+    }}
 
-    /* Sidebar */
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         background: rgba(255, 255, 255, 0.2);
         backdrop-filter: blur(12px);
         border-right: 2px solid #74c69d;
         transition: all 0.5s ease;
-    }
+    }}
 
-    /* Buttons */
-    .stButton>button, .stDownloadButton>button {
+    .stButton>button, .stDownloadButton>button {{
         background: linear-gradient(135deg, #40916c, #52b788);
         color: white;
         border: none;
@@ -64,44 +142,47 @@ st.markdown("""
         font-size: 1rem;
         box-shadow: 0 0 15px #52b788;
         transition: 0.3s ease;
-    }
+    }}
 
-    .stButton>button:hover, .stDownloadButton>button:hover {
+    .stButton>button:hover, .stDownloadButton>button:hover {{
         background: linear-gradient(135deg, #2d6a4f, #40916c);
         box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
         transform: scale(1.05);
-    }
+    }}
 
-    .stButton>button:active, .stDownloadButton>button:active {
-        transform: scale(0.97);
-    }
-
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #1b4332, #2d6a4f);
-        box-shadow: 0 0 10px #1b4332;
-    }
-
-    /* Scrollbars */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-thumb {
+    ::-webkit-scrollbar {{
+        width: 8px;
+    }}
+    ::-webkit-scrollbar-thumb {{
         background: #74c69d;
         border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
+    }}
+    ::-webkit-scrollbar-thumb:hover {{
         background: #52b788;
-    }
+    }}
 
-    /* Glowing Title */
-    .glow-text {
+    .glow-text {{
         text-align: center;
         font-size: 3em;
         color: #52b788;
         text-shadow: 0 0 5px #52b788, 0 0 10px #52b788, 0 0 20px #52b788;
         margin-bottom: 20px;
-    }
+    }}
 
-    /* Tables */
-    .stDataFrame, .stTable {
+    html, body, .stApp {{
+        transition: background 0.5s ease, color 0.5s ease;
+    }}
+
+    .stDownloadButton>button {{
+        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+        box-shadow: 0 0 10px #1b4332;
+    }}
+
+    .stButton>button:active, .stDownloadButton>button:active {{
+        transform: scale(0.97);
+    }}
+
+    .stDataFrame, .stTable {{
         background: rgba(255, 255, 255, 0.6);
         border-radius: 12px;
         backdrop-filter: blur(10px);
@@ -109,154 +190,87 @@ st.markdown("""
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         overflow: hidden;
         font-size: 15px;
-    }
+    }}
 
-    thead tr th {
+    thead tr th {{
         background: linear-gradient(135deg, #52b788, #74c69d);
         color: white;
         font-weight: bold;
         text-align: center;
         padding: 0.5em;
-    }
+    }}
 
-    tbody tr:nth-child(even) { background-color: #e9f7ef; }
-    tbody tr:nth-child(odd) { background-color: #ffffff; }
-
-    tbody tr:hover {
+    tbody tr:nth-child(even) {{
+        background-color: #e9f7ef;
+    }}
+    tbody tr:nth-child(odd) {{
+        background-color: #ffffff;
+    }}
+    tbody tr:hover {{
         background-color: #b7e4c7;
         transition: background-color 0.3s ease;
-    }
+    }}
 
-    /* Graph iframe Glass Effect */
-    .element-container iframe {
+    .element-container iframe {{
         background: rgba(255, 255, 255, 0.5) !important;
         backdrop-filter: blur(10px);
         border-radius: 12px;
         padding: 10px;
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }
+    }}
 
-    /* Dark Mode Overrides */
-    body.dark-mode .stDataFrame, body.dark-mode .stTable {
+    body.dark-mode .stDataFrame, body.dark-mode .stTable {{
         background: #161b22cc;
-    }
+        border-radius: 10px;
+        backdrop-filter: blur(8px);
+        font-size: 15px;
+        overflow: hidden;
+    }}
 
-    body.dark-mode thead tr th {
+    body.dark-mode thead tr th {{
         background: linear-gradient(135deg, #238636, #2ea043);
         color: #ffffff;
-    }
-
-    body.dark-mode tbody tr:nth-child(even),
-    body.dark-mode tbody tr:nth-child(odd) {
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }
-
-    body.dark-mode tbody tr:nth-child(even) {
-        background: linear-gradient(90deg, #21262d, #30363d);
-    }
-
-    body.dark-mode tbody tr:nth-child(odd) {
-        background: linear-gradient(90deg, #161b22, #21262d);
-    }
-
-    body.dark-mode tbody tr:hover {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        box-shadow: 0 0 15px #58a6ff;
-        transform: scale(1.01);
-    }
-
-    body.dark-mode .element-container iframe {
-        background: rgba(22, 27, 34, 0.5) !important;
-        border: 2px solid #58a6ff;
-        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
-        animation: pulse-glow-dark 3s infinite ease-in-out;
-    }
-
-    /* Animations */
-    @keyframes pulse-glow {
-        0% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-        50% { box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }
-        100% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-    }
-
-    @keyframes pulse-glow-dark {
-        0% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-        50% { box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }
-        100% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Dynamic CSS
-def generate_css(theme: dict, font_size: str) -> str:
-    return f"""
-    <style>
-    html, body, .stApp {{
-        font-size: {font_size};
-        color: {theme["text"]};
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-        background: {theme["background"]};
-        background-attachment: fixed;
-    }}
-
-    h1, h2, h3 {{
         font-weight: bold;
-        color: {theme["text"]};
-    }}
-
-    .stTextInput > div > input,
-    .stSelectbox > div > div,
-    .stRadio > div,
-    textarea {{
-        background-color: {theme["input_bg"]} !important;
-        color: {theme["text"]} !important;
-        border: 1px solid {theme["button"]};
-    }}
-
-    .stButton > button {{
-        background-color: {theme["button"]};
-        color: white;
-        padding: 0.5em 1.5em;
-        border-radius: 8px;
-        transition: background-color 0.3s ease;
-    }}
-
-    .stButton > button:hover {{
-        background-color: {theme["hover"]};
-    }}
-
-    .aqi-card, .instruction-card {{
-        background: {theme["background"]};
-        color: {theme["text"]};
-        border: 2px solid {theme["button"]};
-        border-radius: 15px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s, box-shadow 0.3s;
-    }}
-
-    .aqi-card:hover, .instruction-card:hover {{
-        transform: scale(1.02);
-        box-shadow: 4px 4px 20px rgba(0, 0, 0, 0.2);
-    }}
-
-    .aqi-table {{
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-    }}
-
-    .aqi-table th, .aqi-table td {{
-        border: 1px solid {theme["button"]};
-        padding: 8px;
         text-align: center;
     }}
 
-    .aqi-table th {{
-        background-color: {theme["button"]};
-        color: white;
+    body.dark-mode tbody tr:nth-child(even) {{
+        background: linear-gradient(90deg, #21262d, #30363d);
+        color: #e6edf3;
+        transition: all 0.3s ease;
+    }}
+
+    body.dark-mode tbody tr:nth-child(odd) {{
+        background: linear-gradient(90deg, #161b22, #21262d);
+        color: #e6edf3;
+        transition: all 0.3s ease;
+    }}
+
+    body.dark-mode tbody tr:hover {{
+        background: linear-gradient(90deg, #21262d, #30363d);
+        box-shadow: 0 0 15px #58a6ff;
+        transform: scale(1.01);
+    }}
+
+    body.dark-mode .element-container iframe {{
+        background: rgba(22, 27, 34, 0.5) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 10px;
+        border: 2px solid #58a6ff;
+        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
+        animation: pulse-glow-dark 3s infinite ease-in-out;
+    }}
+
+    @keyframes pulse-glow {{
+      0% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
+      50% {{ box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }}
+      100% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
+    }}
+    @keyframes pulse-glow-dark {{
+      0% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
+      50% {{ box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }}
+      100% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
     }}
 
     .footer {{
