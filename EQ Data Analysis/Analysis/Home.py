@@ -1,5 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_extras.cookie_manager import CookieManager
 
 
 # Page Configuration
@@ -12,44 +13,47 @@ st.set_page_config(
 
 
 
-# ----------------------------
-# SESSION STATE DEFAULTS
-# ----------------------------
-if "theme" not in st.session_state:
-    st.session_state.theme = "Light"
-if "font_size" not in st.session_state:
-    st.session_state.font_size = "Medium"
+# Initialize CookieManager
+cookie_manager = CookieManager()
+cookies = cookie_manager.get_all()
 
-# ----------------------------
-# SIDEBAR SETTINGS
-# ----------------------------
+# Cookie keys
+THEME_COOKIE = "user_theme"
+FONT_COOKIE = "user_font_size"
+
+# Set default state from cookies or defaults
+if "theme" not in st.session_state:
+    st.session_state.theme = cookies.get(THEME_COOKIE, "Light")
+if "font_size" not in st.session_state:
+    st.session_state.font_size = cookies.get(FONT_COOKIE, "Medium")
+
+# Sidebar UI
 st.sidebar.header("🎨 Appearance Settings")
 
-# Theme toggle
+# Dark mode toggle
 dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=(st.session_state.theme == "Dark"))
 st.session_state.theme = "Dark" if dark_mode else "Light"
 
-# Font size radio
+# Font size selector
 font_choice = st.sidebar.radio("🔠 Font Size", ["Small", "Medium", "Large"], index=["Small", "Medium", "Large"].index(st.session_state.font_size))
 st.session_state.font_size = font_choice
 
-# Reset to defaults
+# Save cookies
+cookie_manager.set(THEME_COOKIE, st.session_state.theme, max_age=31536000)  # 1 year
+cookie_manager.set(FONT_COOKIE, st.session_state.font_size, max_age=31536000)
+
+# Reset button
 if st.sidebar.button("🔄 Reset to Defaults"):
     st.session_state.theme = "Light"
     st.session_state.font_size = "Medium"
+    cookie_manager.delete(THEME_COOKIE)
+    cookie_manager.delete(FONT_COOKIE)
     st.rerun()
 
-# ----------------------------
-# THEME AND FONT SETTINGS
-# ----------------------------
+# Theming logic (same as before)
+font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
 theme = st.session_state.theme
 font_size = st.session_state.font_size
-
-font_map = {
-    "Small": "14px",
-    "Medium": "16px",
-    "Large": "18px"
-}
 
 if theme == "Light":
     background = "linear-gradient(135deg, #e0f7fa, #ffffff)"
@@ -62,9 +66,7 @@ else:
     button_color = "#26a69a"
     button_hover = "#00897b"
 
-# ----------------------------
-# CUSTOM CSS INJECTION
-# ----------------------------
+# Inject CSS
 st.markdown(
     f"""
     <style>
@@ -72,115 +74,32 @@ st.markdown(
         background: {background};
         background-attachment: fixed;
     }}
-
     .stApp {{
         background-color: transparent;
         animation: fadeIn 1s ease-in;
     }}
-
     html, body, [class*="css"] {{
         font-family: 'Segoe UI', 'Roboto', sans-serif;
         font-size: {font_map[font_size]};
         color: {text_color};
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
     }}
-
     h1, h2, h3 {{
         font-weight: bold;
         color: {text_color};
     }}
-
     div.stButton > button {{
         background-color: {button_color};
         color: white;
         padding: 0.5em 1.5em;
-        border: none;
         border-radius: 8px;
-        font-size: {font_map[font_size]};
-        font-weight: bold;
         transition: background-color 0.3s ease;
     }}
-
     div.stButton > button:hover {{
         background-color: {button_hover};
-        cursor: pointer;
-    }}
-
-    .stTextInput input, .stTextArea textarea {{
-        border: 2px solid {text_color};
-        border-radius: 8px;
-        padding: 0.5em;
-    }}
-
-    .stSelectbox div[data-baseweb="select"] > div {{
-        border: 2px solid {text_color};
-        border-radius: 8px;
-    }}
-
-    .stSlider > div[data-baseweb="slider"] > div {{
-        background: {text_color};
-    }}
-
-    .stFileUploader label {{
-        background-color: {text_color};
-        color: white;
-        padding: 0.5em;
-        border-radius: 8px;
-        font-weight: bold;
-    }}
-
-    .stCheckbox > label {{
-        font-weight: bold;
-        color: {text_color};
-    }}
-
-    .stTabs [role="tablist"] > div {{
-        border: 2px solid {text_color};
-        border-radius: 10px;
-        padding: 0.25em;
-        margin-bottom: 1em;
-    }}
-
-    .stTabs [role="tab"] {{
-        color: {text_color};
-        font-weight: bold;
-        border-radius: 8px;
-        padding: 0.5em 1em;
-        transition: all 0.2s ease-in-out;
-    }}
-
-    .stTabs [aria-selected="true"] {{
-        background-color: {text_color};
-        color: white;
-    }}
-
-    .st-expander {{
-        border: 2px solid {text_color} !important;
-        border-radius: 10px !important;
-    }}
-
-    .st-expander summary {{
-        color: {text_color};
-        font-weight: bold;
-    }}
-
-    @keyframes fadeIn {{
-        0% {{ opacity: 0; transform: translateY(20px); }}
-        100% {{ opacity: 1; transform: translateY(0); }}
     }}
     </style>
     """,
     unsafe_allow_html=True
-)
-
-# ----------------------------
-# MAIN UI DEMO
-# ----------------------------
-st.title("🎛️ Stylish Streamlit App")
-st.write(f"Theme: **{theme}**, Font Size: **{font_size}**")
-st.button("Test Button")
-
 
 
 # -------- Sidebar Content --------
