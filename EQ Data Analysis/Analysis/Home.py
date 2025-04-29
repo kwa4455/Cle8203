@@ -171,10 +171,6 @@ def generate_css(theme: dict, font_size: str) -> str:
 
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
-# ---------- UI Content ----------
-st.title("✨ Customizable Theme & Font")
-st.write(f"Theme: **{st.session_state.theme}**")
-st.write(f"Font Size: **{st.session_state.font_size}**")
 
 with st.sidebar:
     try:
