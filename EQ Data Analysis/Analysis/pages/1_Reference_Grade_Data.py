@@ -197,17 +197,17 @@ st.title("📊 Reference Grade Monitor Data Analysis")
 
 def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['datetime', 'site', 'PM25', 'PM10']
+    required_columns = ['datetime', 'site', 'pm25', 'pm10']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
-    df = df[df.groupby('PM25')['PM25'].transform('count') <= 2]
+    df = df[df.groupby('pm25')['pm25'].transform('count') <= 2]
 
     def removal_box_plot(df, col, lower_threshold, upper_threshold):
         filtered = df[(df[col] >= lower_threshold) & (df[col] <= upper_threshold)]
         return filtered, (df[col] < lower_threshold).sum(), (df[col] > upper_threshold).sum()
 
-    if 'PM25' in df.columns:
-        df, _, _ = removal_box_plot(df, 'PM25', 1, 500)
+    if 'pm25' in df.columns:
+        df, _, _ = removal_box_plot(df, 'pm25', 1, 500)
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
@@ -241,9 +241,9 @@ def standardize_columns(df):
     for col in df.columns:
         col_lower = col.strip().lower()
         if col_lower in [c.lower() for c in pm25_cols]:
-            df.rename(columns={col: 'PM25'}, inplace=True)
+            df.rename(columns={col: 'pm25'}, inplace=True)
         if col_lower in [c.lower() for c in pm10_cols]:
-            df.rename(columns={col: 'PM10'}, inplace=True)
+            df.rename(columns={col: 'pm10'}, inplace=True)
         if col_lower in [c.lower() for c in site_cols]:
             df.rename(columns={col: 'site'}, inplace=True)
     return df
@@ -261,37 +261,37 @@ def compute_aggregates(df, label, pollutant):
 
 def calculate_exceedances(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'PM25': 'mean',
-        'PM10': 'mean'
+        'pm25': 'mean',
+        'pm10': 'mean'
     })
-    pm25_exceed = daily_avg[daily_avg['PM25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
-    pm10_exceed = daily_avg[daily_avg['PM10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
+    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
+    pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
     total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
 
-    exceedance = total_days.merge(PM25_exceed, on=['year', 'site'], how='left') \
-                           .merge(PM10_exceed, on=['year', 'site'], how='left')
+    exceedance = total_days.merge(pm25_exceed, on=['year', 'site'], how='left') \
+                           .merge(pm10_exceed, on=['year', 'site'], how='left')
     exceedance.fillna(0, inplace=True)
-    exceedance['PM25_Exceedance_Percent'] = round((exceedance['PM25_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
-    exceedance['PM10_Exceedance_Percent'] = round((exceedance['PM10_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
+    exceedance['pm25_Exceedance_Percent'] = round((exceedance['pm25_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
+    exceedance['pm10_Exceedance_Percent'] = round((exceedance['pm10_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
 
     return exceedance
 
 def calculate_min_max(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'PM25': 'mean',
-        'PM10': 'mean'
+        'pm25': 'mean',
+        'pm10': 'mean'
     })
     df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
-        daily_avg_pm10_max=('PM10', lambda x: round(x.max(), 1)),
-        daily_avg_pm10_min=('PM10', lambda x: round(x.min(), 1)),
-        daily_avg_pm25_max=('PM25', lambda x: round(x.max(), 1)),
-        daily_avg_pm25_min=('PM25', lambda x: round(x.min(), 1))
+        daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
+        daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
+        daily_avg_pm25_max=('pm25', lambda x: round(x.max(), 1)),
+        daily_avg_pm25_min=('pm25', lambda x: round(x.min(), 1))
     )
     return df_min_max
 
 def calculate_aqi_and_category(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'PM25': 'mean'
+        'pm25': 'mean'
     })
     breakpoints = [
         (0.0, 9.0, 0, 50),
@@ -309,7 +309,7 @@ def calculate_aqi_and_category(df):
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg['AQI'] = daily_avg['PM25'].apply(calculate_aqi)
+    daily_avg['AQI'] = daily_avg['pm25'].apply(calculate_aqi)
     conditions = [
         (daily_avg['AQI'] > 300),
         (daily_avg['AQI'] > 200),
@@ -378,7 +378,7 @@ if uploaded_files:
         df = standardize_columns(df)
         df = cleaned(df)
 
-        if 'datetime' not in df.columns or 'PM25' not in df.columns or 'PM10' not in df.columns or 'site' not in df.columns:
+        if 'datetime' not in df.columns or 'pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
             st.warning(f"⚠️ Could not process {label}: missing columns.")
             continue
 
@@ -403,7 +403,7 @@ if uploaded_files:
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
-            for pollutant in ['PM25', 'PM10']:
+            for pollutant in ['pm25', 'pm10']:
                 if pollutant not in filtered_df.columns:
                     continue
                 aggregates = compute_aggregates(filtered_df, label, pollutant)
