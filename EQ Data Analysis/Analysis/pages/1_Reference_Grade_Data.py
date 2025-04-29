@@ -187,6 +187,167 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# Set defaults
+if "theme" not in st.session_state:
+    st.session_state.theme = "Light"
+if "font_size" not in st.session_state:
+    st.session_state.font_size = "Medium"
+
+# Sidebar - Appearance Controls
+st.sidebar.header("🎨 Appearance Settings")
+
+# Theme selection
+theme_choice = st.sidebar.selectbox(
+    "Choose Theme",
+    ["Light", "Dark", "Blue", "Green", "Purple"],
+    index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
+)
+st.session_state.theme = theme_choice
+
+# Font size selection
+font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
+                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
+st.session_state.font_size = font_choice
+
+# Reset to default
+if st.sidebar.button("🔄 Reset to Defaults"):
+    st.session_state.theme = "Light"
+    st.session_state.font_size = "Medium"
+    st.success("Reset to Light theme and Medium font!")
+    st.rerun()
+
+# Theme settings dictionary
+themes = {
+    "Light": {
+        "background": "linear-gradient(135deg, #e0f7fa, #ffffff)",
+        "text": "#004d40",
+        "button": "#00796b",
+        "hover": "#004d40",
+        "input_bg": "#ffffff"
+    },
+    "Dark": {
+        "background": "linear-gradient(135deg, #263238, #37474f)",
+        "text": "#e0f2f1",
+        "button": "#26a69a",
+        "hover": "#00897b",
+        "input_bg": "#37474f"
+    },
+    "Blue": {
+        "background": "linear-gradient(135deg, #e3f2fd, #90caf9)",
+        "text": "#0d47a1",
+        "button": "#1e88e5",
+        "hover": "#1565c0",
+        "input_bg": "#ffffff"
+    },
+    "Green": {
+        "background": "linear-gradient(135deg, #dcedc8, #aed581)",
+        "text": "#33691e",
+        "button": "#689f38",
+        "hover": "#558b2f",
+        "input_bg": "#ffffff"
+    },
+    "Purple": {
+        "background": "linear-gradient(135deg, #f3e5f5, #ce93d8)",
+        "text": "#4a148c",
+        "button": "#8e24aa",
+        "hover": "#6a1b9a",
+        "input_bg": "#ffffff"
+    },
+}
+
+# Font size mapping
+font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
+
+# Apply theme and inject CSS
+theme = themes[st.session_state.theme]
+font_size = font_map[st.session_state.font_size]
+
+def generate_css(theme: dict, font_size: str) -> str:
+    return f"""
+    <style>
+    html, body, .stApp, [class^="css"], button, input, label, textarea, select {{
+        font-size: {font_size} !important;
+        color: {theme["text"]} !important;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+    }}
+    .stApp {{
+        background: {theme["background"]};
+        background-attachment: fixed;
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        font-size: {font_size};
+        color: {theme["text"]};
+    }}
+    html, body, [class^="css"] {{
+        background-color: transparent !important;
+        color: {theme["text"]} !important;
+    }}
+    h1, h2, h3 {{
+        font-weight: bold;
+        color: {theme["text"]};
+    }}
+    .stTextInput > div > input,
+    .stSelectbox > div > div,
+    .stRadio > div,
+    textarea {{
+        background-color: {theme["input_bg"]} !important;
+        color: {theme["text"]} !important;
+        border: 1px solid {theme["button"]};
+    }}
+    div.stButton > button {{
+        background-color: {theme["button"]};
+        color: white;
+        padding: 0.5em 1.5em;
+        border-radius: 8px;
+        transition: background-color 0.3s ease;
+    }}
+    div.stButton > button:hover {{
+        background-color: {theme["hover"]};
+    }}
+    .aqi-card, .instruction-card {{
+        background: {theme["background"]};
+        color: {theme["text"]};
+        border: 2px solid {theme["button"]};
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s, box-shadow 0.3s;
+    }}
+    .aqi-card:hover, .instruction-card:hover {{
+        transform: scale(1.02);
+        box-shadow: 4px 4px 20px rgba(0, 0, 0, 0.2);
+    }}
+    .aqi-table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 15px;
+    }}
+    .aqi-table th, .aqi-table td {{
+        border: 1px solid {theme["button"]};
+        padding: 8px;
+        text-align: center;
+    }}
+    .aqi-table th {{
+        background-color: {theme["button"]};
+        color: white;
+    }}
+    .footer {{
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: {theme["background"]};
+        color: {theme["text"]};
+        text-align: center;
+        padding: 12px 0;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
+    }}
+    </style>
+    """
+
+st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
 # --- Title and Logo ---
