@@ -6,6 +6,7 @@ from io import BytesIO
 
 # --- Page Configuration ---
 st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
+
 # Static Global Styles (includes transitions, buttons, tables, glow effects, etc.)
 st.markdown("""
     <style>
@@ -256,6 +257,7 @@ def generate_css(theme: dict, font_size: str) -> str:
 
 # Inject dynamic CSS
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
+
 
 # --- Title and Logo ---
 st.title("📊 Reference Grade Monitor Data Analysis")
