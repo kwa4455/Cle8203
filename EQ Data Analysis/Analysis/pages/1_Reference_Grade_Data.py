@@ -435,10 +435,6 @@ def to_csv_download(df):
 
 
 
-
-import altair as alt
-import streamlit as st
-
 def plot_chart(df, x, y, color, chart_type="line", title=""):
     streamlit_theme = st.get_option("theme.base")
     theme = streamlit_theme if streamlit_theme else "Light"
@@ -528,13 +524,26 @@ if uploaded_files:
                     continue
                 aggregates = compute_aggregates(filtered_df, label, pollutant)
                 for agg_label, agg_df in aggregates.items():
-                    st.markdown(f"**{agg_label}**")
-                    st.dataframe(agg_df, use_container_width=True)
-                    st.download_button(label=f"📥 Download {agg_label}", data=to_csv_download(agg_df), file_name=f"{label}_{agg_label.replace(' ', '_')}.csv", mime="text/csv")
-                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly','Quarterly', 'Yearly']) else "bar"
+                    display_cols = [agg_df.columns[0], "site"] + valid_pollutants
+                    editable_df = agg_df[display_cols]
+                    st.data_editor(
+                        editable_df,
+                        use_container_width=True,
+                        column_config={col: {"disabled": True} for col in editable_df.columns},
+                        num_rows="dynamic",
+                        key=f"editor_{label}_{agg_label}"
+                    )
+                    st.download_button(
+                        label=f"📥 Download {agg_label}",
+                        data=to_csv_download(editable_df),
+                        file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
+                         mime="text/csv"
+                    )
+                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
                     x_axis = agg_df.columns[0]
-                    chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=agg_label)
-                    st.altair_chart(chart, use_container_width=True)
+                    for pollutant in valid_pollutants:
+                        chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=f"{agg_label} - {pollutant}")
+                        st.altair_chart(chart, use_container_width=True)
 
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
