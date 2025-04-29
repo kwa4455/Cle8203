@@ -519,13 +519,14 @@ if uploaded_files:
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
             selected_pollutants = ['pm25', 'pm10']
-            pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
             if not valid_pollutants:
                 st.warning(f"No valid pollutants found in {label}")
 
-            for pollutant in ['pm25', 'pm10']:
-                if pollutant not in filtered_df.columns:
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
                 continue
+            for pollutant in valid_pollutants:
                 aggregates = compute_aggregates(filtered_df, label, pollutant)
                 for agg_label, agg_df in aggregates.items():
                     display_cols = [agg_df.columns[0], "site"] + pollutant
@@ -545,9 +546,8 @@ if uploaded_files:
                     )
                     chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
                     x_axis = agg_df.columns[0]
-                    for pollutant in valid_pollutants:
-                        chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=f"{agg_label} - {pollutant}")
-                        st.altair_chart(chart, use_container_width=True)
+                    chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=f"{agg_label} - {pollutant}")  # Assumes function is defined elsewhere
+                    st.altair_chart(chart, use_container_width=True)
 
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
