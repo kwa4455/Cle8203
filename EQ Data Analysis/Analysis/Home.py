@@ -10,67 +10,141 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# -------- Custom Background and Font --------
+import streamlit as st
+
+# User selects theme and font size
+theme = st.selectbox("Choose Theme", ["Light", "Dark"])
+font_size = st.selectbox("Font Size", ["Small", "Medium", "Large"])
+
+# Map font sizes
+font_map = {
+    "Small": "14px",
+    "Medium": "16px",
+    "Large": "18px"
+}
+
+# Apply the chosen theme and font
+if theme == "Light":
+    background = "linear-gradient(135deg, #e0f7fa, #ffffff)"
+    text_color = "#004d40"
+    button_color = "#00796b"
+    button_hover = "#004d40"
+else:
+    background = "linear-gradient(135deg, #263238, #37474f)"
+    text_color = "#e0f2f1"
+    button_color = "#26a69a"
+    button_hover = "#00897b"
+
+# Inject custom CSS
 st.markdown(
-    """
+    f"""
     <style>
-    /* Background gradient */
-    body {
-        background: linear-gradient(135deg, #e0f7fa, #ffffff);
+    body {{
+        background: {background};
         background-attachment: fixed;
-    }
+    }}
 
-    /* Main app styling */
-    .stApp {
+    .stApp {{
         background-color: transparent;
-    }
+        animation: fadeIn 1s ease-in;
+    }}
 
-    /* Smooth fonts and size */
-    html, body, [class*="css"] {
+    html, body, [class*="css"] {{
         font-family: 'Segoe UI', 'Roboto', sans-serif;
-        font-size: 16px;
-        font-smooth: always;
-    }
+        font-size: {font_map[font_size]};
+        color: {text_color};
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+    }}
 
-    /* Headings */
-    h1, h2, h3 {
+    h1, h2, h3 {{
         font-weight: bold;
-        color: #004d40;
-    }
+        color: {text_color};
+    }}
+
+    div.stButton > button {{
+        background-color: {button_color};
+        color: white;
+        padding: 0.5em 1.5em;
+        border: none;
+        border-radius: 8px;
+        font-size: {font_map[font_size]};
+        font-weight: bold;
+        transition: background-color 0.3s ease;
+    }}
+
+    div.stButton > button:hover {{
+        background-color: {button_hover};
+        cursor: pointer;
+    }}
+
+    .stTextInput input, .stTextArea textarea {{
+        border: 2px solid {text_color};
+        border-radius: 8px;
+        padding: 0.5em;
+    }}
+
+    .stSelectbox div[data-baseweb="select"] > div {{
+        border: 2px solid {text_color};
+        border-radius: 8px;
+    }}
+
+    .stSlider > div[data-baseweb="slider"] > div {{
+        background: {text_color};
+    }}
+
+    .stFileUploader label {{
+        background-color: {text_color};
+        color: white;
+        padding: 0.5em;
+        border-radius: 8px;
+        font-weight: bold;
+    }}
+
+    .stCheckbox > label {{
+        font-weight: bold;
+        color: {text_color};
+    }}
+
+    .stTabs [role="tablist"] > div {{
+        border: 2px solid {text_color};
+        border-radius: 10px;
+        padding: 0.25em;
+        margin-bottom: 1em;
+    }}
+
+    .stTabs [role="tab"] {{
+        color: {text_color};
+        font-weight: bold;
+        border-radius: 8px;
+        padding: 0.5em 1em;
+        transition: all 0.2s ease-in-out;
+    }}
+
+    .stTabs [aria-selected="true"] {{
+        background-color: {text_color};
+        color: white;
+    }}
+
+    .st-expander {{
+        border: 2px solid {text_color} !important;
+        border-radius: 10px !important;
+    }}
+
+    .st-expander summary {{
+        color: {text_color};
+        font-weight: bold;
+    }}
+
+    @keyframes fadeIn {{
+        0% {{ opacity: 0; transform: translateY(20px); }}
+        100% {{ opacity: 1; transform: translateY(0); }}
+    }}
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# -------- Custom Sidebar Styling --------
-st.markdown(
-    """
-    <style>
-    /* Sidebar background and padding */
-    [data-testid="stSidebar"] {
-        background: linear-gradient(135deg, #e0f2f1, #ffffff);
-        padding: 20px;
-        border-right: 2px solid #d3d3d3;
-    }
-
-    /* Sidebar header text styling */
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #00695c;
-    }
-
-    /* Sidebar link styling */
-    [data-testid="stSidebar"] a {
-        color: #00796b;
-        font-weight: bold;
-        text-decoration: none;
-    }
-    [data-testid="stSidebar"] a:hover {
-        color: #004d40;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
 
 # -------- Sidebar Content --------
 with st.sidebar:
