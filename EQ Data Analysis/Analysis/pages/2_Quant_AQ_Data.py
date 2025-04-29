@@ -212,7 +212,7 @@ def cleaned(df):
             df = df[df[col] > 0]
 
     # Apply correction formula for PM2.5 if applicable
-    if all(col in df.columns for col in ['pm25', 'temp', 'rh']):
+    if all(col in df.columns for col in ['pm25', 'sample_temp', 'sample_rh']):
         df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['sample_temp'] - 0.08 * df['sample_rh'] + 19.82
 
     df['year'] = df['datetime'].dt.year
