@@ -6,27 +6,31 @@ from io import BytesIO
 
 # --- Page Configuration ---
 st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
-# Insert your CSS here
+# Static Global Styles (includes transitions, buttons, tables, glow effects, etc.)
 st.markdown("""
     <style>
-    /* --- your CSS --- */
+    /* Base Styling */
     body, .stApp {
         font-family: 'Poppins', sans-serif;
         transition: all 0.5s ease;
     }
-    
+
+    html, body, .stApp {
+        transition: background 0.5s ease, color 0.5s ease;
+    }
+
     /* Light Mode */
     body.light-mode, .stApp.light-mode {
         background: linear-gradient(135deg, #f8fdfc, #d8f3dc);
         color: #1b4332;
     }
-    
+
     /* Dark Mode */
     body.dark-mode, .stApp.dark-mode {
         background: linear-gradient(135deg, #0e1117, #161b22);
         color: #e6edf3;
     }
-    
+
     /* Sidebar */
     [data-testid="stSidebar"] {
         background: rgba(255, 255, 255, 0.2);
@@ -47,17 +51,25 @@ st.markdown("""
         box-shadow: 0 0 15px #52b788;
         transition: 0.3s ease;
     }
-    
+
     .stButton>button:hover, .stDownloadButton>button:hover {
         background: linear-gradient(135deg, #2d6a4f, #40916c);
         box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
         transform: scale(1.05);
     }
 
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-        width: 8px;
+    .stButton>button:active, .stDownloadButton>button:active {
+        transform: scale(0.97);
     }
+
+    /* Download Button Specific */
+    .stDownloadButton>button {
+        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+        box-shadow: 0 0 10px #1b4332;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-thumb {
         background: #74c69d;
         border-radius: 10px;
@@ -75,22 +87,6 @@ st.markdown("""
         margin-bottom: 20px;
     }
 
-    /* Smooth theme transition */
-    html, body, .stApp {
-        transition: background 0.5s ease, color 0.5s ease;
-    }
-
-    /* Download Button Specific */
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #1b4332, #2d6a4f);
-        box-shadow: 0 0 10px #1b4332;
-    }
-
-    /* Button Press Animation */
-    .stButton>button:active, .stDownloadButton>button:active {
-        transform: scale(0.97);
-    }
-
     /* Tables */
     .stDataFrame, .stTable {
         background: rgba(255, 255, 255, 0.6);
@@ -102,7 +98,6 @@ st.markdown("""
         font-size: 15px;
     }
 
-    /* Table Headers */
     thead tr th {
         background: linear-gradient(135deg, #52b788, #74c69d);
         color: white;
@@ -111,13 +106,9 @@ st.markdown("""
         padding: 0.5em;
     }
 
-    /* Table Rows */
-    tbody tr:nth-child(even) {
-        background-color: #e9f7ef;
-    }
-    tbody tr:nth-child(odd) {
-        background-color: #ffffff;
-    }
+    tbody tr:nth-child(even) { background-color: #e9f7ef; }
+    tbody tr:nth-child(odd) { background-color: #ffffff; }
+
     tbody tr:hover {
         background-color: #b7e4c7;
         transition: background-color 0.3s ease;
@@ -132,136 +123,59 @@ st.markdown("""
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
 
-    /* Dark Mode Table */
+    /* Dark Mode Overrides */
     body.dark-mode .stDataFrame, body.dark-mode .stTable {
         background: #161b22cc;
-        border-radius: 10px;
-        backdrop-filter: blur(8px);
-        font-size: 15px;
-        overflow: hidden;
     }
+
     body.dark-mode thead tr th {
         background: linear-gradient(135deg, #238636, #2ea043);
         color: #ffffff;
-        font-weight: bold;
-        text-align: center;
     }
+
+    body.dark-mode tbody tr:nth-child(even),
+    body.dark-mode tbody tr:nth-child(odd) {
+        color: #e6edf3;
+        transition: all 0.3s ease;
+    }
+
     body.dark-mode tbody tr:nth-child(even) {
         background: linear-gradient(90deg, #21262d, #30363d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
     }
+
     body.dark-mode tbody tr:nth-child(odd) {
         background: linear-gradient(90deg, #161b22, #21262d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
     }
+
     body.dark-mode tbody tr:hover {
         background: linear-gradient(90deg, #21262d, #30363d);
         box-shadow: 0 0 15px #58a6ff;
         transform: scale(1.01);
     }
 
-    /* Dark Mode Graph Glow */
     body.dark-mode .element-container iframe {
         background: rgba(22, 27, 34, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 10px;
         border: 2px solid #58a6ff;
         box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
         animation: pulse-glow-dark 3s infinite ease-in-out;
     }
 
-    /* Glow Animations */
+    /* Animations */
     @keyframes pulse-glow {
-      0% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-      50% { box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }
-      100% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
+        0% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
+        50% { box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }
+        100% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
     }
+
     @keyframes pulse-glow-dark {
-      0% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-      50% { box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }
-      100% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
+        0% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
+        50% { box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }
+        100% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
     }
     </style>
 """, unsafe_allow_html=True)
 
-# Set defaults
-if "theme" not in st.session_state:
-    st.session_state.theme = "Light"
-if "font_size" not in st.session_state:
-    st.session_state.font_size = "Medium"
-
-# Sidebar - Appearance Controls
-st.sidebar.header("🎨 Appearance Settings")
-
-# Theme selection
-theme_choice = st.sidebar.selectbox(
-    "Choose Theme",
-    ["Light", "Dark", "Blue", "Green", "Purple"],
-    index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
-)
-st.session_state.theme = theme_choice
-
-# Font size selection
-font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
-                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
-st.session_state.font_size = font_choice
-
-# Reset to default
-if st.sidebar.button("🔄 Reset to Defaults"):
-    st.session_state.theme = "Light"
-    st.session_state.font_size = "Medium"
-    st.success("Reset to Light theme and Medium font!")
-    st.rerun()
-
-# Theme settings dictionary
-themes = {
-    "Light": {
-        "background": "linear-gradient(135deg, #e0f7fa, #ffffff)",
-        "text": "#004d40",
-        "button": "#00796b",
-        "hover": "#004d40",
-        "input_bg": "#ffffff"
-    },
-    "Dark": {
-        "background": "linear-gradient(135deg, #263238, #37474f)",
-        "text": "#e0f2f1",
-        "button": "#26a69a",
-        "hover": "#00897b",
-        "input_bg": "#37474f"
-    },
-    "Blue": {
-        "background": "linear-gradient(135deg, #e3f2fd, #90caf9)",
-        "text": "#0d47a1",
-        "button": "#1e88e5",
-        "hover": "#1565c0",
-        "input_bg": "#ffffff"
-    },
-    "Green": {
-        "background": "linear-gradient(135deg, #dcedc8, #aed581)",
-        "text": "#33691e",
-        "button": "#689f38",
-        "hover": "#558b2f",
-        "input_bg": "#ffffff"
-    },
-    "Purple": {
-        "background": "linear-gradient(135deg, #f3e5f5, #ce93d8)",
-        "text": "#4a148c",
-        "button": "#8e24aa",
-        "hover": "#6a1b9a",
-        "input_bg": "#ffffff"
-    },
-}
-
-# Font size mapping
-font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
-
-# Apply theme and inject CSS
-theme = themes[st.session_state.theme]
-font_size = font_map[st.session_state.font_size]
-
+# Dynamic Theme Injection (font size, theme color, input styling)
 def generate_css(theme: dict, font_size: str) -> str:
     return f"""
     <style>
@@ -273,13 +187,6 @@ def generate_css(theme: dict, font_size: str) -> str:
     .stApp {{
         background: {theme["background"]};
         background-attachment: fixed;
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-        font-size: {font_size};
-        color: {theme["text"]};
-    }}
-    html, body, [class^="css"] {{
-        background-color: transparent !important;
-        color: {theme["text"]} !important;
     }}
     h1, h2, h3 {{
         font-weight: bold;
@@ -347,8 +254,8 @@ def generate_css(theme: dict, font_size: str) -> str:
     </style>
     """
 
+# Inject dynamic CSS
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
-
 
 # --- Title and Logo ---
 st.title("📊 Reference Grade Monitor Data Analysis")
