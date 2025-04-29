@@ -435,25 +435,36 @@ def to_csv_download(df):
 
 
 
-def plot_chart(df, x, y, color, chart_type="line", title=""):
+def plot_chart(df, x, y, color, chart_type="line", title="", bar_mode="group"):
     streamlit_theme = st.get_option("theme.base")
     theme = streamlit_theme if streamlit_theme else "Light"
 
     background = '#1c1c1c' if theme == 'dark' else 'white'
     font_color = 'white' if theme == 'dark' else 'black'
 
-    # Use param-based filtering for Altair v5+
     if color and df[color].nunique() > 1:
-        selector_param = alt.param(name="selector", bind=alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: "), value=df[color].iloc[0])
+        selector_param = alt.param(
+            name="selector",
+            bind=alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: "),
+            value=df[color].iloc[0]
+        )
         filter_condition = alt.datum[color] == selector_param
     else:
         selector_param = None
         filter_condition = True
 
+    # Grouped bar: adjust X encoding to include color in grouping
+    x_encoding = alt.X(x, title=x)
+    if chart_type == "bar" and bar_mode == "group" and color:
+        x_encoding = alt.X(f"{x}:N", title=x, axis=alt.Axis(labelAngle=-45))
+        color_encoding = alt.Color(color, legend=alt.Legend(title=color))
+    else:
+        color_encoding = alt.Color(color, legend=alt.Legend(title=color)) if color else alt.value("steelblue")
+
     base = alt.Chart(df).encode(
-        x=alt.X(x, title=x),
+        x=x_encoding,
         y=alt.Y(y, title=y),
-        color=alt.Color(color, legend=alt.Legend(title=color)) if color else alt.value("steelblue"),
+        color=color_encoding,
         tooltip=[x, y, color] if color else [x, y]
     ).properties(
         title=alt.TitleParams(text=title, color=font_color),
@@ -566,8 +577,15 @@ if uploaded_files:
                     mime="text/csv"
                 )
                 st.markdown("---")
-                with st.expander(f"📈 Show Charts for {agg_label}", expanded=False):
-                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
+                auto_expand = "Yearly Avg" in agg_label
+                with st.expander(f"📈 Show Charts for {agg_label}", expanded=auto_expand):
+                    chart_type_choice = st.selectbox(
+                        f"Select Chart Type for {agg_label}",
+                        options=["line", "bar"],
+                        index=0 if "Yearly" in agg_label else 1,
+                        key=f"chart_type_{label}_{agg_label}"
+                    )
+                    
                     x_axis = agg_df.columns[0]
                     for pollutant in selected_display_pollutants:
                         if pollutant not in merged_df.columns:
