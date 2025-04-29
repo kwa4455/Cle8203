@@ -529,7 +529,7 @@ if uploaded_files:
             for pollutant in valid_pollutants:
                 aggregates = compute_aggregates(filtered_df, label, pollutant)
                 for agg_label, agg_df in aggregates.items():
-                    display_cols = [agg_df.columns[0], "site"] + pollutant
+                    display_cols = [agg_df.columns[0], "site", pollutant]
                     editable_df = agg_df[display_cols]
                     st.data_editor(
                         editable_df,
