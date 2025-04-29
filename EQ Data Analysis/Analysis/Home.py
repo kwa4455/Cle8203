@@ -10,7 +10,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-import streamlit as st
+
 
 # User selects theme and font size
 theme = st.selectbox("Choose Theme", ["Light", "Dark"])
