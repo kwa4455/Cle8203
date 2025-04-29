@@ -35,6 +35,7 @@ st.session_state.font_size = font_choice
 if st.sidebar.button("🔄 Reset to Defaults"):
     st.session_state.theme = "Light"
     st.session_state.font_size = "Medium"
+    st.success("Reset to Light theme and Medium font!")
     st.rerun()
 
 # Theme settings dictionary
@@ -43,31 +44,36 @@ themes = {
         "background": "linear-gradient(135deg, #e0f7fa, #ffffff)",
         "text": "#004d40",
         "button": "#00796b",
-        "hover": "#004d40"
+        "hover": "#004d40",
+        "input_bg": "#ffffff"
     },
     "Dark": {
         "background": "linear-gradient(135deg, #263238, #37474f)",
         "text": "#e0f2f1",
         "button": "#26a69a",
-        "hover": "#00897b"
+        "hover": "#00897b",
+        "input_bg": "#37474f"
     },
     "Blue": {
         "background": "linear-gradient(135deg, #e3f2fd, #90caf9)",
         "text": "#0d47a1",
         "button": "#1e88e5",
-        "hover": "#1565c0"
+        "hover": "#1565c0",
+        "input_bg": "#ffffff"
     },
     "Green": {
         "background": "linear-gradient(135deg, #dcedc8, #aed581)",
         "text": "#33691e",
         "button": "#689f38",
-        "hover": "#558b2f"
+        "hover": "#558b2f",
+        "input_bg": "#ffffff"
     },
     "Purple": {
         "background": "linear-gradient(135deg, #f3e5f5, #ce93d8)",
         "text": "#4a148c",
         "button": "#8e24aa",
-        "hover": "#6a1b9a"
+        "hover": "#6a1b9a",
+        "input_bg": "#ffffff"
     },
 }
 
@@ -88,7 +94,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         font-size: {font_size};
         color: {theme["text"]};
     }}
-    html, body, [class*="css"] {{
+    html, body, [class^="css"] {{
         background-color: transparent !important;
         color: {theme["text"]} !important;
     }}
@@ -96,20 +102,11 @@ def generate_css(theme: dict, font_size: str) -> str:
         font-weight: bold;
         color: {theme["text"]};
     }}
-    body, .stApp, .css-18e3th9, .css-1d391kg {{
-        color: {theme["text"]} !important;
-    }}
-    .css-qrbaxs, .css-1v0mbdj {{
-        color: {theme["text"]} !important;
-    }}
-    label, .css-145kmo2, .css-1y4p8pa {{
-        color: {theme["text"]} !important;
-    }}
     .stTextInput > div > input,
     .stSelectbox > div > div,
     .stRadio > div,
     textarea {{
-        background-color: #37474f !important;
+        background-color: {theme["input_bg"]} !important;
         color: {theme["text"]} !important;
         border: 1px solid {theme["button"]};
     }}
@@ -131,7 +128,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         padding: 20px;
         margin-bottom: 20px;
         box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
-        transition: 0.3s;
+        transition: transform 0.3s, box-shadow 0.3s;
     }}
     .aqi-card:hover, .instruction-card:hover {{
         transform: scale(1.02);
@@ -166,15 +163,14 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
     </style>
     """
-st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
+st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 # ---------- UI Content ----------
 st.title("✨ Customizable Theme & Font")
 st.write(f"Theme: **{st.session_state.theme}**")
 st.write(f"Font Size: **{st.session_state.font_size}**")
 
-# Sidebar content
 with st.sidebar:
     try:
         st.image("epa-logo.png", width=150)
@@ -190,7 +186,6 @@ with st.sidebar:
     - **Project Repo:** [Air Quality Dashboard](https://github.com/kwa4455/air-quality-analysis-dashboard)
     """)
 
-# Welcome banner
 components.html(
     f"""
     <div style="background: {theme["button"]}; 
@@ -200,14 +195,13 @@ components.html(
                 text-align: center; 
                 font-size: 42px; 
                 font-weight: bold;
-                animation: fadeIn 2s ease-in-out;">
+                animation: fadeIn 1.5s ease-out;">
         👋 Welcome to the Air Quality Dashboard!
     </div>
-
     <style>
     @keyframes fadeIn {{
-        0% {{opacity: 0;}}
-        100% {{opacity: 1;}}
+        0% {{opacity: 0; transform: translateY(-20px);}}
+        100% {{opacity: 1; transform: translateY(0);}}
     }}
     </style>
     """,
@@ -251,7 +245,6 @@ AQI = ((I<sub>high</sub> - I<sub>low</sub>) / (C<sub>high</sub> - C<sub>low</sub
 </div>
 """, unsafe_allow_html=True)
 
-# AQI Level Expanders
 levels = {
     "📗 Good (0-50)": "Air quality is satisfactory and poses little or no risk.",
     "📒 Moderate (51-100)": "Air quality is acceptable; some pollutants may be a concern for a small number of sensitive individuals.",
@@ -287,7 +280,7 @@ st.markdown(f"""
 # Quick Links
 st.markdown("### 🔗 Quick Links")
 st.markdown(f"""
-<div style="display: flex; gap: 20px; flex-wrap: wrap;">
+<div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
     <a href="https://www.epa.gov.gh/" target="_blank" style="padding: 10px 20px; background: {theme["button"]}; color: white; border-radius: 8px; text-decoration: none;">🌐 EPA Website</a>
     <a href="https://www.airnow.gov/aqi/aqi-basics/" target="_blank" style="padding: 10px 20px; background: {theme["hover"]}; color: white; border-radius: 8px; text-decoration: none;">📖 Learn about AQI</a>
 </div>
