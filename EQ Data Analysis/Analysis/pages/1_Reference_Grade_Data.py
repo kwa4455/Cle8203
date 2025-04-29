@@ -264,8 +264,8 @@ def calculate_exceedances(df):
         'pm25': 'mean',
         'pm10': 'mean'
     })
-    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
-    pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
+    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='pm25_Exceedance_Count')
+    pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='pm10_Exceedance_Count')
     total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
 
     exceedance = total_days.merge(pm25_exceed, on=['year', 'site'], how='left') \
