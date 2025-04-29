@@ -78,9 +78,8 @@ font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
 theme = themes[st.session_state.theme]
 font_size = font_map[st.session_state.font_size]
 
-# Main style injection
-st.markdown(
-    f"""
+def generate_css(theme: dict, font_size: str) -> str:
+    return f"""
     <style>
     .stApp {{
         background: {theme["background"]};
@@ -91,28 +90,29 @@ st.markdown(
     }}
     html, body, [class*="css"] {{
         background-color: transparent !important;
+        color: {theme["text"]} !important;
     }}
     h1, h2, h3 {{
         font-weight: bold;
         color: {theme["text"]};
     }}
-    body, .stApp, .css-18e3th9, .css-1d391kg {
-    color: #e0f2f1 !important;
-    }
-    .css-qrbaxs, .css-1v0mbdj {
-    color: #e0f2f1 !important;
-    }
-    label, .css-145kmo2, .css-1y4p8pa {
-    color: #e0f2f1 !important;
-    }
+    body, .stApp, .css-18e3th9, .css-1d391kg {{
+        color: {theme["text"]} !important;
+    }}
+    .css-qrbaxs, .css-1v0mbdj {{
+        color: {theme["text"]} !important;
+    }}
+    label, .css-145kmo2, .css-1y4p8pa {{
+        color: {theme["text"]} !important;
+    }}
     .stTextInput > div > input,
     .stSelectbox > div > div,
     .stRadio > div,
-    textarea {
-    background-color: #37474f !important;
-    color: #e0f2f1 !important;
-    border: 1px solid #26a69a;
-    }
+    textarea {{
+        background-color: #37474f !important;
+        color: {theme["text"]} !important;
+        border: 1px solid {theme["button"]};
+    }}
     div.stButton > button {{
         background-color: {theme["button"]};
         color: white;
@@ -165,9 +165,9 @@ st.markdown(
         box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
     }}
     </style>
-    """,
-    unsafe_allow_html=True
-)
+    """
+st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
+
 
 # ---------- UI Content ----------
 st.title("✨ Customizable Theme & Font")
