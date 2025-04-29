@@ -433,9 +433,18 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-import altair as alt
-import streamlit as st
-import pandas as pd
+def generate_css(theme, font_size="16px"):
+    bg = "#1c1c1c" if theme == "dark" else "white"
+    fg = "white" if theme == "dark" else "black"
+    return f"""
+    <style>
+        html, body, [class*="css"]  {{
+            background-color: {bg};
+            color: {fg};
+            font-size: {font_size};
+        }}
+    </style>
+    """
 
 def plot_chart(df, x, y, color=None, chart_type="line", title=""):
     streamlit_theme = st.get_option("theme.base")
