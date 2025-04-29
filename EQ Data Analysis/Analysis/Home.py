@@ -96,6 +96,23 @@ st.markdown(
         font-weight: bold;
         color: {theme["text"]};
     }}
+    body, .stApp, .css-18e3th9, .css-1d391kg {
+    color: #e0f2f1 !important;
+    }
+    .css-qrbaxs, .css-1v0mbdj {
+    color: #e0f2f1 !important;
+    }
+    label, .css-145kmo2, .css-1y4p8pa {
+    color: #e0f2f1 !important;
+    }
+    .stTextInput > div > input,
+    .stSelectbox > div > div,
+    .stRadio > div,
+    textarea {
+    background-color: #37474f !important;
+    color: #e0f2f1 !important;
+    border: 1px solid #26a69a;
+    }
     div.stButton > button {{
         background-color: {theme["button"]};
         color: white;
