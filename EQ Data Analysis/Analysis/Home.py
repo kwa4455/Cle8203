@@ -1,6 +1,6 @@
 import streamlit as st
 import streamlit.components.v1 as components
-from streamlit_extras.cookie_manager import CookieManager
+
 
 
 # Page Configuration
