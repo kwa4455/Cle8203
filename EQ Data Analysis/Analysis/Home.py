@@ -12,101 +12,115 @@ st.set_page_config(
 )
 
 
-
-
-# Initialize CookieManager
-cookie_manager = CookieManager()
-cookies = cookie_manager.get_all()
-
-# Cookie keys
-THEME_COOKIE = "user_theme"
-FONT_COOKIE = "user_font_size"
-
-# Set default state from cookies or defaults
+# Set defaults
 if "theme" not in st.session_state:
-    st.session_state.theme = cookies.get(THEME_COOKIE, "Light")
+    st.session_state.theme = "Light"
 if "font_size" not in st.session_state:
-    st.session_state.font_size = cookies.get(FONT_COOKIE, "Medium")
+    st.session_state.font_size = "Medium"
 
-# Sidebar UI
+# Sidebar - Appearance Controls
 st.sidebar.header("🎨 Appearance Settings")
 
-# Dark mode toggle
-dark_mode = st.sidebar.toggle("🌙 Dark Mode", value=(st.session_state.theme == "Dark"))
-st.session_state.theme = "Dark" if dark_mode else "Light"
+# Theme selection
+theme_choice = st.sidebar.selectbox(
+    "Choose Theme",
+    ["Light", "Dark", "Blue", "Green", "Purple"],
+    index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
+)
+st.session_state.theme = theme_choice
 
-# Font size selector
-font_choice = st.sidebar.radio("🔠 Font Size", ["Small", "Medium", "Large"], index=["Small", "Medium", "Large"].index(st.session_state.font_size))
+# Font size selection
+font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
+                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
 st.session_state.font_size = font_choice
 
-# Save cookies
-cookie_manager.set(THEME_COOKIE, st.session_state.theme, max_age=31536000)  # 1 year
-cookie_manager.set(FONT_COOKIE, st.session_state.font_size, max_age=31536000)
-
-# Reset button
+# Reset to default
 if st.sidebar.button("🔄 Reset to Defaults"):
     st.session_state.theme = "Light"
     st.session_state.font_size = "Medium"
-    cookie_manager.delete(THEME_COOKIE)
-    cookie_manager.delete(FONT_COOKIE)
     st.rerun()
 
-# Theming logic (same as before)
+# Theme settings dictionary
+themes = {
+    "Light": {
+        "background": "linear-gradient(135deg, #e0f7fa, #ffffff)",
+        "text": "#004d40",
+        "button": "#00796b",
+        "hover": "#004d40"
+    },
+    "Dark": {
+        "background": "linear-gradient(135deg, #263238, #37474f)",
+        "text": "#e0f2f1",
+        "button": "#26a69a",
+        "hover": "#00897b"
+    },
+    "Blue": {
+        "background": "linear-gradient(135deg, #e3f2fd, #90caf9)",
+        "text": "#0d47a1",
+        "button": "#1e88e5",
+        "hover": "#1565c0"
+    },
+    "Green": {
+        "background": "linear-gradient(135deg, #dcedc8, #aed581)",
+        "text": "#33691e",
+        "button": "#689f38",
+        "hover": "#558b2f"
+    },
+    "Purple": {
+        "background": "linear-gradient(135deg, #f3e5f5, #ce93d8)",
+        "text": "#4a148c",
+        "button": "#8e24aa",
+        "hover": "#6a1b9a"
+    },
+}
+
+# Font size mapping
 font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
-theme = st.session_state.theme
-font_size = st.session_state.font_size
 
-if theme == "Light":
-    background = "linear-gradient(135deg, #e0f7fa, #ffffff)"
-    text_color = "#004d40"
-    button_color = "#00796b"
-    button_hover = "#004d40"
-else:
-    background = "linear-gradient(135deg, #263238, #37474f)"
-    text_color = "#e0f2f1"
-    button_color = "#26a69a"
-    button_hover = "#00897b"
+# Apply theme and inject CSS
+theme = themes[st.session_state.theme]
+font_size = font_map[st.session_state.font_size]
 
-# Inject CSS
 st.markdown(
     f"""
     <style>
     body {{
-        background: {background};
+        background: {theme["background"]};
         background-attachment: fixed;
     }}
     .stApp {{
         background-color: transparent;
-        animation: fadeIn 1s ease-in;
     }}
     html, body, [class*="css"] {{
         font-family: 'Segoe UI', 'Roboto', sans-serif;
-        font-size: {font_map[font_size]};
-        color: {text_color};
+        font-size: {font_size};
+        color: {theme["text"]};
     }}
     h1, h2, h3 {{
         font-weight: bold;
-        color: {text_color};
+        color: {theme["text"]};
     }}
     div.stButton > button {{
-        background-color: {button_color};
+        background-color: {theme["button"]};
         color: white;
         padding: 0.5em 1.5em;
         border-radius: 8px;
         transition: background-color 0.3s ease;
     }}
     div.stButton > button:hover {{
-        background-color: {button_hover};
+        background-color: {theme["hover"]};
     }}
     </style>
     """,
     unsafe_allow_html=True
 )
 
-# Sample content
-st.title("🧁 Streamlit Theme & Font with Cookie Persistence")
-st.write(f"Current Theme: **{theme}**")
-st.write(f"Font Size: **{font_size}**")
+# Sample UI
+st.title("✨ Customizable Theme & Font")
+st.write(f"Theme: **{st.session_state.theme}**")
+st.write(f"Font Size: **{st.session_state.font_size}**")
+
+
 
 
 # -------- Sidebar Content --------
