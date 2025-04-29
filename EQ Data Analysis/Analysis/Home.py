@@ -13,6 +13,7 @@ st.set_page_config(
 
 
 
+
 # Initialize CookieManager
 cookie_manager = CookieManager()
 cookies = cookie_manager.get_all()
@@ -101,6 +102,11 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+# Sample content
+st.title("🧁 Streamlit Theme & Font with Cookie Persistence")
+st.write(f"Current Theme: **{theme}**")
+st.write(f"Font Size: **{font_size}**")
 
 
 # -------- Sidebar Content --------
