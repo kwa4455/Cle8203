@@ -75,25 +75,24 @@ font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
 # Apply theme and inject CSS
 theme = themes[st.session_state.theme]
 font_size = font_map[st.session_state.font_size]
-def base_styles(theme, font_size):
+def generate_css(theme: dict, font_size: str) -> str:
     return f"""
+    <style>
     html, body, .stApp, [class^="css"], button, input, label, textarea, select {{
         font-size: {font_size} !important;
         color: {theme["text"]} !important;
         font-family: 'Segoe UI', 'Roboto', sans-serif;
     }}
-    html, body, [class^="css"], .stApp {{
+    .stApp {{
+        background: {theme["background"]};
+        background-attachment: fixed;
+    }}
+    html, body, [class^="css"] {{
         background-color: transparent !important;
-        transition: background 0.5s ease, color 0.5s ease;
     }}
     h1, h2, h3 {{
         font-weight: bold;
     }}
-    """
-
-
-def input_styles(theme):
-    return f"""
     .stTextInput > div > input,
     .stSelectbox > div > div,
     .stRadio > div,
@@ -102,11 +101,39 @@ def input_styles(theme):
         color: {theme["text"]} !important;
         border: 1px solid {theme["button"]};
     }}
-    """
+    div.stButton > button {{
+        background-color: {theme["button"]};
+        color: white;
+        padding: 0.5em 1.5em;
+        border-radius: 8px;
+        transition: background-color 0.3s ease;
+    }}
+    div.stButton > button:hover {{
+        background-color: {theme["hover"]};
+    }}
 
+    body, .stApp {{
+        font-family: 'Poppins', sans-serif;
+        transition: all 0.5s ease;
+    }}
 
-def button_styles(theme):
-    return f"""
+    body.light-mode, .stApp.light-mode {{
+        background: linear-gradient(135deg, #f8fdfc, #d8f3dc);
+        color: #1b4332;
+    }}
+
+    body.dark-mode, .stApp.dark-mode {{
+        background: linear-gradient(135deg, #0e1117, #161b22);
+        color: #e6edf3;
+    }}
+
+    [data-testid="stSidebar"] {{
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        border-right: 2px solid #74c69d;
+        transition: all 0.5s ease;
+    }}
+
     .stButton>button, .stDownloadButton>button {{
         background: linear-gradient(135deg, #40916c, #52b788);
         color: white;
@@ -118,132 +145,155 @@ def button_styles(theme):
         box-shadow: 0 0 15px #52b788;
         transition: 0.3s ease;
     }}
+
     .stButton>button:hover, .stDownloadButton>button:hover {{
         background: linear-gradient(135deg, #2d6a4f, #40916c);
         box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
         transform: scale(1.05);
     }}
+
+    ::-webkit-scrollbar {{
+        width: 8px;
+    }}
+    ::-webkit-scrollbar-thumb {{
+        background: #74c69d;
+        border-radius: 10px;
+    }}
+    ::-webkit-scrollbar-thumb:hover {{
+        background: #52b788;
+    }}
+
+    .glow-text {{
+        text-align: center;
+        font-size: 3em;
+        color: #52b788;
+        text-shadow: 0 0 5px #52b788, 0 0 10px #52b788, 0 0 20px #52b788;
+        margin-bottom: 20px;
+    }}
+
+    html, body, .stApp {{
+        transition: background 0.5s ease, color 0.5s ease;
+    }}
+
+    .stDownloadButton>button {{
+        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+        box-shadow: 0 0 10px #1b4332;
+    }}
+
     .stButton>button:active, .stDownloadButton>button:active {{
         transform: scale(0.97);
     }}
-    """
 
-
-def dark_mode_styles():
-    return """
-    body.dark-mode, .stApp.dark-mode {
-        background: linear-gradient(135deg, #0e1117, #161b22);
-        color: #e6edf3;
-    }
-    body.dark-mode .stDataFrame, body.dark-mode .stTable {
-        background: #161b22cc;
-        border-radius: 10px;
-        backdrop-filter: blur(8px);
-        font-size: 15px;
-    }
-    body.dark-mode thead tr th {
-        background: linear-gradient(135deg, #238636, #2ea043);
-        color: white;
-    }
-    body.dark-mode tbody tr:nth-child(even) {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        color: #e6edf3;
-    }
-    body.dark-mode tbody tr:nth-child(odd) {
-        background: linear-gradient(90deg, #161b22, #21262d);
-        color: #e6edf3;
-    }
-    body.dark-mode tbody tr:hover {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        box-shadow: 0 0 15px #58a6ff;
-        transform: scale(1.01);
-    }
-    """
-
-
-def table_styles():
-    return """
-    .stDataFrame, .stTable {
+    .stDataFrame, .stTable {{
         background: rgba(255, 255, 255, 0.6);
         border-radius: 12px;
         backdrop-filter: blur(10px);
         padding: 1rem;
         box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    }
-    thead tr th {
+        overflow: hidden;
+        font-size: 15px;
+    }}
+
+    thead tr th {{
         background: linear-gradient(135deg, #52b788, #74c69d);
         color: white;
+        font-weight: bold;
         text-align: center;
         padding: 0.5em;
-    }
-    tbody tr:nth-child(even) {
+    }}
+
+    tbody tr:nth-child(even) {{
         background-color: #e9f7ef;
-    }
-    tbody tr:nth-child(odd) {
+    }}
+    tbody tr:nth-child(odd) {{
         background-color: #ffffff;
-    }
-    tbody tr:hover {
+    }}
+    tbody tr:hover {{
         background-color: #b7e4c7;
-    }
-    """
+        transition: background-color 0.3s ease;
+    }}
 
+    .element-container iframe {{
+        background: rgba(255, 255, 255, 0.5) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 12px;
+        padding: 10px;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }}
 
-def scrollbar_styles():
-    return """
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #74c69d;
+    body.dark-mode .stDataFrame, body.dark-mode .stTable {{
+        background: #161b22cc;
         border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #52b788;
-    }
-    """
+        backdrop-filter: blur(8px);
+        font-size: 15px;
+        overflow: hidden;
+    }}
 
-
-def tab_styles():
-    return """
-    [data-testid="stTabs"] > div {
-        border-bottom: none;
-    }
-    button[data-baseweb="tab"] {
-        background-color: #f0f0f0;
-        color: #333;
-        border: 1px solid #ccc;
-        border-radius: 8px 8px 0 0;
-        margin-right: 4px;
-        padding: 0.5rem 1rem;
-    }
-    button[data-baseweb="tab"]:hover {
-        background-color: #e0e0e0;
-    }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        background-color: #0366d6;
-        color: white;
+    body.dark-mode thead tr th {{
+        background: linear-gradient(135deg, #238636, #2ea043);
+        color: #ffffff;
         font-weight: bold;
-        border-bottom: 2px solid white;
-    }
-    """
+        text-align: center;
+    }}
 
+    body.dark-mode tbody tr:nth-child(even) {{
+        background: linear-gradient(90deg, #21262d, #30363d);
+        color: #e6edf3;
+        transition: all 0.3s ease;
+    }}
 
-def generate_css(theme: dict, font_size: str) -> str:
-    return f"""
-    <style>
-    {base_styles(theme, font_size)}
-    {input_styles(theme)}
-    {button_styles(theme)}
-    {table_styles()}
-    {scrollbar_styles()}
-    {tab_styles()}
-    {dark_mode_styles()}
+    body.dark-mode tbody tr:nth-child(odd) {{
+        background: linear-gradient(90deg, #161b22, #21262d);
+        color: #e6edf3;
+        transition: all 0.3s ease;
+    }}
+
+    body.dark-mode tbody tr:hover {{
+        background: linear-gradient(90deg, #21262d, #30363d);
+        box-shadow: 0 0 15px #58a6ff;
+        transform: scale(1.01);
+    }}
+
+    body.dark-mode .element-container iframe {{
+        background: rgba(22, 27, 34, 0.5) !important;
+        backdrop-filter: blur(10px);
+        border-radius: 16px;
+        padding: 10px;
+        border: 2px solid #58a6ff;
+        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
+        animation: pulse-glow-dark 3s infinite ease-in-out;
+    }}
+
+    @keyframes pulse-glow {{
+      0% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
+      50% {{ box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }}
+      100% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
+    }}
+    @keyframes pulse-glow-dark {{
+      0% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
+      50% {{ box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }}
+      100% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
+    }}
+
+    .footer {{
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: {theme["background"]};
+        color: {theme["text"]};
+        text-align: center;
+        padding: 12px 0;
+        font-size: 14px;
+        font-weight: bold;
+        box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
+    }}
     </style>
     """
 
-
-# Inject into Streamlit
+# Inject Dynamic Theme
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
+
 
 
 # --- Title and Logo ---
