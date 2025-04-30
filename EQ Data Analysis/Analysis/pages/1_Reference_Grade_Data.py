@@ -602,9 +602,8 @@ button[data-baseweb="tab"][aria-selected="true"] {
 
 # Tabs setup
 tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
-
-
-    with tabs[0]:  # Aggregated Means
+   
+with tabs[0]:  # Aggregated Means
         st.write("Exceedances Content")
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
