@@ -7,7 +7,10 @@ from io import BytesIO
 # --- Page Configuration ---
 st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
 
-
+if "theme" not in st.session_state:
+    st.session_state.theme = "Light"
+if "font_size" not in st.session_state:
+    st.session_state.font_size = "Medium"
 theme_choice = st.sidebar.selectbox(
     "Choose Theme",
     ["Light", "Dark", "Blue", "Green", "Purple"],
