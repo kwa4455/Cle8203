@@ -203,7 +203,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     tbody tr:nth-child(even) {{
-        background-color: #e9f7ef;
+        background-color: #eeeeee;
     }}
     tbody tr:nth-child(odd) {{
         background-color: #ffffff;
