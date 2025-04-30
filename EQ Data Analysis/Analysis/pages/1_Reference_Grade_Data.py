@@ -272,7 +272,30 @@ def generate_css(theme: dict, font_size: str) -> str:
       50% {{ box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }}
       100% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
     }}
-
+    /* Hide the default tab bar border */
+    [data-testid="stTabs"] > div {
+        border-bottom: none;
+    }
+    /* Make each tab look like a button */
+    button[data-baseweb="tab"] {
+        background-color: #f0f0f0;
+        color: #333;
+        border: 1px solid #ccc;
+        border-radius: 8px 8px 0 0;
+        margin-right: 4px;
+        padding: 0.5rem 1rem;
+        transition: background-color 0.2s, color 0.2s;
+    }
+    button[data-baseweb="tab"]:hover {
+        background-color: #e0e0e0;
+        color: #000;
+    }
+    button[data-baseweb="tab"][aria-selected="true"] {
+        background-color: #0366d6;
+        color: white;
+        font-weight: bold;
+        border-bottom: 2px solid white;
+    }
     .footer {{
         position: fixed;
         left: 0;
@@ -539,6 +562,54 @@ if uploaded_files:
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
     tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
+    import streamlit as st
+
+# Inject CSS to style the tabs like buttons
+st.markdown("""
+<style>
+/* Hide the default tab bar border */
+[data-testid="stTabs"] > div {
+    border-bottom: none;
+}
+
+/* Make each tab look like a button */
+button[data-baseweb="tab"] {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 8px 8px 0 0;
+    margin-right: 4px;
+    padding: 0.5rem 1rem;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+button[data-baseweb="tab"]:hover {
+    background-color: #e0e0e0;
+    color: #000;
+}
+
+button[data-baseweb="tab"][aria-selected="true"] {
+    background-color: #0366d6;
+    color: white;
+    font-weight: bold;
+    border-bottom: 2px solid white;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# Tabs setup
+tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
+with tabs[0]:
+    st.write("Aggregated Means Content")
+
+with tabs[1]:
+    st.write("Exceedances Content")
+
+with tabs[2]:
+    st.write("AQI Stats Content")
+
+with tabs[3]:
+    st.write("Min/Max Values Content")
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
