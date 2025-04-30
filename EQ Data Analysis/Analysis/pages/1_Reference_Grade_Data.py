@@ -33,11 +33,11 @@ if st.sidebar.button("🔄 Reset to Defaults"):
 # Theme settings dictionary
 themes = {
     "Light": {
-        "background": "linear-gradient(135deg, #e0f7fa, #ffffff)",
+        "background": "rgba(255, 255, 255, 0.4)",
         "text": "#004d40",
         "button": "#00796b",
         "hover": "#004d40",
-        "input_bg": "#ffffff"
+        "input_bg": "rgba(255, 255, 255, 0.6)"
     },
     "Dark": {
         "background": "linear-gradient(135deg, #263238, #37474f)",
@@ -84,8 +84,11 @@ def generate_css(theme: dict, font_size: str) -> str:
         font-family: 'Segoe UI', 'Roboto', sans-serif;
     }}
     .stApp {{
-        background: {theme["background"]};
+        background-color: {theme["background"]} !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         background-attachment: fixed;
+        transition: background 0.5s ease, color 0.5s ease;
     }}
     html, body, [class^="css"] {{
         background-color: transparent !important;
@@ -100,6 +103,8 @@ def generate_css(theme: dict, font_size: str) -> str:
         background-color: {theme["input_bg"]} !important;
         color: {theme["text"]} !important;
         border: 1px solid {theme["button"]};
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
     }}
     div.stButton > button {{
         background-color: {theme["button"]};
@@ -287,6 +292,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         font-size: 14px;
         font-weight: bold;
         box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
+        backdrop-filter: blur(8px);
     }}
     </style>
     """
