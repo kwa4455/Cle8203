@@ -627,6 +627,10 @@ if uploaded_files:
                             var_name="pollutant",
                             value_name="value"
                         )
+                        if "pollutant" not in df_melted.columns:
+                            st.error(f"'pollutant' column missing in melted DataFrame for {agg_label}")
+                            st.dataframe(df_melted.head())
+                            continue
                         color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
                         chart = plot_chart(
                             df_melted,
