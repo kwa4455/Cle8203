@@ -195,7 +195,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     thead tr th {{
-        background: linear-gradient(135deg, #52b788, #74c69d);
+        background: background-color;
         color: white;
         font-weight: bold;
         text-align: center;
