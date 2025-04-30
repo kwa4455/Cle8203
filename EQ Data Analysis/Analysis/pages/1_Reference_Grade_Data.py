@@ -552,7 +552,7 @@ if uploaded_files:
         df = standardize_columns(df)
         df = cleaned(df)
 
-        if 'datetime' not in df.columns or 'pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
+        if 'date' not in df.columns or 'pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
             st.warning(f"⚠️ Could not process {label}: missing columns.")
             continue
 
@@ -565,46 +565,8 @@ if uploaded_files:
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
     tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
-    import streamlit as st
 
-# Inject CSS to style the tabs like buttons
-st.markdown("""
-<style>
-/* Hide the default tab bar border */
-[data-testid="stTabs"] > div {
-    border-bottom: none;
-}
-
-/* Make each tab look like a button */
-button[data-baseweb="tab"] {
-    background-color: #f0f0f0;
-    color: #333;
-    border: 1px solid #ccc;
-    border-radius: 8px 8px 0 0;
-    margin-right: 4px;
-    padding: 0.5rem 1rem;
-    transition: background-color 0.2s, color 0.2s;
-}
-
-button[data-baseweb="tab"]:hover {
-    background-color: #e0e0e0;
-    color: #000;
-}
-
-button[data-baseweb="tab"][aria-selected="true"] {
-    background-color: #0366d6;
-    color: white;
-    font-weight: bold;
-    border-bottom: 2px solid white;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# Tabs setup
-tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
-   
-with tabs[0]:  # Aggregated Means
-        st.write("Exceedances Content")
+    with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -707,8 +669,8 @@ with tabs[0]:  # Aggregated Means
                         st.altair_chart(chart, use_container_width=True)
                     except Exception as e:
                         st.error(f"Error plotting chart: {e}")
+
     with tabs[1]:  # Exceedances
-        st.write("Exceedances Content")
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -724,7 +686,6 @@ with tabs[0]:  # Aggregated Means
             st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
 
     with tabs[2]:  # AQI
-        st.write("AQI Stats Content")
         st.header("🌫️ AQI Stats")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -759,7 +720,6 @@ with tabs[0]:  # Aggregated Means
             st.altair_chart(aqi_chart, use_container_width=True)
 
     with tabs[3]:  # Min/Max
-        st.write("Min/Max Values Content")
         st.header("🔥 Min/Max Values")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
