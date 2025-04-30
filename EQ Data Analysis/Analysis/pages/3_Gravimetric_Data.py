@@ -539,19 +539,99 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            selected_pollutants = ['pm25', 'pm10']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
 
-            for pollutant in ['pm25', 'pm10']:
-                if pollutant not in filtered_df.columns:
-                    continue
-                aggregates = compute_aggregates(filtered_df, label, pollutant)
-                for agg_label, agg_df in aggregates.items():
-                    st.markdown(f"**{agg_label}**")
-                    st.dataframe(agg_df, use_container_width=True)
-                    st.download_button(label=f"📥 Download {agg_label}", data=to_csv_download(agg_df), file_name=f"{label}_{agg_label.replace(' ', '_')}.csv", mime="text/csv")
-                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly','Quarterly', 'Yearly']) else "bar"
-                    x_axis = agg_df.columns[0]
-                    chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=agg_label)
-                    st.altair_chart(chart, use_container_width=True)
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=f"pollutants_{label}"
+            )
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            aggregate_levels = [
+                ('Daily Avg', ['day', 'site']),
+                ('Monthly Avg', ['month', 'site']),
+                ('Quarterly Avg', ['quarter', 'site']),
+                ('Yearly Avg', ['year', 'site']),
+                ('Day of Week Avg', ['dayofweek', 'site']),
+                ('Weekday Type Avg', ['weekday_type', 'site']),
+                ('Season Avg', ['season', 'site'])
+            ]
+            for level_name, group_keys in aggregate_levels:
+                agg_label = f"{label} - {level_name}"
+                agg_dfs = []
+                for pollutant in valid_pollutants:
+                    agg_df = filtered_df.groupby(group_keys)[pollutant].mean().reset_index().round(1)
+                    agg_dfs.append(agg_df)
+                from functools import reduce
+                merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
+                display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
+                editable_df = merged_df[display_cols]
+                
+                st.data_editor(
+                    editable_df,
+                    use_container_width=True,
+                    column_config={col: {"disabled": True} for col in editable_df.columns},
+                    num_rows="dynamic",
+                    key=f"editor_{label}_{agg_label}"
+                )
+                st.download_button(
+                    label=f"📥 Download {agg_label}",
+                    data=to_csv_download(editable_df),
+                    file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
+                    mime="text/csv"
+                )
+                st.markdown("---")
+                auto_expand = "Yearly Avg" in agg_label
+                with st.expander(f"📈 Show Charts for {agg_label}", expanded=auto_expand):
+                    default_chart_type = "line" if any(keyword in level_name for keyword in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
+                    chart_type_choice = st.selectbox(
+                        f"Select Chart Type for {agg_label}",
+                        options=["line", "bar"],
+                        index=0 if "Yearly" in agg_label else 1,
+                        key=f"chart_type_{label}_{agg_label}"
+                    )
+                    x_axis = next(
+                        (col for col in editable_df.columns if col not in ["site"] + valid_pollutants),
+                        None
+                    )
+                    if not x_axis or x_axis not in editable_df.columns:
+                        st.warning(f"Could not determine x-axis column for {agg_label}")
+                        continue
+                    safe_pollutants = [
+                        p for p in selected_display_pollutants if p in editable_df.columns
+                    ]
+                    if not safe_pollutants:
+                        st.warning(f"No valid pollutant columns to plot for {agg_label}")
+                        continue
+                    try:
+                        df_melted = editable_df.melt(
+                            id_vars=["site", x_axis],
+                            value_vars=safe_pollutants,
+                            var_name="pollutant",
+                            value_name="value"
+                        )
+                        if "pollutant" not in df_melted.columns:
+                            st.error(f"'pollutant' column missing in melted DataFrame for {agg_label}")
+                            st.dataframe(df_melted.head())
+                            continue
+                        color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
+                        chart = plot_chart(
+                            df_melted,
+                            x=x_axis,
+                            y="value",
+                            color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
+                            chart_type=chart_type_choice,
+                            title=f"{agg_label} - {', '.join(valid_pollutants)}"
+                        )
+                        st.altair_chart(chart, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error plotting chart: {e}")
 
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
