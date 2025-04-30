@@ -530,7 +530,7 @@ if uploaded_files:
         df = standardize_columns(df)
         df = cleaned(df)
 
-        if 'date' not in df.columns or 'pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
+        if 'datetime' not in df.columns or 'pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
             st.warning(f"⚠️ Could not process {label}: missing columns.")
             continue
 
