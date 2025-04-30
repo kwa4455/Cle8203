@@ -3,4 +3,6 @@ pandas
 numpy
 altair
 Pillow
-
+plotly
+scipy
+scikit-learn
