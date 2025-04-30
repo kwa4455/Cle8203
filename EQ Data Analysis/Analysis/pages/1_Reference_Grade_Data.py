@@ -607,16 +607,20 @@ if uploaded_files:
                         index=0 if "Yearly" in agg_label else 1,
                         key=f"chart_type_{label}_{agg_label}"
                     )
-                    present_pollutants = [p for p in selected_display_pollutants if p in editable_df.columns]
-                    if not present_pollutants:
-                        st.warning("No selected pollutants are available in the aggregated data.")
-                    else:
-                        df_melted = editable_df.melt(
-                            id_vars=["site", group_keys[0]],
-                            value_vars=present_pollutants,
-                            var_name="pollutant",
-                            value_name="value"
-                        )
+                    x_axis = next((col for col in editable_df.columns if col not in ["site"] + valid_pollutants), None)
+                    if not x_axis:
+                        st.warning(f"Could not determine x-axis column for {agg_label}")
+                        continue
+                    safe_value_vars = [col for col in valid_pollutants if col in editable_df.columns]
+                    if not safe_value_vars:
+                        st.warning(f"No valid pollutant columns to plot for {agg_label}")
+                         continue
+                    df_melted = editable_df.melt(
+                        id_vars=["site", group_keys[0]],
+                        value_vars=present_pollutants,
+                        var_name="pollutant",
+                        value_name="value"
+                    )
                     
                     
                     x_axis = agg_df.columns[0]
