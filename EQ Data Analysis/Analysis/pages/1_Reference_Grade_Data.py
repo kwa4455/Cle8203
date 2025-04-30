@@ -40,32 +40,33 @@ themes = {
         "input_bg": "rgba(255, 255, 255, 0.6)"
     },
     "Dark": {
-        "background": "linear-gradient(135deg, #263238, #37474f)",
-        "text": "#e0f2f1",
-        "button": "#26a69a",
-        "hover": "#00897b",
-        "input_bg": "#37474f"
+        "background":"rgba(22, 27, 34, 0.4)",
+        "text": "#e6edf3",
+        "button": "#238636",
+        "hover": "#2ea043",
+        "input_bg": "rgba(33, 38, 45, 0.6)"
     },
     "Blue": {
-        "background": "linear-gradient(135deg, #e3f2fd, #90caf9)",
-        "text": "#0d47a1",
+        "background": "rgba(210, 230, 255, 0.4)",
+        "text": "#0a2540",
         "button": "#1e88e5",
         "hover": "#1565c0",
-        "input_bg": "#ffffff"
+        "input_bg": "rgba(255, 255, 255, 0.6)"
     },
     "Green": {
-        "background": "linear-gradient(135deg, #dcedc8, #aed581)",
-        "text": "#33691e",
-        "button": "#689f38",
-        "hover": "#558b2f",
-        "input_bg": "#ffffff"
+        "background": "rgba(223, 255, 231, 0.4)", 
+        "text": "#1b5e20",
+        "button": "#43a047",
+        "hover": "#2e7d32",
+        "input_bg": "rgba(255, 255, 255, 0.6)"
     },
     "Purple": {
-        "background": "linear-gradient(135deg, #f3e5f5, #ce93d8)",
+        "background": "rgba(240, 225, 255, 0.4)",
         "text": "#4a148c",
         "button": "#8e24aa",
         "hover": "#6a1b9a",
-        "input_bg": "#ffffff"
+        "input_bg": "rgba(255, 255, 255, 0.6)"
+}
     },
 }
 
@@ -128,7 +129,9 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     body.dark-mode, .stApp.dark-mode {{
-        background: linear-gradient(135deg, #0e1117, #161b22);
+        background: rgba(22, 27, 34, 0.4);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         color: #e6edf3;
     }}
 
@@ -227,9 +230,10 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     body.dark-mode .stDataFrame, body.dark-mode .stTable {{
-        background: #161b22cc;
-        border-radius: 10px;
-        backdrop-filter: blur(8px);
+        background: rgba(33, 38, 45, 0.6);
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
         font-size: 15px;
         overflow: hidden;
     }}
@@ -260,11 +264,11 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     body.dark-mode .element-container iframe {{
-        background: rgba(22, 27, 34, 0.5) !important;
+        background: rgba(33, 38, 45, 0.5) !important;
         backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 10px;
         border: 2px solid #58a6ff;
+        padding: 10px;
+        border-radius: 16px;
         box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
         animation: pulse-glow-dark 3s infinite ease-in-out;
     }}
