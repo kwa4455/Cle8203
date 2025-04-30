@@ -176,7 +176,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     .stDownloadButton>button {{
-        background: linear-gradient(135deg, #1b4332, #2d6a4f);
+        background: background-color;
         box-shadow: 0 0 10px #1b4332;
     }}
 
