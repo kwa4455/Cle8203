@@ -611,7 +611,7 @@ if uploaded_files:
                         (col for col in editable_df.columns if col not in ["site"] + valid_pollutants),
                         None
                     )
-                    if not x_axis:
+                    if not x_axis or x_axis not in editable_df.columns:
                         st.warning(f"Could not determine x-axis column for {agg_label}")
                         continue
                     safe_pollutants = [
