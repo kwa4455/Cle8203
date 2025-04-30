@@ -66,8 +66,7 @@ themes = {
         "button": "#8e24aa",
         "hover": "#6a1b9a",
         "input_bg": "rgba(255, 255, 255, 0.6)"
-}
-    },
+    }
 }
 
 # Font size mapping
