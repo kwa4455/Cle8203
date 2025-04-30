@@ -596,20 +596,23 @@ if uploaded_files:
                         index=0 if "Yearly" in agg_label else 1,
                         key=f"chart_type_{label}_{agg_label}"
                     )
+                    df_melted = editable_df.melt(id_vars=["site", agg_df.columns[0]], value_vars=valid_pollutants,
+                                                 var_name="pollutant", value_name="value")
+                    
                     
                     x_axis = agg_df.columns[0]
-                    for pollutant in selected_display_pollutants:
-                        if pollutant not in merged_df.columns:
-                            continue
-                        chart = plot_chart(
-                            merged_df,
-                            x=x_axis,
-                            y=pollutant,
-                            color="site",
-                            chart_type=chart_type,
-                            title=f"{agg_label} - {pollutant}"
-                        )
-                        st.altair_chart(chart, use_container_width=True)
+                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
+                    st.divider()
+                    chart = plot_chart(
+                        df_melted,
+                        x=x_axis,
+                        y="value",
+                        color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
+                        chart_type=chart_type,
+                        title=f"{agg_label} - {', '.join(valid_pollutants)}"
+                    )
+                    st.altair_chart(chart, use_container_width=True)
+                    st.divider()
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
