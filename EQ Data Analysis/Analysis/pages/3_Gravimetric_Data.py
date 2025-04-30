@@ -291,7 +291,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     """
 
 # Inject Dynamic Theme
-st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)e)
+st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 # --- Title and Logo ---
 st.title("📊 Gravimetric Data Analysis")
