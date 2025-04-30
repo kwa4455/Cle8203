@@ -3,6 +3,6 @@ pandas
 numpy
 altair
 Pillow
-plotly
+plotly>=5.0.0
 scipy
 scikit-learn
