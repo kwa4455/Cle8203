@@ -614,33 +614,30 @@ if uploaded_files:
                     if not x_axis:
                         st.warning(f"Could not determine x-axis column for {agg_label}")
                         continue
-                   safe_pollutants = [
-                       p for p in selected_display_pollutants if p in editable_df.columns
-                   ]
-                   if not safe_pollutants:
-                       st.warning(f"No valid pollutant columns to plot for {agg_label}")
-                       continue
-
-                   try:
-                       df_melted = editable_df.melt(
-                           id_vars=["site", x_axis],
-                           value_vars=safe_pollutants,
-                           var_name="pollutant",
-                           value_name="value"
-                       )
-                       color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
-                        
-                       chart = plot_chart(
-                           df_melted,
-                           x=x_axis,
-                           y="value",
-                           color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
-                           chart_type=chart_type_choice,
-                           title=f"{agg_label} - {', '.join(valid_pollutants)}"
-                       )
-                       st.altair_chart(chart, use_container_width=True)
-                   except Exception as e:
-                       st.error(f"Error plotting chart: {e}")
+                    safe_pollutants = [
+                        p for p in selected_display_pollutants if p in editable_df.columns
+                    ]
+                    if not safe_pollutants:
+                        st.warning(f"No valid pollutant columns to plot for {agg_label}")
+                        continue
+                    try:
+                        df_melted = editable_df.melt(
+                            id_vars=["site", x_axis],
+                            value_vars=safe_pollutants,
+                            value_name="value"
+                        )
+                        color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
+                        chart = plot_chart(
+                            df_melted,
+                            x=x_axis,
+                            y="value",
+                            color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
+                            chart_type=chart_type_choice,
+                            title=f"{agg_label} - {', '.join(valid_pollutants)}"
+                        )
+                        st.altair_chart(chart, use_container_width=True)
+                    except Exception as e:
+                        st.error(f"Error plotting chart: {e}")
     with tabs[1]:  # Exceedances
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
