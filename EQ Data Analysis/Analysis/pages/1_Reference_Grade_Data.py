@@ -135,7 +135,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     .stButton>button, .stDownloadButton>button {{
-        background: linear-gradient(135deg, #40916c, #52b788);
+        background: background-color;
         color: white;
         border: none;
         border-radius: 10px;
@@ -147,7 +147,7 @@ def generate_css(theme: dict, font_size: str) -> str:
     }}
 
     .stButton>button:hover, .stDownloadButton>button:hover {{
-        background: linear-gradient(135deg, #2d6a4f, #40916c);
+        background: background-color);
         box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
         transform: scale(1.05);
     }}
