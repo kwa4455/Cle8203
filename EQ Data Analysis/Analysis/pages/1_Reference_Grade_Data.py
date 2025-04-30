@@ -624,6 +624,7 @@ if uploaded_files:
                         df_melted = editable_df.melt(
                             id_vars=["site", x_axis],
                             value_vars=safe_pollutants,
+                            var_name="pollutant",
                             value_name="value"
                         )
                         color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
