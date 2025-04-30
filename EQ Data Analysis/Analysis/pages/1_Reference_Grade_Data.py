@@ -219,6 +219,19 @@ def generate_css(theme: dict, font_size: str) -> str:
         background-color: #b7e4c7;
         transition: background-color 0.3s ease;
     }}
+    .altair-glass {{
+        background: rgba(255, 255, 255, 0.2); 
+        backdrop-filter: blur(12px);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease-in-out;
+    }}
+    body.dark-mode .altair-glass {{
+        background: rgba(22, 27, 34, 0.3);
+        box-shadow: 0 8px 24px rgba(88, 166, 255, 0.2);
+    }}
 
     .element-container iframe {{
         background: rgba(255, 255, 255, 0.5) !important;
