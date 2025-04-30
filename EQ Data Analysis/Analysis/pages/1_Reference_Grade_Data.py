@@ -602,19 +602,10 @@ button[data-baseweb="tab"][aria-selected="true"] {
 
 # Tabs setup
 tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
-with tabs[0]:
-    st.write("Aggregated Means Content")
 
-with tabs[1]:
-    st.write("Exceedances Content")
-
-with tabs[2]:
-    st.write("AQI Stats Content")
-
-with tabs[3]:
-    st.write("Min/Max Values Content")
 
     with tabs[0]:  # Aggregated Means
+        st.write("Exceedances Content")
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -718,6 +709,7 @@ with tabs[3]:
                     except Exception as e:
                         st.error(f"Error plotting chart: {e}")
     with tabs[1]:  # Exceedances
+        st.write("Exceedances Content")
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -733,6 +725,7 @@ with tabs[3]:
             st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
 
     with tabs[2]:  # AQI
+        st.write("AQI Stats Content")
         st.header("🌫️ AQI Stats")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -767,6 +760,7 @@ with tabs[3]:
             st.altair_chart(aqi_chart, use_container_width=True)
 
     with tabs[3]:  # Min/Max
+        st.write("Min/Max Values Content")
         st.header("🔥 Min/Max Values")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
