@@ -610,7 +610,7 @@ if uploaded_files:
                     x_axis = next((col for col in editable_df.columns if col not in ["site"] + valid_pollutants), None)
                     if not x_axis:
                         st.warning(f"Could not determine x-axis column for {agg_label}")
-                        return
+                        continue
                        
 
                     safe_pollutants = [p for p in selected_display_pollutants if p in editable_df.columns]
@@ -632,7 +632,7 @@ if uploaded_files:
                             x=x_axis,
                             y="value",
                             color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
-                            chart_type=chart_type,
+                            chart_type=chart_type_choice,
                             title=f"{agg_label} - {', '.join(valid_pollutants)}"
                         )
                         st.altair_chart(chart, use_container_width=True)
