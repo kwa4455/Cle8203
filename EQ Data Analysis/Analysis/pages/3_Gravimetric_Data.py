@@ -324,33 +324,73 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-def plot_chart(df, x, y, color, chart_type="line", title=""):
-    # Automatically detect Streamlit theme
+def plot_chart(df, x, y, color, chart_type="line", title="", bar_mode="group"):
     streamlit_theme = st.get_option("theme.base")
     theme = streamlit_theme if streamlit_theme else "Light"
-    
+
     background = '#1c1c1c' if theme == 'dark' else 'white'
     font_color = 'white' if theme == 'dark' else 'black'
-    
+    grid_color = '#444' if theme == 'dark' else '#ccc'
+
+    # Define consistent color mapping
+    predefined_colors = {
+        "pm25": "#1f77b4",   # blue
+        "pm10": "#ff7f0e",   # orange
+        # Add more pollutants here if needed
+    }
+
+    if color and df[color].nunique() > 1:
+        selector_param = alt.param(
+            name="selector",
+            bind=alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: "),
+            value=df[color].iloc[0]
+        )
+        filter_condition = alt.datum[color] == selector_param
+    else:
+        selector_param = None
+        filter_condition = True
+
+    # Axis encoding
+    x_encoding = alt.X(f"{x}:N", title=x, axis=alt.Axis(labelAngle=-45)) if chart_type == "bar" else alt.X(x, title=x)
+
+    # Apply consistent color mapping
+    if color:
+        unique_vals = df[color].unique().tolist()
+        color_scale = alt.Scale(domain=list(predefined_colors.keys()), range=list(predefined_colors.values()))
+        color_encoding = alt.Color(color, scale=color_scale, legend=alt.Legend(title=color))
+    else:
+        color_encoding = alt.value("steelblue")
+
     base = alt.Chart(df).encode(
-        x=x,
-        y=y,
-        color=color,
-        tooltip=[x, y, color]
+        x=x_encoding,
+        y=alt.Y(y, title=y),
+        color=color_encoding,
+        tooltip=[x, y, color] if color else [x, y]
     ).properties(
+        title=alt.TitleParams(text=title, color=font_color),
         width=700,
-        height=400,
-        title=alt.TitleParams(text=title, color=font_color)
+        height=400
     ).configure(
         background=background,
         view={"stroke": None},
-        axis={"labelColor": font_color, "titleColor": font_color}
+        axis={
+            "labelColor": font_color,
+            "titleColor": font_color,
+            "gridColor": grid_color,
+            "domainColor": grid_color
+        },
+        legend={
+            "labelColor": font_color,
+            "titleColor": font_color
+        }
     )
 
-    if chart_type == "line":
-        return base.mark_line(point=True)
-    else:
-        return base.mark_bar()
+    chart = base.mark_line(point=True) if chart_type == "line" else base.mark_bar()
+
+    if selector_param:
+        chart = chart.add_params(selector_param).transform_filter(filter_condition)
+
+    return chart.interactive()
 
 # --- Main App ---
 
