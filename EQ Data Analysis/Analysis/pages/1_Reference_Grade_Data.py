@@ -435,15 +435,22 @@ def to_csv_download(df):
 
 
 
-def plot_chart(df, x, y, color=None, chart_type="line", title="", bar_mode="group"):
+def plot_chart(df, x, y, color, chart_type="line", title="", bar_mode="group"):
     streamlit_theme = st.get_option("theme.base")
     theme = streamlit_theme if streamlit_theme else "Light"
 
     background = '#1c1c1c' if theme == 'dark' else 'white'
     font_color = 'white' if theme == 'dark' else 'black'
+    grid_color = '#444' if theme == 'dark' else '#ccc'
 
-    # Dropdown filter if color exists and has multiple values
-    if color and color in df.columns and df[color].nunique() > 1:
+    # Define consistent color mapping
+    predefined_colors = {
+        "pm25": "#1f77b4",   # blue
+        "pm10": "#ff7f0e",   # orange
+        # Add more pollutants here if needed
+    }
+
+    if color and df[color].nunique() > 1:
         selector_param = alt.param(
             name="selector",
             bind=alt.binding_select(options=sorted(df[color].unique()), name=f"Filter {color}: "),
@@ -454,22 +461,22 @@ def plot_chart(df, x, y, color=None, chart_type="line", title="", bar_mode="grou
         selector_param = None
         filter_condition = True
 
-    # Grouped bar logic
-    x_encoding = alt.X(x, title=x, axis=alt.Axis(labelAngle=-45))
-    y_encoding = alt.Y(y, title=y)
+    # Axis encoding
+    x_encoding = alt.X(f"{x}:N", title=x, axis=alt.Axis(labelAngle=-45)) if chart_type == "bar" else alt.X(x, title=x)
 
-    color_encoding = (
-        alt.Color(color, legend=alt.Legend(title=color))
-        if color and color in df.columns else alt.value("steelblue")
-    )
-
-    tooltip = [col for col in [x, y, color] if col and col in df.columns]
+    # Apply consistent color mapping
+    if color:
+        unique_vals = df[color].unique().tolist()
+        color_scale = alt.Scale(domain=list(predefined_colors.keys()), range=list(predefined_colors.values()))
+        color_encoding = alt.Color(color, scale=color_scale, legend=alt.Legend(title=color))
+    else:
+        color_encoding = alt.value("steelblue")
 
     base = alt.Chart(df).encode(
         x=x_encoding,
-        y=y_encoding,
+        y=alt.Y(y, title=y),
         color=color_encoding,
-        tooltip=tooltip
+        tooltip=[x, y, color] if color else [x, y]
     ).properties(
         title=alt.TitleParams(text=title, color=font_color),
         width=700,
@@ -477,16 +484,19 @@ def plot_chart(df, x, y, color=None, chart_type="line", title="", bar_mode="grou
     ).configure(
         background=background,
         view={"stroke": None},
-        axis={"labelColor": font_color, "titleColor": font_color}
+        axis={
+            "labelColor": font_color,
+            "titleColor": font_color,
+            "gridColor": grid_color,
+            "domainColor": grid_color
+        },
+        legend={
+            "labelColor": font_color,
+            "titleColor": font_color
+        }
     )
 
-    # Chart type
-    if chart_type == "line":
-        chart = base.mark_line(point=True)
-    elif chart_type == "bar":
-        chart = base.mark_bar()
-    else:
-        raise ValueError(f"Unsupported chart type: {chart_type}")
+    chart = base.mark_line(point=True) if chart_type == "line" else base.mark_bar()
 
     if selector_param:
         chart = chart.add_params(selector_param).transform_filter(filter_condition)
@@ -590,18 +600,26 @@ if uploaded_files:
                 st.markdown("---")
                 auto_expand = "Yearly Avg" in agg_label
                 with st.expander(f"📈 Show Charts for {agg_label}", expanded=auto_expand):
+                    default_chart_type = "line" if any(keyword in level_name for keyword in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
                     chart_type_choice = st.selectbox(
                         f"Select Chart Type for {agg_label}",
                         options=["line", "bar"],
                         index=0 if "Yearly" in agg_label else 1,
                         key=f"chart_type_{label}_{agg_label}"
                     )
-                    df_melted = editable_df.melt(id_vars=["site", agg_df.columns[0]], value_vars=valid_pollutants,
-                                                 var_name="pollutant", value_name="value")
+                    present_pollutants = [p for p in selected_display_pollutants if p in editable_df.columns]
+                    if not present_pollutants:
+                        st.warning("No selected pollutants are available in the aggregated data.")
+                    else:
+                        df_melted = editable_df.melt(
+                            id_vars=["site", group_keys[0]],
+                            value_vars=present_pollutants,
+                            var_name="pollutant",
+                            value_name="value"
+                        )
                     
                     
                     x_axis = agg_df.columns[0]
-                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly', 'Quarterly', 'Yearly']) else "bar"
                     st.divider()
                     chart = plot_chart(
                         df_melted,
