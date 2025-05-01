@@ -289,7 +289,7 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 def cleaned(df):
-    import pandas as pd
+    
 
     # Normalize column names: lowercase, strip spaces
     df.columns = [col.strip().lower() for col in df.columns]
@@ -378,11 +378,18 @@ if uploaded_file:
     df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
 
     # --- Summary Function ---
-    def summarize_stats(df, group_by):
+    def summarize_stats(df, group_by=None, flatten_columns=False):
         if group_by is None:
             return df.groupby('site')[selected_metals].agg(['mean', 'median', 'std'])
         else:
             return df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std'])
+        if flatten_columns:
+            grouped.columns = [
+                f"{col[0]}_{col[1]}" if isinstance(col, tuple) else col
+                for col in grouped.columns
+            ]
+        return grouped
+    
         
 
     df_all = summarize_stats(df, None)
