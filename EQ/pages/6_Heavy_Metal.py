@@ -326,7 +326,7 @@ def cleaned(df):
     if 'date' not in df.columns or 'id' not in df.columns:
         raise ValueError("Missing required columns: 'date' or 'id'")
 
-    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+   
 
     required_columns = list(column_aliases.keys())
     df = df[[col for col in required_columns if col in df.columns]].copy()
