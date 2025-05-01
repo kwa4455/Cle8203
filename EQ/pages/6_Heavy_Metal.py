@@ -289,6 +289,8 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 def cleaned(df):
+    import pandas as pd
+
     # Normalize column names: lowercase, strip spaces
     df.columns = [col.strip().lower() for col in df.columns]
 
@@ -314,10 +316,7 @@ def cleaned(df):
     }
 
     # Reverse alias mapping: variant -> standard
-    alias_lookup = {}
-    for std_name, aliases in column_aliases.items():
-        for alias in aliases:
-            alias_lookup[alias.lower()] = std_name
+    alias_lookup = {alias.lower(): std for std, aliases in column_aliases.items() for alias in aliases}
 
     # Rename columns using alias mapping
     df.rename(columns=lambda x: alias_lookup.get(x.lower(), x), inplace=True)
@@ -326,13 +325,18 @@ def cleaned(df):
     if 'date' not in df.columns or 'id' not in df.columns:
         raise ValueError("Missing required columns: 'date' or 'id'")
 
-   
+    # Parse 'date' column safely
+    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    df = df.dropna(subset=['date'])  # Drop rows where 'date' could not be parsed
 
+    # Select only known relevant columns (drop unexpected extras)
     required_columns = list(column_aliases.keys())
     df = df[[col for col in required_columns if col in df.columns]].copy()
+
+    # Drop empty rows/columns
     df = df.dropna(axis=1, how='all').dropna()
 
-
+    # Extract datetime features
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.to_period('M').astype(str)
     df['day'] = df['date'].dt.date
@@ -340,6 +344,7 @@ def cleaned(df):
     df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
+    # Final column selection
     columns_to_select = [
         'site', 'day', 'year', 'month', 'dayofweek', 'season',
         'cd(ng/m3)', 'cd_error',
@@ -352,18 +357,7 @@ def cleaned(df):
     ]
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
-def parse_dates(df):
-    for col in df.columns:
-        if 'date' in col.lower():  # Focus only on columns with "date" in the name
-            try:
-                # Parse the date column to datetime
-                df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
-                # Drop rows where the parsed date is NaT
-                df = df.dropna(subset=[col])
-            except Exception as e:
-                print(f"Error parsing column {col}: {e}")
-                continue
-    return df
+
 # --- Upload Data ---
 uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
 
@@ -371,7 +365,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
     df = cleaned(df)
-    df = parse_dates(df)
+    
     value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
 
 
