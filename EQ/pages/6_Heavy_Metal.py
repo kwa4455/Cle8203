@@ -366,7 +366,11 @@ if uploaded_file:
 
     # --- Summary Function ---
     def summarize_stats(df, group_by):
-        return df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std']).reset_index()
+        if group_by is None:
+            return df.groupby('site')[selected_metals].agg(['mean', 'median', 'std'])
+        else:
+            return df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std'])
+        
 
     df_all = summarize_stats(df, None)
     df_year = summarize_stats(df, 'year')
