@@ -448,43 +448,50 @@ def calculate_kruskal_wallis(df, group_col='site'):
 
     
 # --- Upload Data ---
-uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
+uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
 
-if uploaded_file:
-    df = pd.read_csv(uploaded_file)
-    label = file.name.split('.')[0]
-    df = cleaned(df)
-    dfs[label] = df
-    value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
-    site_options = sorted(df['site'].unique())
-    year_options = sorted(df['year'].unique())
+if uploaded_files:
+    dfs = {}
+    site_options = set()
+    year_options = set()
+
+    for file in uploaded_files:
+        label = file.name.split('.')[0]
+        ext = file.name.split('.')[-1]
+        df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
+        df = cleaned(df)  # Assuming `cleaned` is a defined cleaning function
+        dfs[label] = df
+        site_options.update(df['site'].unique())
+        year_options.update(df['year'].unique())
+
+    site_options = sorted(site_options)
+    year_options = sorted(year_options)
 
     with st.sidebar:
-        selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
-        selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
-    if selected_years and selected_sites:
-        df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
-
+        selected_years = st.multiselect("📅 Filter by Year", year_options)
+        selected_sites = st.multiselect("🏢 Filter by Site", site_options)
 
     # --- Tabs ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
-    with tab[1]:  # Aggregated Means
-        st.header("📊 Aggregated Means(Mean, Median, Std)")
+    with tab2:  # Aggregated Means
+        st.header("📊 Aggregated Means (Mean, Median, Std)")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
             site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_agg_{label}")
             filtered_df = df.copy()
+
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+
             selected_pollutants = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
-            error_pollutants = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
             if not valid_pollutants:
                 st.warning(f"No valid pollutants found in {label}")
+                continue
 
             selected_display_pollutants = st.multiselect(
                 f"Select Pollutants to Display for {label}",
@@ -502,17 +509,24 @@ if uploaded_file:
                 ('Weekday Type Avg', ['weekday_type', 'site']),
                 ('Season Avg', ['season', 'site'])
             ]
+
             for level_name, group_keys in aggregate_levels:
                 agg_label = f"{label} - {level_name}"
                 agg_dfs = []
+
+                # Create aggregated mean DataFrame
                 for pollutant in valid_pollutants:
-                    agg_df = filtered_df.groupby(group_keys)[pollutant].mean().reset_index().round(1)
+                    agg_df = filtered_df.groupby(group_keys)[pollutant].agg(['mean', 'std']).reset_index()
+                    agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_std"]
                     agg_dfs.append(agg_df)
+
+                # Merge on group keys
                 from functools import reduce
                 merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
-                display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
+
+                display_cols = group_keys + [f"{p}_mean" for p in selected_display_pollutants if f"{p}_mean" in merged_df.columns]
                 editable_df = merged_df[display_cols]
-                
+
                 st.data_editor(
                     editable_df,
                     use_container_width=True,
@@ -520,62 +534,58 @@ if uploaded_file:
                     num_rows="dynamic",
                     key=f"editor_{label}_{agg_label}"
                 )
+
                 st.download_button(
                     label=f"📥 Download {agg_label}",
                     data=to_csv_download(editable_df),
                     file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
                     mime="text/csv"
                 )
+
                 st.markdown("---")
-                
-                with st.expander(f"📈 Show Charts for {agg_label}", expanded=none):
+
+                with st.expander(f"📈 Show Charts for {agg_label}", expanded=False):
                     for pollutant in selected_display_pollutants:
-                        if pollutant in filtered_df.columns and f"{pollutant}_std" in merged_df.columns:
+                        mean_col = f"{pollutant}_mean"
+                        std_col = f"{pollutant}_std"
+
+                        # Bar plot with error bars
+                        if mean_col in merged_df.columns and std_col in merged_df.columns:
                             st.plotly_chart(
                                 px.bar(
                                     merged_df,
                                     x=group_keys[0],
-                                    y=f"{pollutant}_mean",
+                                    y=mean_col,
                                     color='site',
-                                    error_y=f"{pollutant}_std",
+                                    error_y=std_col,
                                     barmode="group",
+                                    title=f"{pollutant} Mean ± Std by {level_name}"
+                                ),
+                                use_container_width=True
+                            )
+
+                        # Box plot
+                        if pollutant in filtered_df.columns:
+                            st.plotly_chart(
+                                px.box(
+                                    filtered_df,
+                                    x=group_keys[0],
+                                    y=pollutant,
+                                    color='site',
                                     title=f"{pollutant} Distribution by {level_name}"
                                 ),
                                 use_container_width=True
                             )
-                    for pollutant in selected_display_pollutants:
-                        if pollutant in filtered_df.columns:
-                            st.plotly_chart(
-                                px.box(
-                                   filtered_df,
-                                   x=group_keys[0],
-                                   y=pollutant,
-                                   color='site',
-                                   title=f"{pollutant} Distribution by {level_name}"
-                                ),
-                                use_container_width=True
-                            )
-                    for pollutant in selected_display_pollutants:
-                        if pollutant in filtered_df.columns:
-                            st.plotly_chart( 
-                                px.box(  
-                                   filtered_df,
-                                   x=group_keys[0],
-                                   y=pollutant,
-                                   color='site',
-                                   title=f"{pollutant} Distribution by {level_name}"
-                               ),
-                               use_container_width=True
-                            )
-                    for pollutant in selected_display_pollutants:
-                        if f"{pollutant}_mean" in merged_df.columns:
+
+                        # Line plot of mean values
+                        if mean_col in merged_df.columns:
                             st.plotly_chart(
                                 px.line(
-                                   x=group_keys[0],
-                                   y=f"{pollutant}_mean",
-                                   color='site',
-                                   title=f"{pollutant} Mean Trend by {level_name}"
+                                    merged_df,
+                                    x=group_keys[0],
+                                    y=mean_col,
+                                    color='site',
+                                    title=f"{pollutant} Mean Trend by {level_name}"
                                 ),
                                 use_container_width=True
-                            )   
-    
+                            )
