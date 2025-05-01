@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from scipy.stats import kruskal, ttest_ind
@@ -288,117 +287,126 @@ def generate_css(theme: dict, font_size: str) -> str:
 
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
+def cleaned(df):
+    df = df.rename(columns=lambda x: x.strip().lower())
 
-
-
-uploaded_file = st.file_uploader("📤 Upload your air quality dataset (.csv)", type="csv")
-
-def parse_dates(df_raw):
-    for col in df_raw.columns:
-        if 'date' in col.lower():
-            try:
-                df_raw[col] = pd.to_datetime(df_raw[col], format='%d-%b-%y', errors='coerce')
-                df_raw = df_raw.dropna(subset=[col])
-                df_raw.rename(columns={col: 'date'}, inplace=True)
-                break
-            except Exception as e:
-                print(f"Error parsing column {col}: {e}")
-                continue
-    return df_raw
-
-if uploaded_file:
-    df_raw = pd.read_csv(uploaded_file)
-    df_raw = df_raw.dropna()
-    df_raw = parse_dates(df_raw)
-
-    if 'date' not in df_raw.columns:
-        st.error("No valid 'date' column found. Please check the format of your dataset.")
-        st.stop()
-
-    df_raw['year'] = df_raw['date'].dt.year
-    df_raw['month'] = df_raw['date'].dt.to_period("M")
-    df_raw['day_of_week'] = df_raw['date'].dt.day_name()
-
-    value_cols = [col for col in df_raw.columns if ("(ng/m3)" in col or "(ug/m3)" in col) and "_error" not in col and not col.startswith("PM")]
-
-    df = df_raw.drop(columns=["sample_id"], errors="ignore")[
-        ['Site', 'date', 'year', 'month', 'day_of_week'] + value_cols
+    required_columns = [
+        'date', 'id',
+        'Cd(ng/m3)', 'Cd_error',
+        'Cr(ng/m3)', 'Cr_error',
+        'Hg(ng/m3)', 'Hg_error',
+        'Al(ug/m3)', 'Al_error',
+        'As(ng/m3)', 'As_error',
+        'Mn(ng/m3)', 'Mn_error',
+        'Pb(ng/m3)', 'Pb_error'
     ]
 
+    df = df[[col for col in required_columns if col in df.columns]]
+    df = df.dropna(axis=1, how='all').dropna()
+    site_mapping = {
+        '1': 'Kaneshie First Light',
+        '2': 'Tetteh Quarshie Roundabout',
+        '5': 'Mallam Market',  
+        '10': 'Amasaman',
+        'A': 'East Legon',  
+        'B': 'North Industrial Area',
+        'D': 'Dansoman',  
+    }
+    df['site'] = df['ID'].astype(str).map(site_mapping)
+    missing_sites = df[df['site'].isna()]['ID'].unique()
+    print("Missing site values after mapping:", missing_sites)
+    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+
+
+    df['year'] = df['cleaned_date'].dt.year
+    df['month'] = df['cleaned_date'].dt.to_period('M').astype(str)
+    df['day'] = df['cleaned_date'].dt.date
+    df['dayofweek'] = df['cleaned_date'].dt.day_name()
+    df['weekday_type'] = df['cleaned_date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
+    df['season'] = df['cleaned_date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
+
+    columns_to_select = [
+        'site', 'day', 'year', 'month', 'dayofweek', 'season',
+        'Cd(ng/m3)', 'Cd_error',
+        'Cr(ng/m3)', 'Cr_error',
+        'Hg(ng/m3)', 'Hg_error',
+        'Al(ug/m3)', 'Al_error',
+        'As(ng/m3)', 'As_error',
+        'Mn(ng/m3)', 'Mn_error',
+        'Pb(ng/m3)', 'Pb_error'
+    ]
+    df = df[columns_to_select]
+    
+    return df
+
+# --- Upload Data ---
+uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
+
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+
+    def cleaned(df)
+    value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
+
+
+    # --- Sidebar Filters ---
     st.sidebar.header("🔎 Filters")
-    selected_sites = st.sidebar.multiselect("Select Sites", options=df['Site'].unique(), default=df['Site'].unique())
+    selected_sites = st.sidebar.multiselect("Select Sites", options=df['site'].unique(), default=df['site'].unique())
     selected_years = st.sidebar.multiselect("Select Years", options=sorted(df['year'].unique()), default=sorted(df['year'].unique()))
     selected_metals = st.sidebar.multiselect("Select Metals", options=value_cols, default=value_cols)
 
-    if not selected_metals:
-        st.warning("Please select at least one metal to proceed.")
-        st.stop()
+    df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
 
-    df = df[df['Site'].isin(selected_sites) & df['year'].isin(selected_years)]
-
+    # --- Summary Function ---
     def summarize_stats(df, group_by):
-        grouped = df.groupby(['Site', group_by])[selected_metals].agg(['mean', 'median', 'std']).reset_index()
-        grouped.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in grouped.columns]
-        return grouped
+        return df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std']).reset_index()
 
+    df_all = summarize_stats(df, None)
     df_year = summarize_stats(df, 'year')
     df_month = summarize_stats(df, 'month')
-    df_dow = summarize_stats(df, 'day_of_week')
+    df_dow = summarize_stats(df, 'dayofweek')
 
-    if 'day_of_week' in df_dow.columns:
-        df_dow['day_of_week'] = pd.Categorical(df_dow['day_of_week'], categories=[
-            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-        ], ordered=True)
-        df_dow = df_dow.sort_values('day_of_week')
-
+    # --- Tabs ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
+    # --- Plotly Trend Plot ---
     with tab1:
         stat = st.selectbox("Statistic", ['mean', 'median'])
         metal = st.selectbox("Select Metal", selected_metals)
 
         def plot_line_trend(df_summary, group_by):
-            col = f"{metal}_{stat}"
-            if col not in df_summary.columns or group_by not in df_summary.columns:
-                st.warning(f"Column {col} or {group_by} not found in summary.")
-                return go.Figure()
+            col = (metal, stat)
             df_plot = df_summary.copy()
             df_plot[group_by] = df_plot[group_by].astype(str)
-            fig = px.line(df_plot, x=group_by, y=col, color='Site_', markers=True,
-                          title=f"{metal} - {stat.title()} Trend by {group_by.capitalize()}")
-            fig.update_layout(margin=dict(t=50, l=30, r=30, b=50))
+
+            fig = px.line(
+                df_plot, x=group_by, y=col, color='Site', markers=True,
+                title=f"{metal} - {stat.title()} Trend by {group_by.capitalize()}"
+            )
             return fig
 
-        fig_year = plot_line_trend(df_year, 'year')
-        st.plotly_chart(fig_year, use_container_width=True, key='plot_year')
+        st.plotly_chart(plot_line_trend(df_year, 'year'), use_container_width=True)
+        st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True)
 
-        fig_month = plot_line_trend(df_month, 'month')
-        st.plotly_chart(fig_month, use_container_width=True, key='plot_month')
-        
-
-        csv = df_year.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Download Yearly Summary", csv, "yearly_summary.csv", "text/csv")
-
+    # --- Box and Bar Plots ---
     with tab2:
-        st.subheader("📦 Box Plot by Year")
+        st.subheader("Box Plot by Year")
         st.plotly_chart(px.box(df, x='year', y=metal, color='Site', points='all'), use_container_width=True)
 
-        st.subheader("📊 Bar Plot by Day of Week")
-        y_col = f"{metal}_{stat}"
-        if 'day_of_week' in df_dow.columns and y_col in df_dow.columns:
-            st.plotly_chart(
-                px.bar(df_dow, x='day_of_week', y=y_col, color='Site_', barmode='group'),
-                use_container_width=True
-            )
-        else:
-            st.warning("Bar plot data is incomplete or missing.")
+        st.subheader("Bar Plot by Day of Week")
+        st.plotly_chart(
+            px.bar(df_dow, x='day_of_week', y=(metal, stat), color='Site', barmode='group'),
+            use_container_width=True
+        )
 
+    # --- Kruskal and T-test ---
     with tab3:
         st.subheader("Kruskal-Wallis Test")
 
         def kruskal_by_year(df, metal):
             results = []
-            for year in df['year'].unique():
+            years = df['year'].unique()
+            for year in years:
                 subset = df[df['year'] == year]
                 groups = [g[metal].dropna().values for _, g in subset.groupby('Site') if not g[metal].isnull().all()]
                 if len(groups) > 1:
@@ -415,11 +423,12 @@ if uploaded_file:
 
         st.subheader("T-test: Harmattan vs Non-Harmattan")
         df['month_num'] = df['date'].dt.month
-        harmattan = df[df['month_num'].isin([12, 1, 2])][metal]
-        non_harmattan = df[~df['month_num'].isin([12, 1, 2])][metal]
+        harmattan = df[df['month_num'].isin([12,1,2])][metal]
+        non_harmattan = df[~df['month_num'].isin([12,1,2])][metal]
         t_stat, p_val = ttest_ind(harmattan.dropna(), non_harmattan.dropna(), equal_var=False)
         st.write(f"**T-statistic**: {t_stat:.4f}, **P-value**: {p_val:.4f}")
 
+    # --- Correlation Heatmap ---
     with tab4:
         st.subheader("Correlation Between Metals")
         corr_df = df[selected_metals].corr()
@@ -429,33 +438,35 @@ if uploaded_file:
         )
         st.plotly_chart(fig, use_container_width=True)
 
+    # --- Theil-Sen Trend Analysis ---
     with tab5:
         st.subheader("Theil-Sen Trend Analysis")
 
         def theil_sen_trend(df, metal):
             results = []
-            for site, group in df.groupby("Site"):
-                group = group.sort_values("date")
-                X = group['date'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
+            for site, group in df.groupby("site"):
+                group = group.sort_values("day")
+                X = group['day'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
                 y = group[metal].values
-                if len(y) < 2:
-                    continue
                 model = TheilSenRegressor()
                 model.fit(X, y)
-                results.append({'Site': site, 'slope': model.coef_[0], 'intercept': model.intercept_})
+                results.append({'site': site, 'slope': model.coef_[0], 'intercept': model.intercept_})
             return pd.DataFrame(results)
 
         trend_df = theil_sen_trend(df, metal)
         st.dataframe(trend_df)
 
-        for site in df['Site'].unique():
-            site_df = df[df['Site'] == site].sort_values('date')
-            fig = px.scatter(site_df, x='date', y=metal, title=f"{metal} Trend - {site}")
-            X = site_df['date'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
+        for site in df['site'].unique():
+            site_df = df[df['site'] == site].sort_values('day')
+            fig = px.scatter(site_df, x='day', y=metal, title=f"{metal} Trend - {site}")
+            X = site_df['day'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
             y = site_df[metal].values
-            if len(y) < 2:
-                continue
             model = TheilSenRegressor().fit(X, y)
             y_pred = model.predict(X)
-            fig.add_trace(go.Scatter(x=site_df['date'], y=y_pred, mode='lines', name='Trend'))
+            fig.add_trace(go.Scatter(x=site_df['day'], y=y_pred, mode='lines', name='Trend'))
             st.plotly_chart(fig, use_container_width=True)
+
+
+
+
+
