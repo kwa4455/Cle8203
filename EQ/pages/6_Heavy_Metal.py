@@ -369,10 +369,12 @@ if uploaded_file:
             fig.update_layout(margin=dict(t=50, l=30, r=30, b=50))
             return fig
 
-        st.plotly_chart(plot_line_trend(df_year, 'year'), use_container_width=True, key="line_year")
-        st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True, key="line_month")
+        fig_year = plot_line_trend(df_year, 'year')
+        st.plotly_chart(fig_year, use_container_width=True, key='plot_year')
 
-        st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True)
+        fig_month = plot_line_trend(df_month, 'month')
+        st.plotly_chart(fig_month, use_container_width=True, key='plot_month')
+        
 
         csv = df_year.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Yearly Summary", csv, "yearly_summary.csv", "text/csv")
