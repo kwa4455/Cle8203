@@ -292,7 +292,7 @@ uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type=
 
 if uploaded_file:
     df_raw = pd.read_csv(uploaded_file)
-    df_clean = df_raw.dropna() 
+    df_raw = df_raw.dropna() 
 
     # Preprocess
     df_raw['date'] = pd.to_datetime(df_raw['date'])
