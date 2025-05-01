@@ -352,7 +352,7 @@ uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type=
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
 
-    def cleaned(df)
+    df = cleaned(df)
     value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
 
 
