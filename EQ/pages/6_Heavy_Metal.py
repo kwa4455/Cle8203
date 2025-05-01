@@ -452,7 +452,9 @@ uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type=
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
+    label = file.name.split('.')[0]
     df = cleaned(df)
+    dfs[label] = df
     value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
     site_options = sorted(df['site'].unique())
     year_options = sorted(df['year'].unique())
@@ -467,7 +469,7 @@ if uploaded_file:
     # --- Tabs ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
-    with tabs[1]:  # Aggregated Means
+    with tab[1]:  # Aggregated Means
         st.header("📊 Aggregated Means(Mean, Median, Std)")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
