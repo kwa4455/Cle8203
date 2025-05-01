@@ -310,6 +310,7 @@ def cleaned(df):
         'mn_error': ['mn_error', 'mn err'],
         'pb(ng/m3)': ['pb(ng/m3)', 'lead', 'pb'],
         'pb_error': ['pb_error', 'pb err'],
+        'site': ['site', 'site_location', 'source']
     }
 
     # Reverse alias mapping: variant -> standard
@@ -325,33 +326,19 @@ def cleaned(df):
     if 'date' not in df.columns or 'id' not in df.columns:
         raise ValueError("Missing required columns: 'date' or 'id'")
 
-    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
 
     required_columns = list(column_aliases.keys())
     df = df[[col for col in required_columns if col in df.columns]].copy()
     df = df.dropna(axis=1, how='all').dropna()
 
-    site_mapping = {
-        '1': 'Kaneshie First Light',
-        '2': 'Tetteh Quarshie Roundabout',
-        '5': 'Mallam Market',
-        '10': 'Amasaman',
-        'A': 'East Legon',
-        'B': 'North Industrial Area',
-        'D': 'Dansoman',
-    }
 
-    df['site'] = df['id'].astype(str).map(site_mapping)
-    missing_sites = df[df['site'].isna()]['id'].unique()
-    if len(missing_sites) > 0:
-        print("Missing site values after mapping:", missing_sites)
-
-    df['year'] = df['cleaned_date'].dt.year
-    df['month'] = df['cleaned_date'].dt.to_period('M').astype(str)
-    df['day'] = df['cleaned_date'].dt.date
-    df['dayofweek'] = df['cleaned_date'].dt.day_name()
-    df['weekday_type'] = df['cleaned_date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
-    df['season'] = df['cleaned_date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
+    df['year'] = df['date'].dt.year
+    df['month'] = df['date'].dt.to_period('M').astype(str)
+    df['day'] = df['date'].dt.date
+    df['dayofweek'] = df['date'].dt.day_name()
+    df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
+    df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
     columns_to_select = [
         'site', 'day', 'year', 'month', 'dayofweek', 'season',
