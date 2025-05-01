@@ -357,7 +357,7 @@ def parse_dates(df):
         if 'date' in col.lower():  # Focus only on columns with "date" in the name
             try:
                 # Parse the date column to datetime
-                df[col] = pd.to_datetime(df[col], format='%d-%b-%y', errors='coerce')
+                df[col] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
                 # Drop rows where the parsed date is NaT
                 df = df.dropna(subset=[col])
             except Exception as e:
