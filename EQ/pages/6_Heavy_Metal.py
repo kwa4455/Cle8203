@@ -408,11 +408,11 @@ if uploaded_file:
             years = df['year'].unique()
             for year in years:
                 subset = df[df['year'] == year]
-                groups = [g[metal].dropna().values for _, g in subset.groupby('Site') if not g[metal].isnull().all()]
+                groups = [g[metal].dropna().values for _, g in subset.groupby('site') if not g[metal].isnull().all()]
                 if len(groups) > 1:
                     stat, p = kruskal(*groups)
                     results.append({'year': year, 'statistic': stat, 'pvalue': p, 'df': len(groups)-1})
-            all_groups = [g[metal].dropna().values for _, g in df.groupby('Site') if not g[metal].isnull().all()]
+            all_groups = [g[metal].dropna().values for _, g in df.groupby('site') if not g[metal].isnull().all()]
             if len(all_groups) > 1:
                 stat, p = kruskal(*all_groups)
                 results.append({'year': 'All', 'statistic': stat, 'pvalue': p, 'df': len(all_groups)-1})
