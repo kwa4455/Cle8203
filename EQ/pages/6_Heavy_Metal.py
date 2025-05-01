@@ -325,7 +325,7 @@ def cleaned(df):
         print("Missing site values after mapping:", missing_sites)
 
     
-    df = df.dropna(subset=['cleaned_date'])
+   
 
     df['year'] = df['cleaned_date'].dt.year
     df['month'] = df['cleaned_date'].dt.to_period('M').astype(str)
