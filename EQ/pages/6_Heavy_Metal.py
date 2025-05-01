@@ -313,8 +313,8 @@ def cleaned(df):
         'B': 'North Industrial Area',
         'D': 'Dansoman',  
     }
-    df['site'] = df['ID'].astype(str).map(site_mapping)
-    missing_sites = df[df['site'].isna()]['ID'].unique()
+    df['site'] = df['id'].astype(str).map(site_mapping)
+    missing_sites = df[df['site'].isna()]['id'].unique()
     
     
     df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
