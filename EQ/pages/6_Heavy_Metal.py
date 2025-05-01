@@ -290,16 +290,6 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-from scipy.stats import kruskal, ttest_ind
-from sklearn.linear_model import TheilSenRegressor
-import plotly.express as px
-import plotly.graph_objs as go
-import plotly.figure_factory as ff
-
-st.set_page_config("Air Quality Dashboard", layout="wide")
 
 uploaded_file = st.file_uploader("📤 Upload your air quality dataset (.csv)", type="csv")
 
