@@ -380,7 +380,7 @@ if uploaded_file:
             df_plot[group_by] = df_plot[group_by].astype(str)
 
             fig = px.line(
-                df_plot, x=group_by, y=col, color='Site', markers=True,
+                df_plot, x=group_by, y=col, color='site', markers=True,
                 title=f"{metal} - {stat.title()} Trend by {group_by.capitalize()}"
             )
             return fig
@@ -391,11 +391,11 @@ if uploaded_file:
     # --- Box and Bar Plots ---
     with tab2:
         st.subheader("Box Plot by Year")
-        st.plotly_chart(px.box(df, x='year', y=metal, color='Site', points='all'), use_container_width=True)
+        st.plotly_chart(px.box(df, x='year', y=metal, color='site', points='all'), use_container_width=True)
 
         st.subheader("Bar Plot by Day of Week")
         st.plotly_chart(
-            px.bar(df_dow, x='day_of_week', y=(metal, stat), color='Site', barmode='group'),
+            px.bar(df_dow, x='dayofweek', y=(metal, stat), color='site', barmode='group'),
             use_container_width=True
         )
 
