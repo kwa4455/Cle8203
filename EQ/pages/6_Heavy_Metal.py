@@ -352,6 +352,18 @@ def cleaned(df):
     ]
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
+def parse_dates(df):
+    for col in df.columns:
+        if 'date' in col.lower():  # Focus only on columns with "date" in the name
+            try:
+                # Parse the date column to datetime
+                df[col] = pd.to_datetime(df[col], format='%d-%b-%y', errors='coerce')
+                # Drop rows where the parsed date is NaT
+                df = df.dropna(subset=[col])
+            except Exception as e:
+                print(f"Error parsing column {col}: {e}")
+                continue
+    return df
 # --- Upload Data ---
 uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
 
