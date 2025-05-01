@@ -363,11 +363,9 @@ uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type=
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-
     df = cleaned(df)
-    
-    value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
 
+    value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
 
     # --- Sidebar Filters ---
     st.sidebar.header("🔎 Filters")
@@ -377,22 +375,21 @@ if uploaded_file:
 
     df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
 
-    # --- Summary Function ---
-    def summarize_stats(df, group_by=None, flatten_columns=False):
+    # --- Flattened Summary Function ---
+    def summarize_stats(df, group_by=None):
         if group_by is None:
-            return df.groupby('site')[selected_metals].agg(['mean', 'median', 'std'])
+            grouped = df.groupby('site')[selected_metals].agg(['mean', 'median', 'std']).reset_index()
         else:
-            return df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std'])
-        if flatten_columns:
-            grouped.columns = [
-                f"{col[0]}_{col[1]}" if isinstance(col, tuple) else col
-                for col in grouped.columns
-            ]
-        return grouped
-    
-        
+            grouped = df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std']).reset_index()
 
-    df_all = summarize_stats(df, None)
+        # Flatten column names
+        grouped.columns = [
+            f"{c[0]}_{c[1]}" if isinstance(c, tuple) else c
+            for c in grouped.columns
+        ]
+        return grouped
+
+    df_all = summarize_stats(df)
     df_year = summarize_stats(df, 'year')
     df_month = summarize_stats(df, 'month')
     df_dow = summarize_stats(df, 'dayofweek')
@@ -404,14 +401,13 @@ if uploaded_file:
     with tab1:
         stat = st.selectbox("Statistic", ['mean', 'median'])
         metal = st.selectbox("Select Metal", selected_metals)
+        y_col = f"{metal}_{stat}"
 
         def plot_line_trend(df_summary, group_by):
-            col = (metal, stat)
-            df_plot = df_summary.copy()
-            df_plot[group_by] = df_plot[group_by].astype(str)
-
+            if group_by not in df_summary.columns:
+                df_summary[group_by] = df_summary[group_by].astype(str)
             fig = px.line(
-                df_plot, x=group_by, y=col, color='site', markers=True,
+                df_summary, x=group_by, y=y_col, color='site', markers=True,
                 title=f"{metal} - {stat.title()} Trend by {group_by.capitalize()}"
             )
             return fig
@@ -426,7 +422,7 @@ if uploaded_file:
 
         st.subheader("Bar Plot by Day of Week")
         st.plotly_chart(
-            px.bar(df_dow, x='dayofweek', y=(metal, stat), color='site', barmode='group'),
+            px.bar(df_dow, x='dayofweek', y=f"{metal}_{stat}", color='site', barmode='group'),
             use_container_width=True
         )
 
@@ -454,8 +450,8 @@ if uploaded_file:
 
         st.subheader("T-test: Harmattan vs Non-Harmattan")
         df['month_num'] = df['date'].dt.month
-        harmattan = df[df['month_num'].isin([12,1,2])][metal]
-        non_harmattan = df[~df['month_num'].isin([12,1,2])][metal]
+        harmattan = df[df['month_num'].isin([12, 1, 2])][metal]
+        non_harmattan = df[~df['month_num'].isin([12, 1, 2])][metal]
         t_stat, p_val = ttest_ind(harmattan.dropna(), non_harmattan.dropna(), equal_var=False)
         st.write(f"**T-statistic**: {t_stat:.4f}, **P-value**: {p_val:.4f}")
 
@@ -496,8 +492,3 @@ if uploaded_file:
             y_pred = model.predict(X)
             fig.add_trace(go.Scatter(x=site_df['day'], y=y_pred, mode='lines', name='Trend'))
             st.plotly_chart(fig, use_container_width=True)
-
-
-
-
-
