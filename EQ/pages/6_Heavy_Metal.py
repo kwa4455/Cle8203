@@ -314,7 +314,8 @@ def cleaned(df):
     }
     df['site'] = df['ID'].astype(str).map(site_mapping)
     missing_sites = df[df['site'].isna()]['ID'].unique()
-    print("Missing site values after mapping:", missing_sites)
+    
+    
     df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
 
 
