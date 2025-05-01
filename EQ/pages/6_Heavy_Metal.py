@@ -291,19 +291,23 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
 
+    if 'date' not in df.columns or 'id' not in df.columns:
+        raise ValueError("Missing required columns: 'date' or 'id'")
+
     required_columns = [
         'date', 'id',
-        'Cd(ng/m3)', 'Cd_error',
-        'Cr(ng/m3)', 'Cr_error',
-        'Hg(ng/m3)', 'Hg_error',
-        'Al(ug/m3)', 'Al_error',
-        'As(ng/m3)', 'As_error',
-        'Mn(ng/m3)', 'Mn_error',
-        'Pb(ng/m3)', 'Pb_error'
+        'cd(ng/m3)', 'cd_error',
+        'cr(ng/m3)', 'cr_error',
+        'hg(ng/m3)', 'hg_error',
+        'al(ug/m3)', 'al_error',
+        'as(ng/m3)', 'as_error',
+        'mn(ng/m3)', 'mn_error',
+        'pb(ng/m3)', 'pb_error'
     ]
 
-    df = df[[col for col in required_columns if col in df.columns]]
+    df = df[[col for col in required_columns if col in df.columns]].copy()
     df = df.dropna(axis=1, how='all').dropna()
+
     site_mapping = {
         '1': 'Kaneshie First Light',
         '2': 'Tetteh Quarshie Roundabout',
@@ -313,12 +317,14 @@ def cleaned(df):
         'B': 'North Industrial Area',
         'D': 'Dansoman',  
     }
+
     df['site'] = df['id'].astype(str).map(site_mapping)
     missing_sites = df[df['site'].isna()]['id'].unique()
-    
-    
-    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    if len(missing_sites) > 0:
+        print("Missing site values after mapping:", missing_sites)
 
+    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    df = df.dropna(subset=['cleaned_date'])
 
     df['year'] = df['cleaned_date'].dt.year
     df['month'] = df['cleaned_date'].dt.to_period('M').astype(str)
@@ -329,18 +335,17 @@ def cleaned(df):
 
     columns_to_select = [
         'site', 'day', 'year', 'month', 'dayofweek', 'season',
-        'Cd(ng/m3)', 'Cd_error',
-        'Cr(ng/m3)', 'Cr_error',
-        'Hg(ng/m3)', 'Hg_error',
-        'Al(ug/m3)', 'Al_error',
-        'As(ng/m3)', 'As_error',
-        'Mn(ng/m3)', 'Mn_error',
-        'Pb(ng/m3)', 'Pb_error'
+        'cd(ng/m3)', 'cd_error',
+        'cr(ng/m3)', 'cr_error',
+        'hg(ng/m3)', 'hg_error',
+        'al(ug/m3)', 'al_error',
+        'as(ng/m3)', 'as_error',
+        'mn(ng/m3)', 'mn_error',
+        'pb(ng/m3)', 'pb_error'
     ]
-    df = df[columns_to_select]
-    
-    return df
 
+    df = df[[col for col in columns_to_select if col in df.columns]]
+    return df
 # --- Upload Data ---
 uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
 
