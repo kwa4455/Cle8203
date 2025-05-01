@@ -454,8 +454,7 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     df = cleaned(df)
     dfs = {}
-    for label, df in some_source.items():
-        value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
+    value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
     dfs[label] = df
     site_options.update(df['site'].unique())
     year_options.update(df['year'].unique())
