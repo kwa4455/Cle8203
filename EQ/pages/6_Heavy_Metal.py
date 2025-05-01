@@ -289,43 +289,62 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 def cleaned(df):
-    df = df.rename(columns=lambda x: x.strip().lower())
-    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    # Normalize column names: lowercase, strip spaces
+    df.columns = [col.strip().lower() for col in df.columns]
 
+    # Map common alias variations to standard names
+    column_aliases = {
+        'date': ['date', 'sampling date', 'datetime'],
+        'id': ['id', 'station id', 'site id'],
+        'cd(ng/m3)': ['cd(ng/m3)', 'cadmium', 'cd'],
+        'cd_error': ['cd_error', 'cd err'],
+        'cr(ng/m3)': ['cr(ng/m3)', 'chromium', 'cr'],
+        'cr_error': ['cr_error', 'cr err'],
+        'hg(ng/m3)': ['hg(ng/m3)', 'mercury', 'hg'],
+        'hg_error': ['hg_error', 'hg err'],
+        'al(ug/m3)': ['al(ug/m3)', 'aluminium', 'al'],
+        'al_error': ['al_error', 'al err'],
+        'as(ng/m3)': ['as(ng/m3)', 'arsenic', 'as'],
+        'as_error': ['as_error', 'as err'],
+        'mn(ng/m3)': ['mn(ng/m3)', 'manganese', 'mn'],
+        'mn_error': ['mn_error', 'mn err'],
+        'pb(ng/m3)': ['pb(ng/m3)', 'lead', 'pb'],
+        'pb_error': ['pb_error', 'pb err'],
+    }
+
+    # Reverse alias mapping: variant -> standard
+    alias_lookup = {}
+    for std_name, aliases in column_aliases.items():
+        for alias in aliases:
+            alias_lookup[alias.lower()] = std_name
+
+    # Rename columns using alias mapping
+    df.rename(columns=lambda x: alias_lookup.get(x.lower(), x), inplace=True)
+
+    # Ensure required columns exist
     if 'date' not in df.columns or 'id' not in df.columns:
         raise ValueError("Missing required columns: 'date' or 'id'")
 
-    required_columns = [
-        'date', 'id',
-        'cd(ng/m3)', 'cd_error',
-        'cr(ng/m3)', 'cr_error',
-        'hg(ng/m3)', 'hg_error',
-        'al(ug/m3)', 'al_error',
-        'as(ng/m3)', 'as_error',
-        'mn(ng/m3)', 'mn_error',
-        'pb(ng/m3)', 'pb_error'
-    ]
+    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
 
+    required_columns = list(column_aliases.keys())
     df = df[[col for col in required_columns if col in df.columns]].copy()
     df = df.dropna(axis=1, how='all').dropna()
 
     site_mapping = {
         '1': 'Kaneshie First Light',
         '2': 'Tetteh Quarshie Roundabout',
-        '5': 'Mallam Market',  
+        '5': 'Mallam Market',
         '10': 'Amasaman',
-        'A': 'East Legon',  
+        'A': 'East Legon',
         'B': 'North Industrial Area',
-        'D': 'Dansoman',  
+        'D': 'Dansoman',
     }
 
     df['site'] = df['id'].astype(str).map(site_mapping)
     missing_sites = df[df['site'].isna()]['id'].unique()
     if len(missing_sites) > 0:
         print("Missing site values after mapping:", missing_sites)
-
-    
-   
 
     df['year'] = df['cleaned_date'].dt.year
     df['month'] = df['cleaned_date'].dt.to_period('M').astype(str)
@@ -344,7 +363,6 @@ def cleaned(df):
         'mn(ng/m3)', 'mn_error',
         'pb(ng/m3)', 'pb_error'
     ]
-
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
 # --- Upload Data ---
