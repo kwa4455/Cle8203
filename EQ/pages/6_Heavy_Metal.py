@@ -290,6 +290,7 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
+    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
 
     if 'date' not in df.columns or 'id' not in df.columns:
         raise ValueError("Missing required columns: 'date' or 'id'")
@@ -323,7 +324,7 @@ def cleaned(df):
     if len(missing_sites) > 0:
         print("Missing site values after mapping:", missing_sites)
 
-    df['cleaned_date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    
     df = df.dropna(subset=['cleaned_date'])
 
     df['year'] = df['cleaned_date'].dt.year
