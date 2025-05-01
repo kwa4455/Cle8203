@@ -290,6 +290,20 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 # --- Upload Data ---
 uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
 
+def parse_dates(df):
+    for col in df.columns:
+        if 'date' in col.lower():  # Focus only on columns with "date" in the name
+            try:
+                # Parse the date column to datetime
+                df[col] = pd.to_datetime(df[col], format='%d-%b-%y', errors='coerce')
+                # Drop rows where the parsed date is NaT
+                df = df.dropna(subset=[col])
+            except Exception as e:
+                print(f"Error parsing column {col}: {e}")
+                continue
+    return df
+
+
 if uploaded_file:
     df_raw = pd.read_csv(uploaded_file)
     df_raw = df_raw.dropna() 
