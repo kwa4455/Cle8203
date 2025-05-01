@@ -301,7 +301,10 @@ if uploaded_file:
     df_raw['day_of_week'] = df_raw['date'].dt.day_name()
 
     value_cols = [col for col in df_raw.columns if ("(ng/m3)" in col or "(ug/m3)" in col) and "_error" not in col and not col.startswith("PM")]
-    df = df_raw[['Site', 'date', 'year', 'month', 'day_of_week'] + value_cols]
+    df = df_raw.drop(columns=["sample_id"], errors="ignore")[
+    ['Site', 'date', 'year', 'month', 'day_of_week'] + value_cols
+    ]
+    
 
     # --- Sidebar Filters ---
     st.sidebar.header("🔎 Filters")
