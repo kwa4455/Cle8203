@@ -289,7 +289,7 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
-st.set_page_config("Air Quality Dashboard", layout="wide")
+
 
 uploaded_file = st.file_uploader("📤 Upload your air quality dataset (.csv)", type="csv")
 
