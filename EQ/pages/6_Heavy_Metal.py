@@ -454,11 +454,14 @@ if uploaded_file:
     df = pd.read_csv(uploaded_file)
     df = cleaned(df)
     value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
+    site_options = sorted(df['site'].unique())
+    year_options = sorted(df['year'].unique())
+
     with st.sidebar:
         selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
-
-    df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
+    if selected_years and selected_sites:
+        df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
 
 
     # --- Tabs ---
