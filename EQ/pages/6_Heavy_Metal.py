@@ -445,8 +445,11 @@ def calculate_kruskal_wallis(df, group_col='site'):
                 })
 
     return p_filtered(results)
+import io
 
-    
+def to_csv_download(df):
+    return df.to_csv(index=False).encode('utf-8')
+
 # --- Upload Data ---
 uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
 
