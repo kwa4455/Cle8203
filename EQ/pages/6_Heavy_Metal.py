@@ -457,8 +457,8 @@ if uploaded_file:
     value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
     
     dfs[label] = df
-        site_options.update(df['site'].unique())
-        year_options.update(df['year'].unique())
+    site_options.update(df['site'].unique())
+    year_options.update(df['year'].unique())
     with st.sidebar:
         selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
