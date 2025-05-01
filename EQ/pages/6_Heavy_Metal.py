@@ -290,6 +290,16 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
 
+import streamlit as st
+import pandas as pd
+import numpy as np
+from scipy.stats import kruskal, ttest_ind
+from sklearn.linear_model import TheilSenRegressor
+import plotly.express as px
+import plotly.graph_objs as go
+import plotly.figure_factory as ff
+
+st.set_page_config("Air Quality Dashboard", layout="wide")
 
 uploaded_file = st.file_uploader("📤 Upload your air quality dataset (.csv)", type="csv")
 
@@ -311,6 +321,10 @@ if uploaded_file:
     df_raw = df_raw.dropna()
     df_raw = parse_dates(df_raw)
 
+    if 'date' not in df_raw.columns:
+        st.error("No valid 'date' column found. Please check the format of your dataset.")
+        st.stop()
+
     df_raw['year'] = df_raw['date'].dt.year
     df_raw['month'] = df_raw['date'].dt.to_period("M")
     df_raw['day_of_week'] = df_raw['date'].dt.day_name()
@@ -321,7 +335,6 @@ if uploaded_file:
         ['Site', 'date', 'year', 'month', 'day_of_week'] + value_cols
     ]
 
-    # Sidebar Filters
     st.sidebar.header("🔎 Filters")
     selected_sites = st.sidebar.multiselect("Select Sites", options=df['Site'].unique(), default=df['Site'].unique())
     selected_years = st.sidebar.multiselect("Select Years", options=sorted(df['year'].unique()), default=sorted(df['year'].unique()))
@@ -342,12 +355,11 @@ if uploaded_file:
     df_month = summarize_stats(df, 'month')
     df_dow = summarize_stats(df, 'day_of_week')
 
-    # Fix the day_of_week column name after aggregation
-    df_dow.rename(columns={'day_of_week_': 'day_of_week'}, inplace=True)
-    df_dow['day_of_week'] = pd.Categorical(df_dow['day_of_week'], categories=[
-        'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
-    ], ordered=True)
-    df_dow = df_dow.sort_values('day_of_week')
+    if 'day_of_week' in df_dow.columns:
+        df_dow['day_of_week'] = pd.Categorical(df_dow['day_of_week'], categories=[
+            'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+        ], ordered=True)
+        df_dow = df_dow.sort_values('day_of_week')
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
@@ -357,6 +369,9 @@ if uploaded_file:
 
         def plot_line_trend(df_summary, group_by):
             col = f"{metal}_{stat}"
+            if col not in df_summary.columns or group_by not in df_summary.columns:
+                st.warning(f"Column {col} or {group_by} not found in summary.")
+                return go.Figure()
             df_plot = df_summary.copy()
             df_plot[group_by] = df_plot[group_by].astype(str)
             fig = px.line(df_plot, x=group_by, y=col, color='Site_', markers=True,
@@ -376,10 +391,13 @@ if uploaded_file:
 
         st.subheader("📊 Bar Plot by Day of Week")
         y_col = f"{metal}_{stat}"
-        st.plotly_chart(
-            px.bar(df_dow, x='day_of_week', y=y_col, color='Site_', barmode='group'),
-            use_container_width=True
-        )
+        if 'day_of_week' in df_dow.columns and y_col in df_dow.columns:
+            st.plotly_chart(
+                px.bar(df_dow, x='day_of_week', y=y_col, color='Site_', barmode='group'),
+                use_container_width=True
+            )
+        else:
+            st.warning("Bar plot data is incomplete or missing.")
 
     with tab3:
         st.subheader("Kruskal-Wallis Test")
@@ -426,6 +444,8 @@ if uploaded_file:
                 group = group.sort_values("date")
                 X = group['date'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
                 y = group[metal].values
+                if len(y) < 2:
+                    continue
                 model = TheilSenRegressor()
                 model.fit(X, y)
                 results.append({'Site': site, 'slope': model.coef_[0], 'intercept': model.intercept_})
@@ -439,9 +459,9 @@ if uploaded_file:
             fig = px.scatter(site_df, x='date', y=metal, title=f"{metal} Trend - {site}")
             X = site_df['date'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
             y = site_df[metal].values
+            if len(y) < 2:
+                continue
             model = TheilSenRegressor().fit(X, y)
             y_pred = model.predict(X)
             fig.add_trace(go.Scatter(x=site_df['date'], y=y_pred, mode='lines', name='Trend'))
             st.plotly_chart(fig, use_container_width=True)
-
-
