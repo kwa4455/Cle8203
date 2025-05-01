@@ -10,9 +10,9 @@ from sklearn.linear_model import TheilSenRegressor
 st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
 st.title("🌍 Air Quality Data Explorer")
 
-# Initialize theme and font size in session state
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
+    
 if "font_size" not in st.session_state:
     st.session_state.font_size = "Medium"
 
@@ -21,6 +21,7 @@ theme_choice = st.sidebar.selectbox(
     ["Light", "Dark", "Blue", "Green", "Purple"],
     index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
 )
+
 st.session_state.theme = theme_choice
 
 # Font size selection
