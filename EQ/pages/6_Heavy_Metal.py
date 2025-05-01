@@ -307,6 +307,7 @@ def parse_dates(df):
 if uploaded_file:
     df_raw = pd.read_csv(uploaded_file)
     df_raw = df_raw.dropna() 
+    df_raw = parse_dates(df_raw)
 
     # Preprocess
     df_raw['date'] = pd.to_datetime(df_raw['date'])
