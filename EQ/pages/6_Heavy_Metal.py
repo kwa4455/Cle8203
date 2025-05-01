@@ -321,7 +321,7 @@ if uploaded_file:
         ['Site', 'date', 'year', 'month', 'day_of_week'] + value_cols
     ]
 
-    # --- Sidebar Filters ---
+    # Sidebar Filters
     st.sidebar.header("🔎 Filters")
     selected_sites = st.sidebar.multiselect("Select Sites", options=df['Site'].unique(), default=df['Site'].unique())
     selected_years = st.sidebar.multiselect("Select Years", options=sorted(df['year'].unique()), default=sorted(df['year'].unique()))
@@ -333,7 +333,6 @@ if uploaded_file:
 
     df = df[df['Site'].isin(selected_sites) & df['year'].isin(selected_years)]
 
-    # --- Summary Function ---
     def summarize_stats(df, group_by):
         grouped = df.groupby(['Site', group_by])[selected_metals].agg(['mean', 'median', 'std']).reset_index()
         grouped.columns = ['_'.join(col).strip() if isinstance(col, tuple) else col for col in grouped.columns]
@@ -342,15 +341,16 @@ if uploaded_file:
     df_year = summarize_stats(df, 'year')
     df_month = summarize_stats(df, 'month')
     df_dow = summarize_stats(df, 'day_of_week')
+
+    # Fix the day_of_week column name after aggregation
+    df_dow.rename(columns={'day_of_week_': 'day_of_week'}, inplace=True)
     df_dow['day_of_week'] = pd.Categorical(df_dow['day_of_week'], categories=[
         'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
     ], ordered=True)
     df_dow = df_dow.sort_values('day_of_week')
 
-    # --- Tabs ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
-    # --- Plotly Trend Plot ---
     with tab1:
         stat = st.selectbox("Statistic", ['mean', 'median'])
         metal = st.selectbox("Select Metal", selected_metals)
@@ -367,11 +367,9 @@ if uploaded_file:
         st.plotly_chart(plot_line_trend(df_year, 'year'), use_container_width=True)
         st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True)
 
-        # Optional CSV download
         csv = df_year.to_csv(index=False).encode('utf-8')
         st.download_button("📥 Download Yearly Summary", csv, "yearly_summary.csv", "text/csv")
 
-    # --- Box and Bar Plots ---
     with tab2:
         st.subheader("📦 Box Plot by Year")
         st.plotly_chart(px.box(df, x='year', y=metal, color='Site', points='all'), use_container_width=True)
@@ -383,7 +381,6 @@ if uploaded_file:
             use_container_width=True
         )
 
-    # --- Kruskal and T-test ---
     with tab3:
         st.subheader("Kruskal-Wallis Test")
 
@@ -408,17 +405,9 @@ if uploaded_file:
         df['month_num'] = df['date'].dt.month
         harmattan = df[df['month_num'].isin([12, 1, 2])][metal]
         non_harmattan = df[~df['month_num'].isin([12, 1, 2])][metal]
+        t_stat, p_val = ttest_ind(harmattan.dropna(), non_harmattan.dropna(), equal_var=False)
+        st.write(f"**T-statistic**: {t_stat:.4f}, **P-value**: {p_val:.4f}")
 
-        harmattan_clean = harmattan.dropna()
-        non_harmattan_clean = non_harmattan.dropna()
-
-        if len(harmattan_clean) >= 2 and len(non_harmattan_clean) >= 2:
-            t_stat, p_val = ttest_ind(harmattan_clean, non_harmattan_clean, equal_var=False)
-            st.write(f"**T-statistic**: {t_stat:.4f}, **P-value**: {p_val:.4f}")
-        else:
-            st.warning("⚠️ Not enough data in one or both groups to perform T-test (minimum 2 samples each).")
-
-    # --- Correlation Heatmap ---
     with tab4:
         st.subheader("Correlation Between Metals")
         corr_df = df[selected_metals].corr()
@@ -428,7 +417,6 @@ if uploaded_file:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-    # --- Theil-Sen Trend Analysis ---
     with tab5:
         st.subheader("Theil-Sen Trend Analysis")
 
@@ -455,3 +443,5 @@ if uploaded_file:
             y_pred = model.predict(X)
             fig.add_trace(go.Scatter(x=site_df['date'], y=y_pred, mode='lines', name='Trend'))
             st.plotly_chart(fig, use_container_width=True)
+
+
