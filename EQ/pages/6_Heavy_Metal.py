@@ -357,7 +357,96 @@ def cleaned(df):
     ]
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
+def compute_aggregates_all_metals(df, label):
+    aggregates = {}
 
+    # Define groups of columns
+    pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
+    error_cols = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
+
+    # Combine for convenience
+    all_cols = pollutant_cols + error_cols
+
+    # Grouping levels
+    groupings = {
+        'Monthly': 'month',
+        'Yearly': 'year',
+        'Day of Week': 'dayofweek',
+        'Weekday Type': 'weekday_type',
+        'Season': 'season'
+    }
+
+    # Loop through each time grouping
+    for name, group_col in groupings.items():
+        # Perform aggregation: mean, median, std
+        grouped = df.groupby([group_col, 'site'])[all_cols].agg(['mean', 'median', 'std']).round(3)
+
+        # Flatten the MultiIndex columns
+        grouped.columns = ['_'.join([col[0], col[1]]) for col in grouped.columns]
+        grouped = grouped.reset_index()
+
+        # Save in dictionary
+        aggregates[f'{label} - {name} Stats'] = grouped
+
+    return aggregates
+def calculate_min_max(df):
+    pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 
+                      'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
+    
+    valid_pollutants = [p for p in pollutant_cols if p in df.columns]
+
+    # Compute daily statistics
+    daily_avg = (
+        df.groupby(['site', 'day', 'year', 'month'])[valid_pollutants]
+        .agg(['mean', 'median', 'std'])
+        .reset_index()
+        .round(3)
+    )
+
+    # Flatten MultiIndex columns
+    daily_avg.columns = ['_'.join(col).strip('_') if isinstance(col, tuple) else col for col in daily_avg.columns]
+
+    # Prepare min/max aggregation dictionary
+    agg_dict = {}
+    for pollutant in valid_pollutants:
+        mean_col = f"{pollutant}_mean"
+        if mean_col in daily_avg.columns:
+            agg_dict[f"{pollutant}_daily_avg_max"] = (mean_col, lambda x: round(x.max(), 3))
+            agg_dict[f"{pollutant}_daily_avg_min"] = (mean_col, lambda x: round(x.min(), 3))
+
+    # Aggregate by year and site
+    df_min_max = daily_avg.groupby(['year', 'site'], as_index=False).agg(**agg_dict)
+
+    return df_min_max
+
+def calculate_kruskal_wallis(df, group_col='site'):
+    pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 
+                      'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
+
+    required_cols = ['site', 'season', 'weekday_type'] + pollutant_cols
+    p_filtered = df[required_cols].dropna(subset=pollutant_cols, how='all')
+    
+    
+    results = []
+
+    for pollutant in pollutant_cols:
+        if pollutant in df.columns:
+            grouped_data = [group[pollutant].dropna().values for _, group in df.groupby(group_col)]
+            
+            # Kruskal-Wallis requires at least 2 groups with more than one observation
+            if len(grouped_data) >= 2 and all(len(g) > 1 for g in grouped_data):
+                stat, p_value = kruskal(*grouped_data)
+                results.append({
+                    'Pollutant': pollutant,
+                    'Grouping': group_col,
+                    'H-statistic': round(stat, 4),
+                    'p-value': round(p_value, 4),
+                    'Significant (p<0.05)': p_value < 0.05
+                })
+
+    return p_filtered(results)
+
+    
 # --- Upload Data ---
 uploaded_file = st.file_uploader("Upload your air quality dataset (.csv)", type="csv")
 
@@ -366,129 +455,127 @@ if uploaded_file:
     df = cleaned(df)
 
     value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
-
-    # --- Sidebar Filters ---
-    st.sidebar.header("🔎 Filters")
-    selected_sites = st.sidebar.multiselect("Select Sites", options=df['site'].unique(), default=df['site'].unique())
-    selected_years = st.sidebar.multiselect("Select Years", options=sorted(df['year'].unique()), default=sorted(df['year'].unique()))
-    selected_metals = st.sidebar.multiselect("Select Metals", options=value_cols, default=value_cols)
+    
+    dfs[label] = df
+        site_options.update(df['site'].unique())
+        year_options.update(df['year'].unique())
+    with st.sidebar:
+        selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
+        selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
     df = df[df['site'].isin(selected_sites) & df['year'].isin(selected_years)]
 
-    # --- Flattened Summary Function ---
-    def summarize_stats(df, group_by=None):
-        if group_by is None:
-            grouped = df.groupby('site')[selected_metals].agg(['mean', 'median', 'std']).reset_index()
-        else:
-            grouped = df.groupby(['site', group_by])[selected_metals].agg(['mean', 'median', 'std']).reset_index()
-
-        # Flatten column names
-        grouped.columns = [
-            f"{c[0]}_{c[1]}" if isinstance(c, tuple) else c
-            for c in grouped.columns
-        ]
-        return grouped
-
-    df_all = summarize_stats(df)
-    df_year = summarize_stats(df, 'year')
-    df_month = summarize_stats(df, 'month')
-    df_dow = summarize_stats(df, 'dayofweek')
 
     # --- Tabs ---
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
-    # --- Plotly Trend Plot ---
-    with tab1:
-        stat = st.selectbox("Statistic", ['mean', 'median'])
-        metal = st.selectbox("Select Metal", selected_metals)
-        y_col = f"{metal}_{stat}"
+    with tabs[0]:  # Aggregated Means
+        st.header("📊 Aggregated Means(Mean, Median, Std)")
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_agg_{label}")
+            filtered_df = df.copy()
+            if selected_years:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            selected_pollutants = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
+            error_pollutants = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
-        def plot_line_trend(df_summary, group_by):
-            if group_by not in df_summary.columns:
-                df_summary[group_by] = df_summary[group_by].astype(str)
-            fig = px.line(
-                df_summary, x=group_by, y=y_col, color='site', markers=True,
-                title=f"{metal} - {stat.title()} Trend by {group_by.capitalize()}"
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=f"pollutants_{label}"
             )
-            return fig
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
 
-        st.plotly_chart(plot_line_trend(df_year, 'year'), use_container_width=True)
-        st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True)
-
-    # --- Box and Bar Plots ---
-    with tab2:
-        st.subheader("Box Plot by Year")
-        st.plotly_chart(px.box(df, x='year', y=metal, color='site', points='all'), use_container_width=True)
-
-        st.subheader("Bar Plot by Day of Week")
-        st.plotly_chart(
-            px.bar(df_dow, x='dayofweek', y=f"{metal}_{stat}", color='site', barmode='group'),
-            use_container_width=True
-        )
-
-    # --- Kruskal and T-test ---
-    with tab3:
-        st.subheader("Kruskal-Wallis Test")
-
-        def kruskal_by_year(df, metal):
-            results = []
-            years = df['year'].unique()
-            for year in years:
-                subset = df[df['year'] == year]
-                groups = [g[metal].dropna().values for _, g in subset.groupby('site') if not g[metal].isnull().all()]
-                if len(groups) > 1:
-                    stat, p = kruskal(*groups)
-                    results.append({'year': year, 'statistic': stat, 'pvalue': p, 'df': len(groups)-1})
-            all_groups = [g[metal].dropna().values for _, g in df.groupby('site') if not g[metal].isnull().all()]
-            if len(all_groups) > 1:
-                stat, p = kruskal(*all_groups)
-                results.append({'year': 'All', 'statistic': stat, 'pvalue': p, 'df': len(all_groups)-1})
-            return pd.DataFrame(results)
-
-        kruskal_df = kruskal_by_year(df, metal)
-        st.dataframe(kruskal_df)
-
-        st.subheader("T-test: Harmattan vs Non-Harmattan")
-        df['month_num'] = df['date'].dt.month
-        harmattan = df[df['month_num'].isin([12, 1, 2])][metal]
-        non_harmattan = df[~df['month_num'].isin([12, 1, 2])][metal]
-        t_stat, p_val = ttest_ind(harmattan.dropna(), non_harmattan.dropna(), equal_var=False)
-        st.write(f"**T-statistic**: {t_stat:.4f}, **P-value**: {p_val:.4f}")
-
-    # --- Correlation Heatmap ---
-    with tab4:
-        st.subheader("Correlation Between Metals")
-        corr_df = df[selected_metals].corr()
-        fig = ff.create_annotated_heatmap(
-            z=corr_df.values.round(2), x=list(corr_df.columns), y=list(corr_df.index),
-            colorscale='Viridis', showscale=True
-        )
-        st.plotly_chart(fig, use_container_width=True)
-
-    # --- Theil-Sen Trend Analysis ---
-    with tab5:
-        st.subheader("Theil-Sen Trend Analysis")
-
-        def theil_sen_trend(df, metal):
-            results = []
-            for site, group in df.groupby("site"):
-                group = group.sort_values("day")
-                X = group['day'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
-                y = group[metal].values
-                model = TheilSenRegressor()
-                model.fit(X, y)
-                results.append({'site': site, 'slope': model.coef_[0], 'intercept': model.intercept_})
-            return pd.DataFrame(results)
-
-        trend_df = theil_sen_trend(df, metal)
-        st.dataframe(trend_df)
-
-        for site in df['site'].unique():
-            site_df = df[df['site'] == site].sort_values('day')
-            fig = px.scatter(site_df, x='day', y=metal, title=f"{metal} Trend - {site}")
-            X = site_df['day'].map(pd.Timestamp.toordinal).values.reshape(-1, 1)
-            y = site_df[metal].values
-            model = TheilSenRegressor().fit(X, y)
-            y_pred = model.predict(X)
-            fig.add_trace(go.Scatter(x=site_df['day'], y=y_pred, mode='lines', name='Trend'))
-            st.plotly_chart(fig, use_container_width=True)
+            aggregate_levels = [
+                ('Monthly Avg', ['month', 'site']),
+                ('Yearly Avg', ['year', 'site']),
+                ('Day of Week Avg', ['dayofweek', 'site']),
+                ('Weekday Type Avg', ['weekday_type', 'site']),
+                ('Season Avg', ['season', 'site'])
+            ]
+            for level_name, group_keys in aggregate_levels:
+                agg_label = f"{label} - {level_name}"
+                agg_dfs = []
+                for pollutant in valid_pollutants:
+                    agg_df = filtered_df.groupby(group_keys)[pollutant].mean().reset_index().round(1)
+                    agg_dfs.append(agg_df)
+                from functools import reduce
+                merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
+                display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
+                editable_df = merged_df[display_cols]
+                
+                st.data_editor(
+                    editable_df,
+                    use_container_width=True,
+                    column_config={col: {"disabled": True} for col in editable_df.columns},
+                    num_rows="dynamic",
+                    key=f"editor_{label}_{agg_label}"
+                )
+                st.download_button(
+                    label=f"📥 Download {agg_label}",
+                    data=to_csv_download(editable_df),
+                    file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
+                    mime="text/csv"
+                )
+                st.markdown("---")
+                
+                with st.expander(f"📈 Show Charts for {agg_label}", expanded=none):
+                    for pollutant in selected_display_pollutants:
+                        if pollutant in filtered_df.columns and f"{pollutant}_std" in merged_df.columns:
+                            st.plotly_chart(
+                                px.bar(
+                                    merged_df,
+                                    x=group_keys[0],
+                                    y=f"{pollutant}_mean",
+                                    color='site',
+                                    error_y=f"{pollutant}_std",
+                                    barmode="group",
+                                    title=f"{pollutant} Distribution by {level_name}"
+                                ),
+                                use_container_width=True
+                            )
+                    for pollutant in selected_display_pollutants:
+                        if pollutant in filtered_df.columns:
+                            st.plotly_chart(
+                                px.box(
+                                   filtered_df,
+                                   x=group_keys[0],
+                                   y=pollutant,
+                                   color='site',
+                                   title=f"{pollutant} Distribution by {level_name}"
+                                ),
+                                use_container_width=True
+                            )
+                    for pollutant in selected_display_pollutants:
+                        if pollutant in filtered_df.columns:
+                            st.plotly_chart( 
+                                px.box(  
+                                   filtered_df,
+                                   x=group_keys[0],
+                                   y=pollutant,
+                                   color='site',
+                                   title=f"{pollutant} Distribution by {level_name}"
+                               ),
+                               use_container_width=True
+                            )
+                    for pollutant in selected_display_pollutants:
+                        if f"{pollutant}_mean" in merged_df.columns:
+                            st.plotly_chart(
+                                px.line(
+                                   x=group_keys[0],
+                                   y=f"{pollutant}_mean",
+                                   color='site',
+                                   title=f"{pollutant} Mean Trend by {level_name}"
+                                ),
+                                use_container_width=True
+                            )   
+    
