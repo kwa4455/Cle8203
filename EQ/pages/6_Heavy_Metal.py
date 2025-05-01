@@ -369,7 +369,9 @@ if uploaded_file:
             fig.update_layout(margin=dict(t=50, l=30, r=30, b=50))
             return fig
 
-        st.plotly_chart(plot_line_trend(df_year, 'year'), use_container_width=True)
+        st.plotly_chart(plot_line_trend(df_year, 'year'), use_container_width=True, key="line_year")
+        st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True, key="line_month")
+
         st.plotly_chart(plot_line_trend(df_month, 'month'), use_container_width=True)
 
         csv = df_year.to_csv(index=False).encode('utf-8')
