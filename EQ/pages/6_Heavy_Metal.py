@@ -428,6 +428,21 @@ def compute_dayofweek_data(df):
         st.error(f"Missing expected column(s) for day-of-week summary: {e}")
         return pd.DataFrame()
     return dow_df
+def calculate_min_max(df):
+    agg_dict = {}
+    for col in df.columns:
+        if col in pollutant_cols:
+            agg_dict[f'{col}_min'] = (col, lambda x: round(x.min(skipna=True), 2))
+            agg_dict[f'{col}_max'] = (col, lambda x: round(x.max(skipna=True), 2))
+            agg_dict[f'{col}_range'] = (col, lambda x: round(x.max(skipna=True) - x.min(skipna=True), 2))
+
+    try:
+        minmax_df = df.groupby('site').agg(**agg_dict).reset_index()
+    except KeyError as e:
+        st.error(f"Missing expected column(s) for min-max calculation: {e}")
+        return pd.DataFrame()
+    return minmax_df
+
 # --- 8. Metal Filter UI ---
 def metal_filter():
     return st.selectbox("Select Metal to View", metals)
