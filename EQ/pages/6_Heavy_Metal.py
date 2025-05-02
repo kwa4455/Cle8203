@@ -374,7 +374,6 @@ def compute_aggregates_all_metals(df, label):
         'Monthly': 'month',
         'Yearly': 'year',
         'Day of Week': 'dayofweek',
-        'Weekday Type': 'weekday_type',
         'Season': 'season'
     }
 
@@ -511,7 +510,6 @@ if uploaded_files:
                 ('Monthly Avg', ['month', 'site']),
                 ('Yearly Avg', ['year', 'site']),
                 ('Day of Week Avg', ['dayofweek', 'site']),
-                ('Weekday Type Avg', ['weekday_type', 'site']),
                 ('Season Avg', ['season', 'site'])
             ]
 
