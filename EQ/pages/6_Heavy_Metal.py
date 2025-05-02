@@ -293,19 +293,19 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 column_mappings = {
     'date': ['date', 'sampling date', 'datetime'],
     'id': ['id', 'station id', 'site id'],
-    'cd(ng/m3)': ['cd(ng/m3)', 'cadmium', 'cd'],
+    'cd': ['cd(ng/m3)', 'cadmium', 'cd'],
     'cd_error': ['cd_error', 'cd err'],
-    'cr(ng/m3)': ['cr(ng/m3)', 'chromium', 'cr'],
+    'cr': ['cr(ng/m3)', 'chromium', 'cr'],
     'cr_error': ['cr_error', 'cr err'],
-    'hg(ng/m3)': ['hg(ng/m3)', 'mercury', 'hg'],
+    'hg': ['hg(ng/m3)', 'mercury', 'hg'],
     'hg_error': ['hg_error', 'hg err'],
-    'al(ug/m3)': ['al(ug/m3)', 'aluminium', 'al'],
+    'al': ['al(ug/m3)', 'aluminium', 'al'],
     'al_error': ['al_error', 'al err'],
-    'as(ng/m3)': ['as(ng/m3)', 'arsenic', 'as'],
+    'as': ['as(ng/m3)', 'arsenic', 'as'],
     'as_error': ['as_error', 'as err'],
-    'mn(ng/m3)': ['mn(ng/m3)', 'manganese', 'mn'],
+    'mn': ['mn(ng/m3)', 'manganese', 'mn'],
     'mn_error': ['mn_error', 'mn err'],
-    'pb(ng/m3)': ['pb(ng/m3)', 'lead', 'pb'],
+    'pb': ['pb(ng/m3)', 'lead', 'pb'],
     'pb_error': ['pb_error', 'pb err'],
     'site': ['site', 'site_location', 'source']
 }
@@ -361,18 +361,15 @@ def compute_all_data(df):
         'count': ('site', 'count'),
     }
 
-    for col in pollutant_cols:
-        if col in df.columns:
+    for col in df.columns:
+        if col in pollutant_cols:
             agg_dict[f'{col}_mean'] = (col, lambda x: round(x.mean(skipna=True), 2))
             agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
-
-    for metal in metals:
-        metal_col = f'{metal}(ng/m3)'
-        if metal_col in df.columns:
-            agg_dict[f'{metal}_median'] = (metal_col, lambda x: round(x.median(skipna=True), 2))
+            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
 
     total_df = df.groupby('site').agg(**agg_dict).reset_index()
     return total_df
+
 
 def compute_yearly_data(df):
     yearly_df = df.groupby(['site', 'year']).agg(
