@@ -579,12 +579,14 @@ if uploaded_files:
                                         type='data',
                                         array=site_data[error_col] if error_col in site_data else None,
                                         visible=True
-                                    ),
+                                    )
+                                )),
                             fig_bar.update_layout(
                                 barmode='group',
                                 xaxis_title=group_keys[0].title(),
                                 yaxis_title=f"{pollutant} (Median ± Error)"
                             )
+                        
                             
                             st.plotly_chart(fig_bar, use_container_width=True)
                         if pollutant in filtered_df.columns:
