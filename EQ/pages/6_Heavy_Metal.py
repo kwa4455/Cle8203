@@ -588,7 +588,7 @@ if uploaded_files:
                             )
                         
                             
-                            st.plotly_chart(fig_bar, use_container_width=True)
+                            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{label}_{pollutant}_{level_name}")
                         if pollutant in filtered_df.columns:
                                     st.plotly_chart(
                                         px.box(
@@ -598,5 +598,7 @@ if uploaded_files:
                                             color='site',
                                             title=f"{pollutant} Distribution by {level_name}"
                                         ),
-                                        use_container_width=True
+                                        use_container_width=True,
+                                        key=f"box_{label}_{pollutant}_{level_name}"
                                       )
+                        
