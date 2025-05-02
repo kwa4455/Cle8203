@@ -529,7 +529,7 @@ if uploaded_files:
                     if not all(key in filtered_df.columns for key in group_keys):
                         continue   
                     agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_median", f"{pollutant}_std"]
-                    agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_median", f"{pollutant}_std"]
+                    
 
                     error_col = pollutant.split('(')[0].strip().lower() + "_error"
                     if error_col in filtered_df.columns:
