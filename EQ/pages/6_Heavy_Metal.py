@@ -402,7 +402,19 @@ def calculate_site_correlation(df):
     except KeyError as e:
         st.error(f"Missing required column for correlation: {e}")
     return correlation_results
+    
+def compute_monthly_data(df):
+    agg_dict = {}
+    for col in df.columns:
+        if col in pollutant_cols:
+            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
 
+    try:
+        monthly_df = df.groupby(['site', 'month']).agg(**agg_dict).reset_index()
+    except KeyError as e:
+        st.error(f"Missing expected column(s) for monthly summary: {e}")
+        return pd.DataFrame()
+    return monthly_df
 # --- 8. Metal Filter UI ---
 def metal_filter():
     return st.selectbox("Select Metal to View", metals)
