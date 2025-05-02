@@ -7,6 +7,7 @@ from scipy.stats import kruskal, ttest_ind
 from sklearn.linear_model import TheilSenRegressor
 import plotly.express as px
 from functools import reduce
+from st_aggrid import AgGrid, GridOptionsBuilder
 
 # --- Page Config ---
 st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
@@ -389,21 +390,19 @@ def compute_aggregates_all_metals(df, label):
         agg_errors = df.groupby([group_col, 'site'])[error_cols].agg(['median'])
 
         new_pollutant_cols = {
-            (metal, stat): f"{metal_display_map[metal]}_{stat}" for metal in pollutant_cols for stat in ['mean', 'median', 'std']
+            (metal, stat): f"{metal_display_map[metal]}_{stat}"
+            for metal in pollutant_cols for stat in ['mean', 'median', 'std']
         }
-        agg_pollutants.rename(columns=new_pollutant_cols, inplace=True)
-        agg_pollutants.columns = agg_pollutants.columns.get_level_values(0)
+        agg_pollutants.columns = agg_pollutants.rename(columns=new_pollutant_cols).columns.get_level_values(0)
 
         new_error_cols = {
             (err_col, 'median'): f"{metal_display_map[err_col.split('_')[0] + '(ng/m3)' if 'al' not in err_col else 'al(ug/m3)']}_error_median"
             for err_col in error_cols
         }
-        agg_errors.rename(columns=new_error_cols, inplace=True)
-        agg_errors.columns = agg_errors.columns.get_level_values(0)
+        agg_errors.columns = agg_errors.rename(columns=new_error_cols).columns.get_level_values(0)
 
         combined = pd.concat([agg_pollutants, agg_errors], axis=1).reset_index()
         combined = combined.round(3)
-
         aggregates[f'{label} - {name} Stats'] = combined
 
     return aggregates
@@ -469,11 +468,8 @@ import io
 def to_csv_download(df):
     return df.to_csv(index=False).encode('utf-8')
 
-# --- Upload Data ---
-uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
-
 if uploaded_files:
-    
+    dfs = {}
     site_options = set()
     year_options = set()
 
@@ -481,7 +477,8 @@ if uploaded_files:
         label = file.name.split('.')[0]
         ext = file.name.split('.')[-1]
         df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
-        df = cleaned(df)  # Assuming `cleaned` is a defined cleaning function
+        df = cleaned(df)
+        dfs[label] = df
         site_options.update(df['site'].unique())
         year_options.update(df['year'].unique())
 
@@ -492,10 +489,10 @@ if uploaded_files:
         selected_years = st.multiselect("📅 Filter by Year", year_options)
         selected_sites = st.multiselect("🏢 Filter by Site", site_options)
 
-    # --- Tabs ---
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
 
-    with tab2:  # Aggregated Means
+    with tab2:
         st.header("📊 Aggregated Means (Mean, Median, Std)")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -508,7 +505,6 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
             valid_pollutants = ['Pb', 'Cd', 'Cr', 'Mn', 'Al', 'As', 'Hg']
-
             if not valid_pollutants:
                 st.warning(f"No valid pollutants found in {label}")
                 continue
@@ -522,7 +518,6 @@ if uploaded_files:
             if "All" in selected_display_pollutants:
                 selected_display_pollutants = valid_pollutants
 
-            
             aggregates = compute_aggregates_all_metals(filtered_df, label=label)
             selected_grouping = st.selectbox(
                 f"Grouping for {label}",
@@ -531,16 +526,42 @@ if uploaded_files:
             )
             summary_df = aggregates[selected_grouping]
 
+            # Display summary table (no error columns)
+            st.markdown("### 📋 Aggregated Table (Mean, Median, Std Only)")
+            display_df = summary_df[[col for col in summary_df.columns if 'error' not in col.lower()]]
+
+            gb = GridOptionsBuilder.from_dataframe(display_df)
+            gb.configure_default_column(filter=True, sortable=True, resizable=True)
+            gb.configure_grid_options(domLayout='normal')
+            gridOptions = gb.build()
+
+            AgGrid(display_df, gridOptions=gridOptions, theme='balham', height=400, fit_columns_on_grid_load=True,
+                   key=f"aggrid_{label}_{selected_grouping}")
+
+            # Download button (full table including error columns)
+            all_agg_csv = summary_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label=f"⬇️ Download Full Summary Table ({selected_grouping})",
+                data=all_agg_csv,
+                file_name=f"{label}_{selected_grouping.replace(' ', '_')}_all_metals.csv",
+                mime='text/csv',
+                key=f"download_full_{label}_{selected_grouping}"
+            )
+
+            # Plotting
             colors = {
                 "Pb": "#ffff00", "Cd": "green", "Cr": "red",
                 "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
             }
+
             for metal in selected_display_pollutants:
                 mean_col = f"{metal}_mean"
                 median_col = f"{metal}_median"
                 error_col = f"{metal}_error_median"
+
                 if mean_col not in summary_df.columns or error_col not in summary_df.columns:
                     continue
+
                 fig = go.Figure()
                 fig.add_trace(go.Bar(
                     x=summary_df['site'],
@@ -574,6 +595,3 @@ if uploaded_files:
                 fig.update_xaxes(showline=True, linewidth=0.5, linecolor='black')
                 fig.update_yaxes(showline=True, linewidth=0.5, linecolor='black')
                 st.plotly_chart(fig, use_container_width=True, key=f"bar_{metal}_{label}")
-
-            
-                
