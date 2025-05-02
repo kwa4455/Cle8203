@@ -463,6 +463,7 @@ st.title("🔬 Heavy Metal Air Quality Dashboard")
 uploaded_files = st.file_uploader("📁 Upload CSV or Excel Files", accept_multiple_files=True, type=['csv', 'xlsx'])
 
 if uploaded_files:
+    all_outputs = {}
     dfs = {}
     site_options = set()
     year_options = set()
@@ -471,13 +472,16 @@ if uploaded_files:
         label = file.name.split('.')[0]
         ext = file.name.split('.')[-1]
         df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
+        
         df = cleaned(df)
+        
         dfs[label] = df
+        
         site_options.update(df['site'].unique())
         year_options.update(df['year'].unique())
 
-    site_options = sorted(site_options)
-    year_options = sorted(year_options)
+        site_options = sorted(site_options)
+        year_options = sorted(year_options)
 
     with st.sidebar:
         selected_years = st.multiselect("📅 Filter by Year", year_options)
