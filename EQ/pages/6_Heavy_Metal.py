@@ -367,6 +367,8 @@ colors = {
     "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
 }   
 def compute_aggregates_all_metals(df, label):
+    import numpy as np
+
     aggregates = {}
 
     metal_display_map = {
@@ -375,36 +377,23 @@ def compute_aggregates_all_metals(df, label):
     }
 
     pollutant_cols = list(metal_display_map.keys())
-    error_cols = [col.replace('(ng/m3)', '_error').replace('(ug/m3)', '_error') for col in pollutant_cols]
 
-    groupings = {
-        'Monthly': 'month',
-        'Yearly': 'year',
-        'Day of Week': 'dayofweek',
-        'Season': 'season'
-    }
+    # Group only by 'site'
+    agg = df.groupby('site')[pollutant_cols].agg(['mean', 'median', 'std'])
 
-    for name, group_col in groupings.items():
-        agg_pollutants = df.groupby([group_col, 'site'])[pollutant_cols].agg(['mean', 'median', 'std'])
-        agg_errors = df.groupby([group_col, 'site'])[error_cols].agg(['median'])
+    # Flatten column MultiIndex
+    agg.columns = [f"{metal_display_map[col]}_{stat}" for col, stat in agg.columns]
+    agg = agg.reset_index()
 
-        new_pollutant_cols = {
-            (metal, stat): f"{metal_display_map[metal]}_{stat}"
-            for metal in pollutant_cols for stat in ['mean', 'median', 'std']
-        }
-        agg_pollutants.columns = [new_pollutant_cols[col] for col in agg_pollutants.columns]
+    # Add error columns (using std as proxy)
+    for metal in metal_display_map.values():
+        std_col = f"{metal}_std"
+        if std_col in agg.columns:
+            agg[f"{metal}_error_median"] = agg[std_col]  # Customize this if needed
 
-        new_error_cols = {}
-        for err_col in error_cols:
-            metal_key = err_col.split('_')[0]
-            metal = f"{metal_key}(ng/m3)" if metal_key != "al" else "al(ug/m3)"
-            new_error_cols[(err_col, 'median')] = f"{metal_display_map[metal]}_error_median"
-        agg_errors.columns = [new_error_cols[col] for col in agg_errors.columns]
+    agg = agg.round(3)
 
-        combined = pd.concat([agg_pollutants, agg_errors], axis=1).reset_index()
-        combined = combined.round(3)
-        aggregates[f'{label} - {name} Stats'] = combined
-
+    aggregates[f'{label} - Site Stats'] = agg
     return aggregates
 
 def calculate_min_max(df):
