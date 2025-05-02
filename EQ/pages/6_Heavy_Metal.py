@@ -469,12 +469,10 @@ if uploaded_files:
         site_options.update(df['site'].unique())
         year_options.update(df['year'].unique())
 
-        site_options = sorted(site_options)
-        year_options = sorted(year_options)
-
+        
     with st.sidebar:
-        selected_years = st.multiselect("📅 Filter by Year", year_options)
-        selected_sites = st.multiselect("🏢 Filter by Site", site_options)
+        selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
+        selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
