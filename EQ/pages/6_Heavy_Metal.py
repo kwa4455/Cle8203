@@ -357,12 +357,21 @@ def cleaned(df):
 
 # --- 4. Compute aggregated data ---
 def compute_all_data(df):
-    total_df = df.groupby('site').agg(
-        count=('site', 'count'),
-        **{f'{col}_mean': (col, lambda x: round(x.mean(skipna=True), 2)) for col in pollutant_cols},
-        **{f'{col}_sd': (col, lambda x: round(x.std(skipna=True), 2)) for col in pollutant_cols},
-        **{f'{metal}_median': (f'{metal}(ng/m3)', lambda x: round(x.median(skipna=True), 2)) for metal in metals}
-    ).reset_index()
+    agg_dict = {
+        'count': ('site', 'count'),
+    }
+
+    for col in pollutant_cols:
+        if col in df.columns:
+            agg_dict[f'{col}_mean'] = (col, lambda x: round(x.mean(skipna=True), 2))
+            agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
+
+    for metal in metals:
+        metal_col = f'{metal}(ng/m3)'
+        if metal_col in df.columns:
+            agg_dict[f'{metal}_median'] = (metal_col, lambda x: round(x.median(skipna=True), 2))
+
+    total_df = df.groupby('site').agg(**agg_dict).reset_index()
     return total_df
 
 def compute_yearly_data(df):
