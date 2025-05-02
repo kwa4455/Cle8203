@@ -528,7 +528,7 @@ if uploaded_files:
                 for pollutant in valid_pollutants:
                     if not all(key in filtered_df.columns for key in group_keys):
                         continue   
-                    agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_median", f"{pollutant}_std"]
+                    agg_df = filtered_df.groupby(group_keys)[pollutant].agg(['mean', 'median', 'std']).reset_index()
                     
 
                     error_col = pollutant.split('(')[0].strip().lower() + "_error"
