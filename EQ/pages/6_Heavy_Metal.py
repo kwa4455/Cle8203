@@ -379,8 +379,8 @@ def compute_aggregates_all_metals(df, label):
         # Aggregate pollutant columns with mean, median, std
         agg_pollutants = df.groupby([group_col, 'site'])[pollutant_cols].agg(['mean', 'median', 'std'])
 
-        # Aggregate error columns with mean only (assuming these are already standard deviations)
-        agg_errors = df.groupby([group_col, 'site'])[error_cols].mean()
+        # Aggregate error columns with median only (assuming these are already standard deviations)
+        agg_errors = df.groupby([group_col, 'site'])[error_cols].median()
 
         # Flatten column names
         agg_pollutants.columns = ['_'.join([col[0], col[1]]) for col in agg_pollutants.columns]
@@ -526,14 +526,20 @@ if uploaded_files:
 
             
                 for pollutant in valid_pollutants:
-                    agg_df = filtered_df.groupby(group_keys)[pollutant].agg(['mean', 'median', 'std']).reset_index()
+                    if not all(key in filtered_df.columns for key in group_keys):
+                        continue   
                     agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_median", f"{pollutant}_std"]
-                    error_col = pollutant.replace("(ng/m3)", "_error").replace("(ug/m3)", "_error")
+                    agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_median", f"{pollutant}_std"]
+
+                    error_col = pollutant.split('(')[0].strip().lower() + "_error"
                     if error_col in filtered_df.columns:
                         error_df = filtered_df.groupby(group_keys)[error_col].median().reset_index().rename(columns={error_col: f"{pollutant}_error"})
                         agg_df = pd.merge(agg_df, error_df, on=group_keys, how='left')
                     agg_dfs.append(agg_df)
-
+                if not agg_dfs:
+                    st.info(f"No aggregation results for {agg_label}.")
+                    continue 
+                    
                 from functools import reduce
                 merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
 
