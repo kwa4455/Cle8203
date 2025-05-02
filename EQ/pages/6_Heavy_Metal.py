@@ -1,13 +1,9 @@
-import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as go
-import plotly.figure_factory as ff
-from scipy.stats import kruskal, ttest_ind
-from sklearn.linear_model import TheilSenRegressor
+from scipy.stats import kruskal
+import streamlit as st
 import plotly.express as px
-from functools import reduce
-from st_aggrid import AgGrid, GridOptionsBuilder
+import plotly.graph_objects as go
 
 # --- Page Config ---
 st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
@@ -292,39 +288,59 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
-# ---------- Data Cleaning ----------
-def cleaned(df):
+
+# Helper: Column mappings
+column_mappings = {
+    'date': ['date', 'sampling date', 'datetime'],
+    'id': ['id', 'station id', 'site id'],
+    'cd(ng/m3)': ['cd(ng/m3)', 'cadmium', 'cd'],
+    'cd_error': ['cd_error', 'cd err'],
+    'cr(ng/m3)': ['cr(ng/m3)', 'chromium', 'cr'],
+    'cr_error': ['cr_error', 'cr err'],
+    'hg(ng/m3)': ['hg(ng/m3)', 'mercury', 'hg'],
+    'hg_error': ['hg_error', 'hg err'],
+    'al(ug/m3)': ['al(ug/m3)', 'aluminium', 'al'],
+    'al_error': ['al_error', 'al err'],
+    'as(ng/m3)': ['as(ng/m3)', 'arsenic', 'as'],
+    'as_error': ['as_error', 'as err'],
+    'mn(ng/m3)': ['mn(ng/m3)', 'manganese', 'mn'],
+    'mn_error': ['mn_error', 'mn err'],
+    'pb(ng/m3)': ['pb(ng/m3)', 'lead', 'pb'],
+    'pb_error': ['pb_error', 'pb err'],
+    'site': ['site', 'site_location', 'source']
+}
+
+metals = ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb']
+errors = [f'{metal}_error' for metal in metals]
+pollutant_cols = metals + errors
+
+required_columns = ['date', 'site'] + pollutant_cols
+
+# --- 1. Parse dates ---
+def parse_dates(df):
+    for col in df.columns:
+        if 'date' in col.lower():
+            try:
+                df['date'] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
+                df = df.dropna(subset=['date'])
+                return df
+            except:
+                continue
+    return df
+
+# --- 2. Standardize column names ---
+def standardize_columns(df):
+    rename_dict = {}
+    for standard_col, aliases in column_mappings.items():
+        for col in df.columns:
+            if col.strip().lower() in [alias.lower() for alias in aliases]:
+                rename_dict[col] = standard_col
+    df.rename(columns=rename_dict, inplace=True)
     df.columns = [col.strip().lower() for col in df.columns]
+    return df
 
-    column_aliases = {
-        'date': ['date', 'sampling date', 'datetime'],
-        'id': ['id', 'station id', 'site id'],
-        'cd(ng/m3)': ['cd(ng/m3)', 'cadmium', 'cd'],
-        'cd_error': ['cd_error', 'cd err'],
-        'cr(ng/m3)': ['cr(ng/m3)', 'chromium', 'cr'],
-        'cr_error': ['cr_error', 'cr err'],
-        'hg(ng/m3)': ['hg(ng/m3)', 'mercury', 'hg'],
-        'hg_error': ['hg_error', 'hg err'],
-        'al(ug/m3)': ['al(ug/m3)', 'aluminium', 'al'],
-        'al_error': ['al_error', 'al err'],
-        'as(ng/m3)': ['as(ng/m3)', 'arsenic', 'as'],
-        'as_error': ['as_error', 'as err'],
-        'mn(ng/m3)': ['mn(ng/m3)', 'manganese', 'mn'],
-        'mn_error': ['mn_error', 'mn err'],
-        'pb(ng/m3)': ['pb(ng/m3)', 'lead', 'pb'],
-        'pb_error': ['pb_error', 'pb err'],
-        'site': ['site', 'site_location', 'source']
-    }
-    alias_lookup = {alias.lower(): std for std, aliases in column_aliases.items() for alias in aliases}
-    df.rename(columns=lambda x: alias_lookup.get(x.lower(), x), inplace=True)
-
-    if 'date' not in df.columns or 'id' not in df.columns:
-        raise ValueError("Missing required columns: 'date' or 'id'")
-
-    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['date'])
-
-    required_columns = list(column_aliases.keys())
+# --- 3. Cleaned data ---
+def cleaned(df):
     df = df[[col for col in required_columns if col in df.columns]].copy()
     df = df.dropna(axis=1, how='all').dropna()
 
@@ -335,145 +351,262 @@ def cleaned(df):
     df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
-    columns_to_select = [
-        'site', 'day', 'year', 'month', 'dayofweek', 'season',
-        'cd(ng/m3)', 'cd_error', 'cr(ng/m3)', 'cr_error', 'hg(ng/m3)', 'hg_error',
-        'al(ug/m3)', 'al_error', 'as(ng/m3)', 'as_error', 'mn(ng/m3)', 'mn_error', 'pb(ng/m3)', 'pb_error'
-    ]
+    columns_to_select = ['site', 'day', 'year', 'month', 'dayofweek', 'season'] + pollutant_cols
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
 
-colors = {
-    "Pb": "#ffff00", "Cd": "green", "Cr": "red",
-    "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
-}
+# --- 4. Compute aggregated data ---
+def compute_all_data(df):
+    total_df = df.groupby('site').agg(
+        count=('site', 'count'),
+        **{f'{col}_mean': (col, lambda x: round(x.mean(skipna=True), 2)) for col in pollutant_cols},
+        **{f'{col}_sd': (col, lambda x: round(x.std(skipna=True), 2)) for col in pollutant_cols},
+        **{f'{metal}_median': (f'{metal}(ng/m3)', lambda x: round(x.median(skipna=True), 2)) for metal in metals}
+    ).reset_index()
+    return total_df
 
-def compute_aggregates_all_metals(df, label):
-    metal_display_map = {
-        'pb(ng/m3)': 'Pb', 'cd(ng/m3)': 'Cd', 'cr(ng/m3)': 'Cr',
-        'mn(ng/m3)': 'Mn', 'al(ug/m3)': 'Al', 'as(ng/m3)': 'As', 'hg(ng/m3)': 'Hg'
-    }
-    pollutant_cols = list(metal_display_map.keys())
+def compute_yearly_data(df):
+    yearly_df = df.groupby(['site', 'year']).agg(
+        count=('site', 'count'),
+        **{f'{col}_mean': (col, lambda x: round(x.mean(skipna=True), 2)) for col in pollutant_cols},
+        **{f'{col}_sd': (col, lambda x: round(x.std(skipna=True), 2)) for col in pollutant_cols},
+        **{f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in pollutant_cols}
+    ).reset_index()
+    return yearly_df
 
-    agg = df.groupby('site')[pollutant_cols].agg(['mean', 'median', 'std'])
-    agg.columns = [f"{metal_display_map[col]}_{stat}" for col, stat in agg.columns]
-    agg = agg.reset_index()
+def compute_monthly_data(df):
+    monthly_df = df.groupby(['site', 'year', 'month']).agg(
+        count=('site', 'count'),
+        **{f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in pollutant_cols}
+    ).reset_index()
+    return monthly_df
 
-    for metal in metal_display_map.values():
-        std_col = f"{metal}_std"
-        if std_col in agg.columns:
-            agg[f"{metal}_error_median"] = agg[std_col]
+def compute_dayofweek_data(df):
+    dayofweek_df = df.groupby(['site', 'year', 'dayofweek']).agg(
+        count=('site', 'count'),
+        **{f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in pollutant_cols}
+    ).reset_index()
+    return dayofweek_df
 
-    agg = agg.round(3)
-    return {f'{label} - Site Stats': agg}
+# --- 5. Min-Max Daily Average ---
+def calculate_min_max(df):
+    daily_avg = (
+        df.groupby(['site', 'day', 'year', 'month'])[metals]
+        .median()
+        .reset_index()
+        .round(3)
+    )
 
-# ---------- Streamlit App ----------
-st.title("🔬 Heavy Metal Air Quality Dashboard")
+    agg_dict = {}
+    for metal in metals:
+        agg_dict[f"{metal}_daily_avg_max"] = (metal, lambda x: round(x.max(), 3))
+        agg_dict[f"{metal}_daily_avg_min"] = (metal, lambda x: round(x.min(), 3))
 
-uploaded_files = st.file_uploader("📁 Upload CSV or Excel Files", accept_multiple_files=True, type=['csv', 'xlsx'])
+    df_min_max = daily_avg.groupby(['year', 'site']).agg(**agg_dict).reset_index()
+    return df_min_max
+
+# --- 6. Kruskal-Wallis test ---
+def calculate_kruskal_wallis(df, group_col='site'):
+    results = []
+    for pollutant in metals:
+        if pollutant in df.columns:
+            grouped_data = [group[pollutant].dropna().values for _, group in df.groupby(group_col)]
+            if len(grouped_data) >= 2 and all(len(g) > 1 for g in grouped_data):
+                stat, p_value = kruskal(*grouped_data)
+                results.append({
+                    'Pollutant': pollutant,
+                    'Grouping': group_col,
+                    'H-statistic': round(stat, 4),
+                    'p-value': round(p_value, 4),
+                    'Significant (p<0.05)': p_value < 0.05
+                })
+    return pd.DataFrame(results)
+
+# --- 7. Correlation function ---
+def calculate_site_correlation(df):
+    correlation_data = {}
+    for metal in metals:
+        pivot = df.pivot_table(index='date', columns='site', values=metal)
+        corr = pivot.corr().round(3)
+        correlation_data[metal] = corr
+    return correlation_data
+
+# --- 8. Metal Filter UI ---
+def metal_filter():
+    return st.selectbox("Select Metal to View", metals)
+
+# --- 9. File upload and Streamlit tabs ---
+uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
 
 if uploaded_files:
+    selected_metal = metal_filter()
+
+    all_outputs = {}
     dfs = {}
-    site_options = set()
-    year_options = set()
 
     for file in uploaded_files:
         label = file.name.split('.')[0]
-        ext = file.name.split('.')[-1]
+        ext = file.name.split('.')[-1].lower()
         df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
+
+        df = parse_dates(df)
+        df = standardize_columns(df)
         df = cleaned(df)
+
         dfs[label] = df
-        site_options.update(df['site'].unique())
-        year_options.update(df['year'].unique())
+        all_outputs[label] = {
+            'All Sites Summary': compute_all_data(df),
+            'Yearly Summary': compute_yearly_data(df),
+            'Monthly Summary': compute_monthly_data(df),
+            'Day-of-Week Summary': compute_dayofweek_data(df),
+            'Min-Max Averages': calculate_min_max(df),
+            'Kruskal-Wallis Test': calculate_kruskal_wallis(df),
+            'Correlation': calculate_site_correlation(df)
+        }
 
-    with st.sidebar:
-        selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
-        selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
+    metals_color = {
+        "pb": "#ffff00", "cd": "green", "cr": "red",
+        "mn": "purple", "al": "orange", "as": "maroon", "hg": "blue"
+    }
 
-    tab1, tab2 = st.tabs(["📈 Trends", "📊 Aggregated Means"])
+    for label, outputs in all_outputs.items():
+        st.header(f"Results for: {label}")
+        tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            "\U0001F4C8 Trends", "\U0001F4CA Box & Bar Plots", "\U0001F4A0 Kruskal & T-Test",
+            "\U0001F517 Correlation", "\U0001F4C9 Theil-Sen Trend", "Temporal Variation"])
 
-    with tab2:
-        st.header("📊 Aggregated Means (Mean, Median, Std)")
+        with tab1:
+            st.subheader("All Sites Summary")
+            st.dataframe(outputs['All Sites Summary'])
+            csv = outputs['All Sites Summary'].to_csv(index=False).encode('utf-8')
+            st.download_button("Download Summary CSV", csv, f"{label}_summary.csv", "text/csv")
 
-        for label, df in dfs.items():
-            st.subheader(f"📁 Dataset: {label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if selected_sites:
-                filtered_df = filtered_df[filtered_df['site'].isin(selected_sites)]
+            df = dfs[label]
+            summary_stats = outputs['All Sites Summary']
+            if selected_metal in df.columns:
+                fig = px.violin(
+                    df,
+                    x='site',
+                    y=selected_metal,
+                    box=True,
+                    points='all',
+                    color='site',
+                    hover_data=df.columns
+                )
+                for i, row in summary_stats.iterrows():
+                    fig.add_trace(go.Scatter(
+                        x=[row['site']],
+                        y=[row[f'{selected_metal}_mean']],
+                        mode='markers+text',
+                        name='Mean ± SD',
+                        marker=dict(color='red', size=10, symbol='x'),
+                        error_y=dict(
+                            type='data',
+                            array=[row[f'{selected_metal}_sd']],
+                            visible=True,
+                            thickness=1.5,
+                            width=3
+                        ),
+                        text=[f"μ={round(row[f'{selected_metal}_mean'], 2)}"],
+                        textposition='top center',
+                        showlegend=False
+                    ))
+                fig.update_layout(
+                    title=f"Distribution of {selected_metal.upper()} (ng/m³) by Site",
+                    yaxis_title=f"{selected_metal.upper()} (ng/m³)",
+                    xaxis_title=None,
+                    font=dict(size=14),
+                    plot_bgcolor='white',
+                    paper_bgcolor='white',
+                    margin=dict(l=40, r=40, t=40, b=40),
+                    showlegend=False
+                )
+                st.plotly_chart(fig, use_container_width=True)
 
-            if filtered_df.empty:
-                st.warning(f"⚠️ No data available for selected filters in {label}.")
-                continue
+        with tab2:
+            df = dfs[label]
+            yearly_df = outputs['Yearly Summary']
+            latest_year = yearly_df['year'].max()
+            summary_data = yearly_df[yearly_df['year'] == latest_year]
 
-            site_in_tab = st.multiselect(
-                f"Select Site(s) for {label}", 
-                sorted(filtered_df['site'].unique()), 
-                default=sorted(filtered_df['site'].unique()), 
-                key=f"site_select_{label}"
-            )
-            filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            valid_pollutants = ['Pb', 'Cd', 'Cr', 'Mn', 'Al', 'As', 'Hg']
-            selected_display_pollutants = st.multiselect(
-                f"Select Pollutants for {label}",
-                options=["All"] + valid_pollutants,
-                default=["All"],
-                key=f"pollutants_{label}"
-            )
-            if "All" in selected_display_pollutants:
-                selected_display_pollutants = valid_pollutants
-
-            aggregates = compute_aggregates_all_metals(filtered_df, label=label)
-            selected_grouping = st.selectbox(
-                f"Select Grouping Table for {label}",
-                options=list(aggregates.keys()),
-                key=f"grouping_{label}"
-            )
-            summary_df = aggregates[selected_grouping]
-
-            display_df = summary_df[[col for col in summary_df.columns if 'error' not in col.lower()]]
-            st.markdown("### 📋 Aggregated Table")
-            gb = GridOptionsBuilder.from_dataframe(display_df)
-            gb.configure_default_column(filter=True, sortable=True, resizable=True)
-            gridOptions = gb.build()
-            AgGrid(display_df, gridOptions=gridOptions, theme='balham', height=400, fit_columns_on_grid_load=True, key=f"grid_{label}")
-
-            st.download_button(
-                label=f"⬇️ Download Full Table ({selected_grouping})",
-                data=summary_df.to_csv(index=False).encode('utf-8'),
-                file_name=f"{label}_{selected_grouping.replace(' ', '_')}.csv",
-                mime='text/csv',
-                key=f"download_{label}"
-            )
-
-            for metal in selected_display_pollutants:
-                mean_col = f"{metal}_mean"
-                median_col = f"{metal}_median"
-                error_col = f"{metal}_error_median"
-
-                if mean_col not in summary_df.columns or error_col not in summary_df.columns:
-                    st.info(f"ℹ️ Skipping {metal} — data missing.")
-                    continue
-
+            mean_col = f"{selected_metal}_median"
+            error_col = f"{selected_metal}_error_median"
+            if mean_col in summary_data.columns and error_col in summary_data.columns:
                 fig = go.Figure()
                 fig.add_trace(go.Bar(
-                    x=summary_df['site'],
-                    y=summary_df[mean_col],
-                    name=metal,
-                    error_y=dict(type='data', array=summary_df[error_col], visible=True),
-                    marker=dict(color=colors.get(metal, "gray"), line=dict(color='black', width=1)),
-                    text=summary_df[median_col].round(2).astype(str),
-                    textposition="outside"
+                    x=summary_data['site'],
+                    y=summary_data[mean_col],
+                    name=selected_metal.upper(),
+                    marker_color=metals_color[selected_metal],
+                    error_y=dict(
+                        type='data',
+                        array=summary_data[error_col],
+                        visible=True,
+                        thickness=1.5,
+                        width=3
+                    ),
+                    text=summary_data[mean_col],
+                    textposition='outside'
                 ))
+                y_label = f"{selected_metal.upper()} (ug/m³)" if selected_metal == 'al' else f"{selected_metal.upper()} (ng/m³)"
                 fig.update_layout(
-                    yaxis_title=f"{metal} (ng/m³)" if metal != "Al" else "Al (µg/m³)",
-                    title=f"{metal} Concentration by Site",
-                    xaxis=dict(tickangle=45),
-                    plot_bgcolor="white",
+                    title=f"{selected_metal.upper()} by Site - {latest_year}",
+                    xaxis_title=None,
+                    yaxis_title=y_label,
+                    yaxis=dict(range=[0, summary_data[mean_col].max() * 1.2]),
+                    plot_bgcolor='white',
                     showlegend=False,
-                    height=450,
-                    margin=dict(l=20, r=20, t=40, b=80)
+                    font=dict(size=14),
+                    margin=dict(l=40, r=40, t=40, b=40)
                 )
-                st.plotly_chart(fig, use_container_width=True, key=f"plot_{metal}_{label}")
+                fig.update_xaxes(tickangle=45, tickfont=dict(size=12))
+                fig.update_yaxes(tickfont=dict(size=14))
+                st.plotly_chart(fig, use_container_width=True)
+
+        with tab3:
+            st.subheader("Kruskal-Wallis Test")
+            st.dataframe(outputs['Kruskal-Wallis Test'])
+
+        with tab4:
+            st.subheader("Correlation Between Sites")
+            correlation_data = outputs['Correlation']
+            if selected_metal in correlation_data:
+                st.write(f"**{selected_metal.upper()} Correlation Matrix**")
+                corr_df = correlation_data[selected_metal]
+                st.dataframe(corr_df)
+                fig = px.imshow(corr_df, text_auto=True, title=f"{selected_metal.upper()} Correlation Between Sites")
+                st.plotly_chart(fig, use_container_width=True)
+
+        with tab5:
+            st.subheader("Min-Max Averages")
+            st.dataframe(outputs['Min-Max Averages'])
+
+        with tab6:
+            st.subheader("Day-of-Week Summary")
+            dow_df = outputs['Day-of-Week Summary']
+            median_col = f"{selected_metal}_median"
+            if median_col in dow_df.columns:
+                fig = px.bar(
+                    dow_df,
+                    x='dayofweek',
+                    y=median_col,
+                    color='site',
+                    barmode='group',
+                    title=f"{selected_metal.upper()} by Day of Week",
+                    labels={median_col: f"{selected_metal.upper()} (ng/m³)"}
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            st.subheader("Monthly Summary")
+            monthly_df = outputs['Monthly Summary']
+            if median_col in monthly_df.columns:
+                fig = px.bar(
+                    monthly_df,
+                    x='month',
+                    y=median_col,
+                    color='site',
+                    barmode='group',
+                    title=f"{selected_metal.upper()} Monthly Summary",
+                    labels={median_col: f"{selected_metal.upper()} (ng/m³)"}
+                )
+                st.plotly_chart(fig, use_container_width=True)
