@@ -360,14 +360,23 @@ def cleaned(df):
     ]
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
+ 
+colors = {
+    "Pb": "#ffff00", "Cd": "green", "Cr": "red",
+    "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
+}   
+
 def compute_aggregates_all_metals(df, label):
     aggregates = {}
 
-    # Define groups of columns
-    pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
-    error_cols = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
+    metal_display_map = {
+        'pb(ng/m3)': 'Pb', 'cd(ng/m3)': 'Cd', 'cr(ng/m3)': 'Cr',
+        'mn(ng/m3)': 'Mn', 'al(ug/m3)': 'Al', 'as(ng/m3)': 'As', 'hg(ng/m3)': 'Hg'
+    }
 
-    # Grouping levels
+    pollutant_cols = list(metal_display_map.keys())
+    error_cols = [col.replace('(ng/m3)', '_error').replace('(ug/m3)', '_error') for col in pollutant_cols]
+
     groupings = {
         'Monthly': 'month',
         'Yearly': 'year',
@@ -376,22 +385,25 @@ def compute_aggregates_all_metals(df, label):
     }
 
     for name, group_col in groupings.items():
-        # Aggregate pollutant columns with mean, median, std
         agg_pollutants = df.groupby([group_col, 'site'])[pollutant_cols].agg(['mean', 'median', 'std'])
+        agg_errors = df.groupby([group_col, 'site'])[error_cols].agg(['median'])
 
-        # Aggregate error columns with median only (assuming these are already standard deviations)
-        agg_errors = df.groupby([group_col, 'site'])[error_cols].median()
+        new_pollutant_cols = {
+            (metal, stat): f"{metal_display_map[metal]}_{stat}" for metal in pollutant_cols for stat in ['mean', 'median', 'std']
+        }
+        agg_pollutants.rename(columns=new_pollutant_cols, inplace=True)
+        agg_pollutants.columns = agg_pollutants.columns.get_level_values(0)
 
-        # Flatten column names
-        agg_pollutants.columns = ['_'.join([col[0], col[1]]) for col in agg_pollutants.columns]
-        # Do NOT modify names of error columns – keep them as-is
-        agg_errors.columns = list(agg_errors.columns)
+        new_error_cols = {
+            (err_col, 'median'): f"{metal_display_map[err_col.split('_')[0] + '(ng/m3)' if 'al' not in err_col else 'al(ug/m3)']}_error_median"
+            for err_col in error_cols
+        }
+        agg_errors.rename(columns=new_error_cols, inplace=True)
+        agg_errors.columns = agg_errors.columns.get_level_values(0)
 
-        # Combine into one DataFrame
         combined = pd.concat([agg_pollutants, agg_errors], axis=1).reset_index()
         combined = combined.round(3)
 
-        # Store result
         aggregates[f'{label} - {name} Stats'] = combined
 
     return aggregates
@@ -496,9 +508,7 @@ if uploaded_files:
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
-            selected_pollutants = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
-            error_cols = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
-            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+            valid_pollutants = ['Pb', 'Cd', 'Cr', 'Mn', 'Al', 'As', 'Hg']
 
             if not valid_pollutants:
                 st.warning(f"No valid pollutants found in {label}")
@@ -513,98 +523,58 @@ if uploaded_files:
             if "All" in selected_display_pollutants:
                 selected_display_pollutants = valid_pollutants
 
-            aggregate_levels = [
-                ('Monthly Avg', ['month', 'site']),
-                ('Yearly Avg', ['year', 'site']),
-                ('Day of Week Avg', ['dayofweek', 'site']),
-                ('Season Avg', ['season', 'site'])
-            ]
+            
+            aggregates = compute_aggregates_all_metals(filtered_df, label=label)
+            selected_grouping = st.selectbox(
+                f"Grouping for {label}",
+                options=list(aggregates.keys()),
+                key=f"grouping_{label}"
+            )
+            summary_df = aggregates[selected_grouping]
 
-            for level_name, group_keys in aggregate_levels:
-                agg_label = f"{label} - {level_name}"
-                agg_dfs = []
+            colors = {
+                "Pb": "#ffff00", "Cd": "green", "Cr": "red",
+                "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
+            }
+            for metal in selected_display_pollutants:
+                mean_col = f"{metal}_mean"
+                median_col = f"{metal}_median"
+                error_col = f"{metal}_error_median"
+                if mean_col not in summary_df.columns or error_col not in summary_df.columns:
+                    continue
+                fig = go.Figure()
+                fig.add_trace(go.Bar(
+                    x=summary_df['site'],
+                    y=summary_df[mean_col],
+                    name=metal,
+                    error_y=dict(
+                        type='data',
+                        array=summary_df[error_col],
+                        visible=True,
+                        thickness=1.5,
+                        width=4
+                    ),
+                    marker=dict(
+                        color=colors.get(metal, "gray"),
+                        line=dict(color='black', width=1)
+                    ),
+                    text=[f"{val:.3f}" for val in summary_df[median_col]],
+                    textposition="outside"
+                ))
+                fig.update_layout(
+                    yaxis_title=f"{metal} (ng/m³)" if metal != "Al" else "Al (µg/m³)",
+                    xaxis=dict(tickangle=45, tickfont=dict(size=12, family="Arial", color="black")),
+                    yaxis=dict(tickfont=dict(size=14, family="Arial", color="black")),
+                    bargap=0.3,
+                    margin=dict(l=40, r=10, t=10, b=100),
+                    showlegend=False,
+                    plot_bgcolor="white",
+                    title=f"{metal} Concentration by Site"
+                )
+                fig.update_traces(marker_line_width=0.5)
+                fig.update_xaxes(showline=True, linewidth=0.5, linecolor='black')
+                fig.update_yaxes(showline=True, linewidth=0.5, linecolor='black')
+                st.plotly_chart(fig, use_container_width=True, key=f"bar_{metal}_{label}")
 
             
-                for pollutant in valid_pollutants:
-                    if not all(key in filtered_df.columns for key in group_keys):
-                        continue   
-                    agg_df = filtered_df.groupby(group_keys)[pollutant].agg(['mean', 'median', 'std']).reset_index()
-                    
-
-                    error_col = pollutant.split('(')[0].strip().lower() + "_error"
-                    if error_col in filtered_df.columns:
-                        error_df = filtered_df.groupby(group_keys)[error_col].median().reset_index().rename(columns={error_col: f"{pollutant}_error"})
-                        agg_df = pd.merge(agg_df, error_df, on=group_keys, how='left')
-                    agg_dfs.append(agg_df)
-                if not agg_dfs:
-                    st.info(f"No aggregation results for {agg_label}.")
-                    continue 
-                    
-                from functools import reduce
-                merged_df = reduce(lambda left, right: pd.merge(left, right, on=group_keys, how='outer'), agg_dfs)
-
-                display_cols = group_keys + [
-                    col for p in selected_display_pollutants
-                    for col in [f"{p}_mean", f"{p}_median", f"{p}_std"]
-                    if col in merged_df.columns
-                ]
-                editable_df = merged_df[display_cols]
-
-                st.data_editor(
-                    editable_df,
-                    use_container_width=True,
-                    column_config={col: {"disabled": True} for col in editable_df.columns},
-                    num_rows="dynamic",
-                    key=f"editor_{label}_{agg_label}"
-                )
-
-                st.download_button(
-                    label=f"📥 Download {agg_label}",
-                    data=to_csv_download(editable_df),
-                    file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
-                    mime="text/csv"
-                )
-
-                st.markdown("---")
-
-                with st.expander(f"📈 Show Charts for {agg_label}", expanded=False):
-                    for pollutant in selected_display_pollutants:
-                        median_col = f"{pollutant}_median"
-                        error_col = f"{pollutant}_error"
-
-        
-                        if median_col in merged_df.columns:
-                            fig_bar = go.Figure()
-                            for site in merged_df['site'].unique():
-                                site_data = merged_df[merged_df['site'] == site]
-                                fig_bar.add_trace(go.Bar(
-                                    name=site,
-                                    x=site_data[group_keys[0]],
-                                    y=site_data[median_col],
-                                    error_y=dict(
-                                        type='data',
-                                        array=site_data[error_col] if error_col in site_data else None,
-                                        visible=True
-                                    )
-                                ))
-                            fig_bar.update_layout(
-                                barmode='group',
-                                xaxis_title=group_keys[0].title(),
-                                yaxis_title=f"{pollutant} (Median ± Error)"
-                            )
-                        
-                            
-                            st.plotly_chart(fig_bar, use_container_width=True, key=f"bar_{label}_{pollutant}_{level_name}")
-                        if pollutant in filtered_df.columns:
-                                    st.plotly_chart(
-                                        px.box(
-                                            filtered_df,
-                                            x=group_keys[0],
-                                            y=pollutant,
-                                            color='site',
-                                            title=f"{pollutant} Distribution by {level_name}"
-                                        ),
-                                        use_container_width=True,
-                                        key=f"box_{label}_{pollutant}_{level_name}"
-                                      )
-                        
+                
