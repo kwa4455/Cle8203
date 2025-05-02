@@ -337,7 +337,8 @@ def cleaned(df):
 
     # Drop empty rows/columns
     df = df.dropna(axis=1, how='all').dropna()
-    df = df[~(df == 0).any(axis=1)]
+    value_cols = [col for col in df.columns if col.endswith('(ng/m3)') or col.endswith('(ug/m3)')]
+    df = df[~(df[value_cols] == 0).any(axis=1)]
 
     # Extract datetime features
     df['year'] = df['date'].dt.year
