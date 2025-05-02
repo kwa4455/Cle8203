@@ -292,12 +292,8 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 def cleaned(df):
-    
-
-    # Normalize column names: lowercase, strip spaces
     df.columns = [col.strip().lower() for col in df.columns]
 
-    # Map common alias variations to standard names
     column_aliases = {
         'date': ['date', 'sampling date', 'datetime'],
         'id': ['id', 'station id', 'site id'],
@@ -318,29 +314,19 @@ def cleaned(df):
         'site': ['site', 'site_location', 'source']
     }
 
-    # Reverse alias mapping: variant -> standard
     alias_lookup = {alias.lower(): std for std, aliases in column_aliases.items() for alias in aliases}
-
-    # Rename columns using alias mapping
     df.rename(columns=lambda x: alias_lookup.get(x.lower(), x), inplace=True)
 
-    # Ensure required columns exist
     if 'date' not in df.columns or 'id' not in df.columns:
         raise ValueError("Missing required columns: 'date' or 'id'")
 
-    # Parse 'date' column safely
     df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['date'])  # Drop rows where 'date' could not be parsed
+    df = df.dropna(subset=['date'])
 
-    # Select only known relevant columns (drop unexpected extras)
     required_columns = list(column_aliases.keys())
     df = df[[col for col in required_columns if col in df.columns]].copy()
-
-    # Drop empty rows/columns
     df = df.dropna(axis=1, how='all').dropna()
-    
 
-    # Extract datetime features
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.to_period('M').astype(str)
     df['day'] = df['date'].dt.date
@@ -348,104 +334,36 @@ def cleaned(df):
     df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
-    # Final column selection
     columns_to_select = [
         'site', 'day', 'year', 'month', 'dayofweek', 'season',
-        'cd(ng/m3)', 'cd_error',
-        'cr(ng/m3)', 'cr_error',
-        'hg(ng/m3)', 'hg_error',
-        'al(ug/m3)', 'al_error',
-        'as(ng/m3)', 'as_error',
-        'mn(ng/m3)', 'mn_error',
+        'cd(ng/m3)', 'cd_error', 'cr(ng/m3)', 'cr_error',
+        'hg(ng/m3)', 'hg_error', 'al(ug/m3)', 'al_error',
+        'as(ng/m3)', 'as_error', 'mn(ng/m3)', 'mn_error',
         'pb(ng/m3)', 'pb_error'
     ]
-    df = df[[col for col in columns_to_select if col in df.columns]]
-    return df
- 
-colors = {
-    "Pb": "#ffff00", "Cd": "green", "Cr": "red",
-    "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
-}   
+    return df[[col for col in columns_to_select if col in df.columns]]
+
+
 def compute_aggregates_all_metals(df, label):
-    import numpy as np
-
     aggregates = {}
-
     metal_display_map = {
         'pb(ng/m3)': 'Pb', 'cd(ng/m3)': 'Cd', 'cr(ng/m3)': 'Cr',
         'mn(ng/m3)': 'Mn', 'al(ug/m3)': 'Al', 'as(ng/m3)': 'As', 'hg(ng/m3)': 'Hg'
     }
 
-    pollutant_cols = list(metal_display_map.keys())
-
-    # Group only by 'site'
+    pollutant_cols = [col for col in metal_display_map if col in df.columns]
     agg = df.groupby('site')[pollutant_cols].agg(['mean', 'median', 'std'])
-
-    # Flatten column MultiIndex
     agg.columns = [f"{metal_display_map[col]}_{stat}" for col, stat in agg.columns]
     agg = agg.reset_index()
 
-    # Add error columns (using std as proxy)
     for metal in metal_display_map.values():
         std_col = f"{metal}_std"
         if std_col in agg.columns:
-            agg[f"{metal}_error_median"] = agg[std_col]  # Customize this if needed
+            agg[f"{metal}_error_median"] = agg[std_col]
 
-    agg = agg.round(3)
-
-    aggregates[f'{label} - Site Stats'] = agg
+    aggregates[f'{label} - Site Stats'] = agg.round(3)
     return aggregates
 
-def calculate_min_max(df):
-    pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 
-                      'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
-    
-    valid_pollutants = [p for p in pollutant_cols if p in df.columns]
-
-    daily_avg = (
-        df.groupby(['site', 'day', 'year', 'month'])[valid_pollutants]
-        .agg(['mean', 'median', 'std'])
-        .reset_index()
-        .round(3)
-    )
-
-    daily_avg.columns = ['_'.join(col).strip('_') if isinstance(col, tuple) else col for col in daily_avg.columns]
-
-    agg_dict = {}
-    for pollutant in valid_pollutants:
-        mean_col = f"{pollutant}_mean"
-        if mean_col in daily_avg.columns:
-            agg_dict[f"{pollutant}_daily_avg_max"] = (mean_col, lambda x: round(x.max(), 3))
-            agg_dict[f"{pollutant}_daily_avg_min"] = (mean_col, lambda x: round(x.min(), 3))
-
-    df_min_max = daily_avg.groupby(['year_', 'site_'], as_index=False).agg(**agg_dict)
-    return df_min_max
-
-def calculate_kruskal_wallis(df, group_col='site'):
-    pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 
-                      'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
-
-    required_cols = ['site', 'season', 'dayofweek'] + pollutant_cols
-    p_filtered = df[required_cols].dropna(subset=pollutant_cols, how='all')
-
-    results = []
-
-    for pollutant in pollutant_cols:
-        if pollutant in df.columns:
-            grouped_data = [group[pollutant].dropna().values for _, group in df.groupby(group_col)]
-            if len(grouped_data) >= 2 and all(len(g) > 1 for g in grouped_data):
-                stat, p_value = kruskal(*grouped_data)
-                results.append({
-                    'Pollutant': pollutant,
-                    'Grouping': group_col,
-                    'H-statistic': round(stat, 4),
-                    'p-value': round(p_value, 4),
-                    'Significant (p<0.05)': p_value < 0.05
-                })
-
-    return pd.DataFrame(results)
-
-# ---------- App UI ----------
 
 st.title("🔬 Heavy Metal Air Quality Dashboard")
 
@@ -461,21 +379,18 @@ if uploaded_files:
         label = file.name.split('.')[0]
         ext = file.name.split('.')[-1]
         df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
-        
         df = cleaned(df)
-        
         dfs[label] = df
-        
         site_options.update(df['site'].unique())
         year_options.update(df['year'].unique())
 
-        
     with st.sidebar:
         selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
+        "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"
+    ])
 
     with tab2:
         st.header("📊 Aggregated Means (Mean, Median, Std)")
@@ -518,7 +433,6 @@ if uploaded_files:
             AgGrid(display_df, gridOptions=gridOptions, theme='balham', height=400, fit_columns_on_grid_load=True,
                    key=f"aggrid_{label}_{selected_grouping}")
 
-            # Download full summary
             st.download_button(
                 label=f"⬇️ Download Full Summary Table ({selected_grouping})",
                 data=summary_df.to_csv(index=False).encode('utf-8'),
@@ -527,7 +441,6 @@ if uploaded_files:
                 key=f"download_full_{label}_{selected_grouping}"
             )
 
-            # Plotting
             colors = {
                 "Pb": "#ffff00", "Cd": "green", "Cr": "red",
                 "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
@@ -557,7 +470,7 @@ if uploaded_files:
                         color=colors.get(metal, "gray"),
                         line=dict(color='black', width=1)
                     ),
-                    text=[f"{val:.3f}" for val in summary_df[median_col]],
+                    text=[f"{val:.3f}" for val in summary_df.get(median_col, [])],
                     textposition="outside"
                 ))
                 fig.update_layout(
