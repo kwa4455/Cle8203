@@ -292,7 +292,7 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
-# ---------- Data Cleaning Function ----------
+# ---------- Data Cleaning ----------
 def cleaned(df):
     df.columns = [col.strip().lower() for col in df.columns]
 
@@ -315,7 +315,6 @@ def cleaned(df):
         'pb_error': ['pb_error', 'pb err'],
         'site': ['site', 'site_location', 'source']
     }
-
     alias_lookup = {alias.lower(): std for std, aliases in column_aliases.items() for alias in aliases}
     df.rename(columns=lambda x: alias_lookup.get(x.lower(), x), inplace=True)
 
@@ -327,7 +326,6 @@ def cleaned(df):
 
     required_columns = list(column_aliases.keys())
     df = df[[col for col in required_columns if col in df.columns]].copy()
-
     df = df.dropna(axis=1, how='all').dropna()
 
     df['year'] = df['date'].dt.year
@@ -340,19 +338,23 @@ def cleaned(df):
     columns_to_select = [
         'site', 'day', 'year', 'month', 'dayofweek', 'season',
         'cd(ng/m3)', 'cd_error', 'cr(ng/m3)', 'cr_error', 'hg(ng/m3)', 'hg_error',
-        'al(ug/m3)', 'al_error', 'as(ng/m3)', 'as_error', 'mn(ng/m3)', 'mn_error',
-        'pb(ng/m3)', 'pb_error'
+        'al(ug/m3)', 'al_error', 'as(ng/m3)', 'as_error', 'mn(ng/m3)', 'mn_error', 'pb(ng/m3)', 'pb_error'
     ]
-    return df[[col for col in columns_to_select if col in df.columns]]
+    df = df[[col for col in columns_to_select if col in df.columns]]
+    return df
 
-# ---------- Aggregation ----------
+colors = {
+    "Pb": "#ffff00", "Cd": "green", "Cr": "red",
+    "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
+}
+
 def compute_aggregates_all_metals(df, label):
     metal_display_map = {
         'pb(ng/m3)': 'Pb', 'cd(ng/m3)': 'Cd', 'cr(ng/m3)': 'Cr',
         'mn(ng/m3)': 'Mn', 'al(ug/m3)': 'Al', 'as(ng/m3)': 'As', 'hg(ng/m3)': 'Hg'
     }
+    pollutant_cols = list(metal_display_map.keys())
 
-    pollutant_cols = [col for col in metal_display_map if col in df.columns]
     agg = df.groupby('site')[pollutant_cols].agg(['mean', 'median', 'std'])
     agg.columns = [f"{metal_display_map[col]}_{stat}" for col, stat in agg.columns]
     agg = agg.reset_index()
@@ -362,9 +364,10 @@ def compute_aggregates_all_metals(df, label):
         if std_col in agg.columns:
             agg[f"{metal}_error_median"] = agg[std_col]
 
-    return {f'{label} - Site Stats': agg.round(3)}
+    agg = agg.round(3)
+    return {f'{label} - Site Stats': agg}
 
-# ---------- App UI ----------
+# ---------- Streamlit App ----------
 st.title("🔬 Heavy Metal Air Quality Dashboard")
 
 uploaded_files = st.file_uploader("📁 Upload CSV or Excel Files", accept_multiple_files=True, type=['csv', 'xlsx'])
@@ -377,37 +380,44 @@ if uploaded_files:
     for file in uploaded_files:
         label = file.name.split('.')[0]
         ext = file.name.split('.')[-1]
-        try:
-            df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
-            df = cleaned(df)
-            dfs[label] = df
-            site_options.update(df['site'].unique())
-            year_options.update(df['year'].unique())
-        except Exception as e:
-            st.error(f"Error processing {file.name}: {e}")
+        df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
+        df = cleaned(df)
+        dfs[label] = df
+        site_options.update(df['site'].unique())
+        year_options.update(df['year'].unique())
 
     with st.sidebar:
         selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
+    tab1, tab2 = st.tabs(["📈 Trends", "📊 Aggregated Means"])
 
     with tab2:
         st.header("📊 Aggregated Means (Mean, Median, Std)")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_agg_{label}")
-            filtered_df = df.copy()
 
+        for label, df in dfs.items():
+            st.subheader(f"📁 Dataset: {label}")
+            filtered_df = df.copy()
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            if selected_sites:
+                filtered_df = filtered_df[filtered_df['site'].isin(selected_sites)]
+
+            if filtered_df.empty:
+                st.warning(f"⚠️ No data available for selected filters in {label}.")
+                continue
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}", 
+                sorted(filtered_df['site'].unique()), 
+                default=sorted(filtered_df['site'].unique()), 
+                key=f"site_select_{label}"
+            )
+            filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
             valid_pollutants = ['Pb', 'Cd', 'Cr', 'Mn', 'Al', 'As', 'Hg']
             selected_display_pollutants = st.multiselect(
-                f"Select Pollutants to Display for {label}",
+                f"Select Pollutants for {label}",
                 options=["All"] + valid_pollutants,
                 default=["All"],
                 key=f"pollutants_{label}"
@@ -417,34 +427,26 @@ if uploaded_files:
 
             aggregates = compute_aggregates_all_metals(filtered_df, label=label)
             selected_grouping = st.selectbox(
-                f"Grouping for {label}",
+                f"Select Grouping Table for {label}",
                 options=list(aggregates.keys()),
                 key=f"grouping_{label}"
             )
             summary_df = aggregates[selected_grouping]
 
-            st.markdown("### 📋 Aggregated Table (Mean, Median, Std Only)")
             display_df = summary_df[[col for col in summary_df.columns if 'error' not in col.lower()]]
-
+            st.markdown("### 📋 Aggregated Table")
             gb = GridOptionsBuilder.from_dataframe(display_df)
             gb.configure_default_column(filter=True, sortable=True, resizable=True)
             gridOptions = gb.build()
-
-            AgGrid(display_df, gridOptions=gridOptions, theme='balham', height=400, fit_columns_on_grid_load=True,
-                   key=f"aggrid_{label}_{selected_grouping}")
+            AgGrid(display_df, gridOptions=gridOptions, theme='balham', height=400, fit_columns_on_grid_load=True, key=f"grid_{label}")
 
             st.download_button(
-                label=f"⬇️ Download Full Summary Table ({selected_grouping})",
+                label=f"⬇️ Download Full Table ({selected_grouping})",
                 data=summary_df.to_csv(index=False).encode('utf-8'),
-                file_name=f"{label}_{selected_grouping.replace(' ', '_')}_all_metals.csv",
+                file_name=f"{label}_{selected_grouping.replace(' ', '_')}.csv",
                 mime='text/csv',
-                key=f"download_full_{label}_{selected_grouping}"
+                key=f"download_{label}"
             )
-
-            colors = {
-                "Pb": "#ffff00", "Cd": "green", "Cr": "red",
-                "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
-            }
 
             for metal in selected_display_pollutants:
                 mean_col = f"{metal}_mean"
@@ -452,6 +454,7 @@ if uploaded_files:
                 error_col = f"{metal}_error_median"
 
                 if mean_col not in summary_df.columns or error_col not in summary_df.columns:
+                    st.info(f"ℹ️ Skipping {metal} — data missing.")
                     continue
 
                 fig = go.Figure()
@@ -459,30 +462,18 @@ if uploaded_files:
                     x=summary_df['site'],
                     y=summary_df[mean_col],
                     name=metal,
-                    error_y=dict(
-                        type='data',
-                        array=summary_df[error_col],
-                        visible=True,
-                        thickness=1.5,
-                        width=4
-                    ),
-                    marker=dict(
-                        color=colors.get(metal, "gray"),
-                        line=dict(color='black', width=1)
-                    ),
-                    text=[f"{val:.3f}" for val in summary_df[median_col]],
+                    error_y=dict(type='data', array=summary_df[error_col], visible=True),
+                    marker=dict(color=colors.get(metal, "gray"), line=dict(color='black', width=1)),
+                    text=summary_df[median_col].round(2).astype(str),
                     textposition="outside"
                 ))
                 fig.update_layout(
                     yaxis_title=f"{metal} (ng/m³)" if metal != "Al" else "Al (µg/m³)",
-                    xaxis=dict(tickangle=45, tickfont=dict(size=12)),
-                    yaxis=dict(tickfont=dict(size=14)),
-                    bargap=0.3,
-                    margin=dict(l=40, r=10, t=10, b=100),
-                    showlegend=False,
+                    title=f"{metal} Concentration by Site",
+                    xaxis=dict(tickangle=45),
                     plot_bgcolor="white",
-                    title=f"{metal} Concentration by Site"
+                    showlegend=False,
+                    height=450,
+                    margin=dict(l=20, r=20, t=40, b=80)
                 )
-                fig.update_xaxes(showline=True, linewidth=0.5, linecolor='black')
-                fig.update_yaxes(showline=True, linewidth=0.5, linecolor='black')
-                st.plotly_chart(fig, use_container_width=True, key=f"bar_{metal}_{label}")
+                st.plotly_chart(fig, use_container_width=True, key=f"plot_{metal}_{label}")
