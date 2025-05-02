@@ -473,7 +473,7 @@ def to_csv_download(df):
 uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
 
 if uploaded_files:
-    dfs = {}
+    
     site_options = set()
     year_options = set()
 
@@ -482,7 +482,6 @@ if uploaded_files:
         ext = file.name.split('.')[-1]
         df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
         df = cleaned(df)  # Assuming `cleaned` is a defined cleaning function
-        dfs[label] = df
         site_options.update(df['site'].unique())
         year_options.update(df['year'].unique())
 
