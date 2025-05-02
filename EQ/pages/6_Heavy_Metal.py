@@ -415,6 +415,19 @@ def compute_monthly_data(df):
         st.error(f"Missing expected column(s) for monthly summary: {e}")
         return pd.DataFrame()
     return monthly_df
+
+def compute_dayofweek_data(df):
+    agg_dict = {}
+    for col in df.columns:
+        if col in pollutant_cols:
+            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
+
+    try:
+        dow_df = df.groupby(['site', 'dayofweek']).agg(**agg_dict).reset_index()
+    except KeyError as e:
+        st.error(f"Missing expected column(s) for day-of-week summary: {e}")
+        return pd.DataFrame()
+    return dow_df
 # --- 8. Metal Filter UI ---
 def metal_filter():
     return st.selectbox("Select Metal to View", metals)
