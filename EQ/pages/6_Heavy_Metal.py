@@ -580,7 +580,7 @@ if uploaded_files:
                                         array=site_data[error_col] if error_col in site_data else None,
                                         visible=True
                                     )
-                                )),
+                                ))
                             fig_bar.update_layout(
                                 barmode='group',
                                 xaxis_title=group_keys[0].title(),
