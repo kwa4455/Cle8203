@@ -337,6 +337,7 @@ def cleaned(df):
 
     # Drop empty rows/columns
     df = df.dropna(axis=1, how='all').dropna()
+    df = df[~(df == 0).any(axis=1)]
 
     # Extract datetime features
     df['year'] = df['date'].dt.year
