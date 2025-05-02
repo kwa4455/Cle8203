@@ -442,7 +442,18 @@ def calculate_min_max(df):
         st.error(f"Missing expected column(s) for min-max calculation: {e}")
         return pd.DataFrame()
     return minmax_df
-
+def calculate_kruskal_wallis(df):
+    results = {}
+    try:
+        for metal in metals:
+            if metal in df.columns:
+                groups = [group[metal].dropna().values for name, group in df.groupby('site') if metal in group]
+                if len(groups) > 1:
+                    stat, p = kruskal(*groups)
+                    results[metal] = {'statistic': round(stat, 4), 'p_value': round(p, 4)}
+    except Exception as e:
+        st.error(f"Error during Kruskal-Wallis test: {e}")
+    return results
 # --- 8. Metal Filter UI ---
 def metal_filter():
     return st.selectbox("Select Metal to View", metals)
