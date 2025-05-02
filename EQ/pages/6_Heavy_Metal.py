@@ -288,7 +288,6 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
-
 # Helper: Column mappings
 column_mappings = {
     'date': ['date', 'sampling date', 'datetime'],
@@ -358,7 +357,7 @@ def cleaned(df):
 # --- 4. Compute aggregated data ---
 def compute_all_data(df):
     agg_dict = {
-        'count': ('site', 'count'),
+        'count': ('site', 'count')
     }
 
     for col in df.columns:
@@ -367,75 +366,42 @@ def compute_all_data(df):
             agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
             agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
 
-    total_df = df.groupby('site').agg(**agg_dict).reset_index()
+    try:
+        total_df = df.groupby('site').agg(**agg_dict).reset_index()
+    except KeyError as e:
+        st.error(f"Missing expected column(s) for aggregation: {e}")
+        return pd.DataFrame()
     return total_df
 
-
+# --- 5. Compute yearly data ---
 def compute_yearly_data(df):
-    yearly_df = df.groupby(['site', 'year']).agg(
-        count=('site', 'count'),
-        **{f'{col}_mean': (col, lambda x: round(x.mean(skipna=True), 2)) for col in pollutant_cols},
-        **{f'{col}_sd': (col, lambda x: round(x.std(skipna=True), 2)) for col in pollutant_cols},
-        **{f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in pollutant_cols}
-    ).reset_index()
+    agg_dict = {}
+    for col in df.columns:
+        if col in pollutant_cols:
+            agg_dict[f'{col}_mean'] = (col, lambda x: round(x.mean(skipna=True), 2))
+            agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
+            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
+            agg_dict[f'{col}_error_median'] = (col, lambda x: round(x.sem(skipna=True), 2))
+
+    try:
+        yearly_df = df.groupby(['site', 'year']).agg(**agg_dict).reset_index()
+    except KeyError as e:
+        st.error(f"Missing expected column(s) for yearly summary: {e}")
+        return pd.DataFrame()
     return yearly_df
 
-def compute_monthly_data(df):
-    monthly_df = df.groupby(['site', 'year', 'month']).agg(
-        count=('site', 'count'),
-        **{f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in pollutant_cols}
-    ).reset_index()
-    return monthly_df
-
-def compute_dayofweek_data(df):
-    dayofweek_df = df.groupby(['site', 'year', 'dayofweek']).agg(
-        count=('site', 'count'),
-        **{f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in pollutant_cols}
-    ).reset_index()
-    return dayofweek_df
-
-# --- 5. Min-Max Daily Average ---
-def calculate_min_max(df):
-    daily_avg = (
-        df.groupby(['site', 'day', 'year', 'month'])[metals]
-        .median()
-        .reset_index()
-        .round(3)
-    )
-
-    agg_dict = {}
-    for metal in metals:
-        agg_dict[f"{metal}_daily_avg_max"] = (metal, lambda x: round(x.max(), 3))
-        agg_dict[f"{metal}_daily_avg_min"] = (metal, lambda x: round(x.min(), 3))
-
-    df_min_max = daily_avg.groupby(['year', 'site']).agg(**agg_dict).reset_index()
-    return df_min_max
-
-# --- 6. Kruskal-Wallis test ---
-def calculate_kruskal_wallis(df, group_col='site'):
-    results = []
-    for pollutant in metals:
-        if pollutant in df.columns:
-            grouped_data = [group[pollutant].dropna().values for _, group in df.groupby(group_col)]
-            if len(grouped_data) >= 2 and all(len(g) > 1 for g in grouped_data):
-                stat, p_value = kruskal(*grouped_data)
-                results.append({
-                    'Pollutant': pollutant,
-                    'Grouping': group_col,
-                    'H-statistic': round(stat, 4),
-                    'p-value': round(p_value, 4),
-                    'Significant (p<0.05)': p_value < 0.05
-                })
-    return pd.DataFrame(results)
-
-# --- 7. Correlation function ---
+# --- 6. Compute correlation ---
 def calculate_site_correlation(df):
-    correlation_data = {}
-    for metal in metals:
-        pivot = df.pivot_table(index='date', columns='site', values=metal)
-        corr = pivot.corr().round(3)
-        correlation_data[metal] = corr
-    return correlation_data
+    correlation_results = {}
+    try:
+        for metal in metals:
+            if metal in df.columns:
+                pivot = df.pivot_table(index='date', columns='site', values=metal)
+                correlation = pivot.corr()
+                correlation_results[metal] = correlation
+    except KeyError as e:
+        st.error(f"Missing required column for correlation: {e}")
+    return correlation_results
 
 # --- 8. Metal Filter UI ---
 def metal_filter():
