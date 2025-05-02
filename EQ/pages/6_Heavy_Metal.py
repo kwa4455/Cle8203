@@ -367,9 +367,6 @@ def compute_aggregates_all_metals(df, label):
     pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
     error_cols = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
 
-    # Combine for convenience
-    all_cols = pollutant_cols + error_cols
-
     # Grouping levels
     groupings = {
         'Monthly': 'month',
@@ -378,19 +375,27 @@ def compute_aggregates_all_metals(df, label):
         'Season': 'season'
     }
 
-    # Loop through each time grouping
     for name, group_col in groupings.items():
-        # Perform aggregation: mean, median, std
-        grouped = df.groupby([group_col, 'site'])[all_cols].agg(['mean', 'median', 'std']).round(3)
+        # Aggregate pollutant columns with mean, median, std
+        agg_pollutants = df.groupby([group_col, 'site'])[pollutant_cols].agg(['mean', 'median', 'std'])
 
-        # Flatten the MultiIndex columns
-        grouped.columns = ['_'.join([col[0], col[1]]) for col in grouped.columns]
-        grouped = grouped.reset_index()
+        # Aggregate error columns with mean only (assuming these are already standard deviations)
+        agg_errors = df.groupby([group_col, 'site'])[error_cols].mean()
 
-        # Save in dictionary
-        aggregates[f'{label} - {name} Stats'] = grouped
+        # Flatten column names
+        agg_pollutants.columns = ['_'.join([col[0], col[1]]) for col in agg_pollutants.columns]
+        # Do NOT modify names of error columns – keep them as-is
+        agg_errors.columns = list(agg_errors.columns)
+
+        # Combine into one DataFrame
+        combined = pd.concat([agg_pollutants, agg_errors], axis=1).reset_index()
+        combined = combined.round(3)
+
+        # Store result
+        aggregates[f'{label} - {name} Stats'] = combined
 
     return aggregates
+
 def calculate_min_max(df):
     pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 
                       'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
@@ -492,6 +497,7 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
             selected_pollutants = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
+            error_cols = ['cd_error', 'cr_error', 'hg_error', 'al_error', 'as_error', 'mn_error', 'pb_error']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
             if not valid_pollutants:
@@ -522,6 +528,10 @@ if uploaded_files:
                 for pollutant in valid_pollutants:
                     agg_df = filtered_df.groupby(group_keys)[pollutant].agg(['mean', 'median', 'std']).reset_index()
                     agg_df.columns = group_keys + [f"{pollutant}_mean", f"{pollutant}_median", f"{pollutant}_std"]
+                    error_col = pollutant.replace("(ng/m3)", "_error").replace("(ug/m3)", "_error")
+                    if error_col in filtered_df.columns:
+                        error_df = filtered_df.groupby(group_keys)[error_col].median().reset_index().rename(columns={error_col: f"{pollutant}_error"})
+                        agg_df = pd.merge(agg_df, error_df, on=group_keys, how='left')
                     agg_dfs.append(agg_df)
 
                 from functools import reduce
@@ -553,65 +563,38 @@ if uploaded_files:
 
                 with st.expander(f"📈 Show Charts for {agg_label}", expanded=False):
                     for pollutant in selected_display_pollutants:
-                        mean_col = f"{pollutant}_mean"
                         median_col = f"{pollutant}_median"
+                        error_col = f"{pollutant}_error"
 
         
-                        if mean_col in merged_df.columns:
-                            fig_bar = px.bar(
-                                merged_df,
-                                x=group_keys[0],
-                                y=mean_col,
-                                color='site',
-                                barmode="group",
-                                title=f"{pollutant} Mean with Median Overlay by {level_name}"
-                            )
-
                         if median_col in merged_df.columns:
+                            fig_bar = go.Figure()
                             for site in merged_df['site'].unique():
                                 site_data = merged_df[merged_df['site'] == site]
-                                fig_bar.add_scatter(
+                                fig_bar.add_trace(go.Bar(
+                                    name=site,
                                     x=site_data[group_keys[0]],
                                     y=site_data[median_col],
-                                    mode='lines+markers',
-                                    name=f"{site} Median",
-                                    line=dict(dash='dash')
-                                )
-
-                        st.plotly_chart(fig_bar, use_container_width=True)
-
-                  
+                                    error_y=dict(
+                                        type='data',
+                                        array=site_data[error_col] if error_col in site_data else None,
+                                        visible=True
+                                    ),
+                            fig_bar.update_layout(
+                                barmode='group',
+                                xaxis_title=group_keys[0].title(),
+                                yaxis_title=f"{pollutant} (Median ± Error)"
+                            )
+                            
+                            st.plotly_chart(fig_bar, use_container_width=True)
                         if pollutant in filtered_df.columns:
-                            st.plotly_chart(
-                                px.box(
-                                    filtered_df,
-                                    x=group_keys[0],
-                                    y=pollutant,
-                                    color='site',
-                                    title=f"{pollutant} Distribution by {level_name}"
-                                ),
-                                use_container_width=True
-                            )
-
-                        # Line plot: Mean and Median
-                        if mean_col in merged_df.columns:
-                            fig_line = px.line(
-                                merged_df,
-                                x=group_keys[0],
-                                y=mean_col,
-                                color='site',
-                                title=f"{pollutant} Mean and Median Trends by {level_name}"
-                            )
-
-                            if median_col in merged_df.columns:
-                                for site in merged_df['site'].unique():
-                                    site_data = merged_df[merged_df['site'] == site]
-                                    fig_line.add_scatter(
-                                        x=site_data[group_keys[0]],
-                                        y=site_data[median_col],
-                                        mode='lines+markers',
-                                        name=f"{site} Median",
-                                        line=dict(dash='dot')
-                                    )
-
-                            st.plotly_chart(fig_line, use_container_width=True)
+                                    st.plotly_chart(
+                                        px.box(
+                                            filtered_df,
+                                            x=group_keys[0],
+                                            y=pollutant,
+                                            color='site',
+                                            title=f"{pollutant} Distribution by {level_name}"
+                                        ),
+                                        use_container_width=True
+                                      )
