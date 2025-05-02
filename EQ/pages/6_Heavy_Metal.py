@@ -366,7 +366,6 @@ colors = {
     "Pb": "#ffff00", "Cd": "green", "Cr": "red",
     "Mn": "purple", "Al": "orange", "As": "maroon", "Hg": "blue"
 }   
-
 def compute_aggregates_all_metals(df, label):
     aggregates = {}
 
@@ -393,13 +392,14 @@ def compute_aggregates_all_metals(df, label):
             (metal, stat): f"{metal_display_map[metal]}_{stat}"
             for metal in pollutant_cols for stat in ['mean', 'median', 'std']
         }
-        agg_pollutants.columns = agg_pollutants.rename(columns=new_pollutant_cols).columns.get_level_values(0)
+        agg_pollutants.columns = [new_pollutant_cols[col] for col in agg_pollutants.columns]
 
-        new_error_cols = {
-            (err_col, 'median'): f"{metal_display_map[err_col.split('_')[0] + '(ng/m3)' if 'al' not in err_col else 'al(ug/m3)']}_error_median"
-            for err_col in error_cols
-        }
-        agg_errors.columns = agg_errors.rename(columns=new_error_cols).columns.get_level_values(0)
+        new_error_cols = {}
+        for err_col in error_cols:
+            metal_key = err_col.split('_')[0]
+            metal = f"{metal_key}(ng/m3)" if metal_key != "al" else "al(ug/m3)"
+            new_error_cols[(err_col, 'median')] = f"{metal_display_map[metal]}_error_median"
+        agg_errors.columns = [new_error_cols[col] for col in agg_errors.columns]
 
         combined = pd.concat([agg_pollutants, agg_errors], axis=1).reset_index()
         combined = combined.round(3)
@@ -413,7 +413,6 @@ def calculate_min_max(df):
     
     valid_pollutants = [p for p in pollutant_cols if p in df.columns]
 
-    # Compute daily statistics
     daily_avg = (
         df.groupby(['site', 'day', 'year', 'month'])[valid_pollutants]
         .agg(['mean', 'median', 'std'])
@@ -421,10 +420,8 @@ def calculate_min_max(df):
         .round(3)
     )
 
-    # Flatten MultiIndex columns
     daily_avg.columns = ['_'.join(col).strip('_') if isinstance(col, tuple) else col for col in daily_avg.columns]
 
-    # Prepare min/max aggregation dictionary
     agg_dict = {}
     for pollutant in valid_pollutants:
         mean_col = f"{pollutant}_mean"
@@ -432,26 +429,21 @@ def calculate_min_max(df):
             agg_dict[f"{pollutant}_daily_avg_max"] = (mean_col, lambda x: round(x.max(), 3))
             agg_dict[f"{pollutant}_daily_avg_min"] = (mean_col, lambda x: round(x.min(), 3))
 
-    # Aggregate by year and site
-    df_min_max = daily_avg.groupby(['year', 'site'], as_index=False).agg(**agg_dict)
-
+    df_min_max = daily_avg.groupby(['year_', 'site_'], as_index=False).agg(**agg_dict)
     return df_min_max
 
 def calculate_kruskal_wallis(df, group_col='site'):
     pollutant_cols = ['cd(ng/m3)', 'cr(ng/m3)', 'hg(ng/m3)', 
                       'al(ug/m3)', 'as(ng/m3)', 'mn(ng/m3)', 'pb(ng/m3)']
 
-    required_cols = ['site', 'season', 'weekday_type'] + pollutant_cols
+    required_cols = ['site', 'season', 'dayofweek'] + pollutant_cols
     p_filtered = df[required_cols].dropna(subset=pollutant_cols, how='all')
-    
-    
+
     results = []
 
     for pollutant in pollutant_cols:
         if pollutant in df.columns:
             grouped_data = [group[pollutant].dropna().values for _, group in df.groupby(group_col)]
-            
-            # Kruskal-Wallis requires at least 2 groups with more than one observation
             if len(grouped_data) >= 2 and all(len(g) > 1 for g in grouped_data):
                 stat, p_value = kruskal(*grouped_data)
                 results.append({
@@ -462,11 +454,13 @@ def calculate_kruskal_wallis(df, group_col='site'):
                     'Significant (p<0.05)': p_value < 0.05
                 })
 
-    return p_filtered(results)
-import io
+    return pd.DataFrame(results)
 
-def to_csv_download(df):
-    return df.to_csv(index=False).encode('utf-8')
+# ---------- App UI ----------
+
+st.title("🔬 Heavy Metal Air Quality Dashboard")
+
+uploaded_files = st.file_uploader("📁 Upload CSV or Excel Files", accept_multiple_files=True, type=['csv', 'xlsx'])
 
 if uploaded_files:
     dfs = {}
@@ -505,10 +499,6 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
             valid_pollutants = ['Pb', 'Cd', 'Cr', 'Mn', 'Al', 'As', 'Hg']
-            if not valid_pollutants:
-                st.warning(f"No valid pollutants found in {label}")
-                continue
-
             selected_display_pollutants = st.multiselect(
                 f"Select Pollutants to Display for {label}",
                 options=["All"] + valid_pollutants,
@@ -526,7 +516,6 @@ if uploaded_files:
             )
             summary_df = aggregates[selected_grouping]
 
-            # Display summary table (no error columns)
             st.markdown("### 📋 Aggregated Table (Mean, Median, Std Only)")
             display_df = summary_df[[col for col in summary_df.columns if 'error' not in col.lower()]]
 
@@ -538,11 +527,10 @@ if uploaded_files:
             AgGrid(display_df, gridOptions=gridOptions, theme='balham', height=400, fit_columns_on_grid_load=True,
                    key=f"aggrid_{label}_{selected_grouping}")
 
-            # Download button (full table including error columns)
-            all_agg_csv = summary_df.to_csv(index=False).encode('utf-8')
+            # Download full summary
             st.download_button(
                 label=f"⬇️ Download Full Summary Table ({selected_grouping})",
-                data=all_agg_csv,
+                data=summary_df.to_csv(index=False).encode('utf-8'),
                 file_name=f"{label}_{selected_grouping.replace(' ', '_')}_all_metals.csv",
                 mime='text/csv',
                 key=f"download_full_{label}_{selected_grouping}"
