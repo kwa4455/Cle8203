@@ -296,19 +296,13 @@ pollutant_cols = metals + errors
 required_columns = ['date', 'site'] + pollutant_cols
 
 def standardize_columns(df):
-    # Strip whitespace and convert to lowercase
     df.columns = [col.strip().lower() for col in df.columns]
-    
-    # Check for missing required columns
     missing = [col for col in required_columns if col not in df.columns]
     if missing:
         raise ValueError(f"Missing required columns: {', '.join(missing)}")
-    
-    # Optionally keep only required columns
     df = df[required_columns]
-    
     return df
-# --- Helper Functions ---
+
 def parse_dates(df):
     for col in df.columns:
         if 'date' in col.lower():
@@ -329,7 +323,6 @@ def cleaned(df):
     df['dayofweek'] = df['date'].dt.day_name()
     df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
-    
     columns_to_select = ['site', 'day', 'year', 'month', 'dayofweek', 'season', 'date'] + pollutant_cols
     df = df[[col for col in columns_to_select if col in df.columns]]
     return df
@@ -403,12 +396,12 @@ def calculate_kruskal_wallis(df):
         st.error(f"Error during Kruskal-Wallis test: {e}")
     return results
 
-
 def metal_filter():
-    return st.sidebar.selectbox("Select a metal", ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb'])
+    return st.sidebar.selectbox("Select a metal", metals)
 
 def get_unit(metal):
     return "(µg/m³)" if metal == 'al' else "(ng/m³)"
+
 
 uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
 
