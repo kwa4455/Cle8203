@@ -329,6 +329,9 @@ def cleaned(df):
     df['dayofweek'] = df['date'].dt.day_name()
     df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
+    
+    columns_to_select = ['site', 'day', 'year', 'month', 'dayofweek', 'season', 'date'] + pollutant_cols
+    df = df[[col for col in columns_to_select if col in df.columns]]
     return df
 
 def compute_all_data(df):
