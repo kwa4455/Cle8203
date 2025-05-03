@@ -445,8 +445,7 @@ if uploaded_files:
             'Monthly Summary': compute_monthly_data(df),
             'Day-of-Week Summary': compute_dayofweek_data(df),
             'Min-Max Averages': calculate_min_max(df),
-            'Kruskal-Wallis Test': calculate_kruskal_wallis(df),
-            'Correlation': calculate_site_correlation(df)
+            'Kruskal-Wallis Test': calculate_kruskal_wallis(df)
         }
 
     metals_color = {
