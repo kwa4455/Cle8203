@@ -288,7 +288,14 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
-# Helper: Column mappings
+# --- Required Imports ---
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+from scipy.stats import kruskal
+
+# --- Column Mapping and Setup ---
 column_mappings = {
     'date': ['date', 'sampling date', 'datetime'],
     'id': ['id', 'station id', 'site id'],
@@ -312,10 +319,9 @@ column_mappings = {
 metals = ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb']
 errors = [f'{metal}_error' for metal in metals]
 pollutant_cols = metals + errors
-
 required_columns = ['date', 'site'] + pollutant_cols
 
-# --- 1. Parse dates ---
+# --- Helper Functions ---
 def parse_dates(df):
     for col in df.columns:
         if 'date' in col.lower():
@@ -327,7 +333,6 @@ def parse_dates(df):
                 continue
     return df
 
-# --- 2. Standardize column names ---
 def standardize_columns(df):
     rename_dict = {}
     for standard_col, aliases in column_mappings.items():
@@ -338,42 +343,30 @@ def standardize_columns(df):
     df.columns = [col.strip().lower() for col in df.columns]
     return df
 
-# --- 3. Cleaned data ---
 def cleaned(df):
     df = df[[col for col in required_columns if col in df.columns]].copy()
     df = df.dropna(axis=1, how='all').dropna()
-
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.to_period('M').astype(str)
     df['day'] = df['date'].dt.date
     df['dayofweek'] = df['date'].dt.day_name()
     df['weekday_type'] = df['date'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
-
-    columns_to_select = ['site', 'day', 'year', 'month', 'dayofweek', 'season'] + pollutant_cols
-    df = df[[col for col in columns_to_select if col in df.columns]]
     return df
 
-# --- 4. Compute aggregated data ---
 def compute_all_data(df):
-    agg_dict = {
-        'count': ('site', 'count')
-    }
-
+    agg_dict = {'count': ('site', 'count')}
     for col in df.columns:
         if col in pollutant_cols:
             agg_dict[f'{col}_mean'] = (col, lambda x: round(x.mean(skipna=True), 2))
             agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
             agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
-
     try:
-        total_df = df.groupby('site').agg(**agg_dict).reset_index()
+        return df.groupby('site').agg(**agg_dict).reset_index()
     except KeyError as e:
-        st.error(f"Missing expected column(s) for aggregation: {e}")
+        st.error(f"Missing column(s) for aggregation: {e}")
         return pd.DataFrame()
-    return total_df
 
-# --- 5. Compute yearly data ---
 def compute_yearly_data(df):
     agg_dict = {}
     for col in df.columns:
@@ -382,54 +375,28 @@ def compute_yearly_data(df):
             agg_dict[f'{col}_sd'] = (col, lambda x: round(x.std(skipna=True), 2))
             agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
             agg_dict[f'{col}_error_median'] = (col, lambda x: round(x.sem(skipna=True), 2))
-
     try:
-        yearly_df = df.groupby(['site', 'year']).agg(**agg_dict).reset_index()
+        return df.groupby(['site', 'year']).agg(**agg_dict).reset_index()
     except KeyError as e:
-        st.error(f"Missing expected column(s) for yearly summary: {e}")
+        st.error(f"Missing column(s) for yearly summary: {e}")
         return pd.DataFrame()
-    return yearly_df
 
-# --- 6. Compute correlation ---
-def calculate_site_correlation(df):
-    correlation_results = {}
-    try:
-        # Group by site and calculate the mean of each metal
-        site_avg = df.groupby('site')[metals].mean()
-        
-        # Compute correlation between sites based on metal averages
-        correlation = site_avg.transpose().corr()
-        
-        correlation_results['site_correlation'] = correlation
-    except KeyError as e:
-        st.error(f"Missing required column for correlation: {e}")
-    return correlation_results
-    
 def compute_monthly_data(df):
-    agg_dict = {}
-    for col in df.columns:
-        if col in pollutant_cols:
-            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
-
+    agg_dict = {f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in df.columns if col in pollutant_cols}
     try:
-        monthly_df = df.groupby(['site', 'month']).agg(**agg_dict).reset_index()
+        return df.groupby(['site', 'month']).agg(**agg_dict).reset_index()
     except KeyError as e:
-        st.error(f"Missing expected column(s) for monthly summary: {e}")
+        st.error(f"Missing column(s) for monthly summary: {e}")
         return pd.DataFrame()
-    return monthly_df
 
 def compute_dayofweek_data(df):
-    agg_dict = {}
-    for col in df.columns:
-        if col in pollutant_cols:
-            agg_dict[f'{col}_median'] = (col, lambda x: round(x.median(skipna=True), 2))
-
+    agg_dict = {f'{col}_median': (col, lambda x: round(x.median(skipna=True), 2)) for col in df.columns if col in pollutant_cols}
     try:
-        dow_df = df.groupby(['site', 'dayofweek']).agg(**agg_dict).reset_index()
+        return df.groupby(['site', 'dayofweek']).agg(**agg_dict).reset_index()
     except KeyError as e:
-        st.error(f"Missing expected column(s) for day-of-week summary: {e}")
+        st.error(f"Missing column(s) for day-of-week summary: {e}")
         return pd.DataFrame()
-    return dow_df
+
 def calculate_min_max(df):
     agg_dict = {}
     for col in df.columns:
@@ -437,30 +404,40 @@ def calculate_min_max(df):
             agg_dict[f'{col}_min'] = (col, lambda x: round(x.min(skipna=True), 2))
             agg_dict[f'{col}_max'] = (col, lambda x: round(x.max(skipna=True), 2))
             agg_dict[f'{col}_range'] = (col, lambda x: round(x.max(skipna=True) - x.min(skipna=True), 2))
-
     try:
-        minmax_df = df.groupby('site').agg(**agg_dict).reset_index()
+        return df.groupby('site').agg(**agg_dict).reset_index()
     except KeyError as e:
-        st.error(f"Missing expected column(s) for min-max calculation: {e}")
+        st.error(f"Missing column(s) for min-max calculation: {e}")
         return pd.DataFrame()
-    return minmax_df
+
 def calculate_kruskal_wallis(df):
     results = {}
     try:
         for metal in metals:
             if metal in df.columns:
-                groups = [group[metal].dropna().values for name, group in df.groupby('site') if metal in group]
+                groups = [group[metal].dropna().values for _, group in df.groupby('site') if metal in group and not group[metal].dropna().empty]
                 if len(groups) > 1:
                     stat, p = kruskal(*groups)
                     results[metal] = {'statistic': round(stat, 4), 'p_value': round(p, 4)}
     except Exception as e:
         st.error(f"Error during Kruskal-Wallis test: {e}")
     return results
-# --- 8. Metal Filter UI ---
-def metal_filter():
-    return st.selectbox("Select Metal to View", metals)
 
-# --- 9. File upload and Streamlit tabs ---
+def calculate_site_correlation(df):
+    try:
+        site_avg = df.groupby('site')[metals].mean()
+        correlation = site_avg.transpose().corr()
+        return {'site_correlation': correlation}
+    except KeyError as e:
+        st.error(f"Missing column for correlation: {e}")
+        return {}
+
+def metal_filter():
+    return st.multiselect("Select Metal(s) to View", metals, default=[metals[0]])
+
+def get_unit(metal):
+    return "(µg/m³)" if metal == 'al' else "(ng/m³)"
+
 uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
 
 if uploaded_files:
@@ -468,7 +445,10 @@ if uploaded_files:
 
     all_outputs = {}
     dfs = {}
+    temp_dfs = {}
+    all_sites = set()
 
+    # --- First pass: clean data and collect all site names ---
     for file in uploaded_files:
         label = file.name.split('.')[0]
         ext = file.name.split('.')[-1].lower()
@@ -478,6 +458,17 @@ if uploaded_files:
         df = standardize_columns(df)
         df = cleaned(df)
 
+        temp_dfs[label] = df
+        all_sites.update(df['site'].dropna().unique().tolist())
+
+    # --- Global site filter in sidebar ---
+    selected_sites = st.sidebar.multiselect(
+        "Filter sites (applies to all datasets)", sorted(all_sites), default=sorted(all_sites)
+    )
+
+    # --- Second pass: apply filter and process data ---
+    for label, df in temp_dfs.items():
+        df = df[df['site'].isin(selected_sites)]  # Apply global filter
         dfs[label] = df
         all_outputs[label] = {
             'All Sites Summary': compute_all_data(df),
