@@ -394,11 +394,13 @@ def compute_yearly_data(df):
 def calculate_site_correlation(df):
     correlation_results = {}
     try:
-        for metal in metals:
-            if metal in df.columns:
-                pivot = df.pivot_table(index='date', columns='site', values=metal)
-                correlation = pivot.corr()
-                correlation_results[metal] = correlation
+        # Group by site and calculate the mean of each metal
+        site_avg = df.groupby('site')[metals].mean()
+        
+        # Compute correlation between sites based on metal averages
+        correlation = site_avg.transpose().corr()
+        
+        correlation_results['site_correlation'] = correlation
     except KeyError as e:
         st.error(f"Missing required column for correlation: {e}")
     return correlation_results
