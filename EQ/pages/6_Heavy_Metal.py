@@ -288,39 +288,26 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
-# --- Required Imports ---
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from scipy.stats import kruskal
 
-# --- Column Mapping and Setup ---
-column_mappings = {
-    'date': ['date', 'sampling date', 'datetime'],
-    'id': ['id', 'station id', 'site id'],
-    'cd': ['cd(ng/m3)', 'cadmium', 'cd'],
-    'cd_error': ['cd_error', 'cd err'],
-    'cr': ['cr(ng/m3)', 'chromium', 'cr'],
-    'cr_error': ['cr_error', 'cr err'],
-    'hg': ['hg(ng/m3)', 'mercury', 'hg'],
-    'hg_error': ['hg_error', 'hg err'],
-    'al': ['al(ug/m3)', 'aluminium', 'al'],
-    'al_error': ['al_error', 'al err'],
-    'as': ['as(ng/m3)', 'arsenic', 'as'],
-    'as_error': ['as_error', 'as err'],
-    'mn': ['mn(ng/m3)', 'manganese', 'mn'],
-    'mn_error': ['mn_error', 'mn err'],
-    'pb': ['pb(ng/m3)', 'lead', 'pb'],
-    'pb_error': ['pb_error', 'pb err'],
-    'site': ['site', 'site_location', 'source']
-}
 
 metals = ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb']
 errors = [f'{metal}_error' for metal in metals]
 pollutant_cols = metals + errors
 required_columns = ['date', 'site'] + pollutant_cols
 
+def standardize_columns(df):
+    # Strip whitespace and convert to lowercase
+    df.columns = [col.strip().lower() for col in df.columns]
+    
+    # Check for missing required columns
+    missing = [col for col in required_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required columns: {', '.join(missing)}")
+    
+    # Optionally keep only required columns
+    df = df[required_columns]
+    
+    return df
 # --- Helper Functions ---
 def parse_dates(df):
     for col in df.columns:
@@ -331,16 +318,6 @@ def parse_dates(df):
                 return df
             except:
                 continue
-    return df
-
-def standardize_columns(df):
-    rename_dict = {}
-    for standard_col, aliases in column_mappings.items():
-        for col in df.columns:
-            if col.strip().lower() in [alias.lower() for alias in aliases]:
-                rename_dict[col] = standard_col
-    df.rename(columns=rename_dict, inplace=True)
-    df.columns = [col.strip().lower() for col in df.columns]
     return df
 
 def cleaned(df):
