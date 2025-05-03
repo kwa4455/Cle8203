@@ -308,7 +308,6 @@ def parse_dates(df):
         if 'date' in col.lower():
             try:
                 df['date'] = pd.to_datetime(df[col], dayfirst=True, errors='coerce')
-                df = df.dropna(subset=['date'])
                 return df
             except:
                 continue
