@@ -400,14 +400,6 @@ def calculate_kruskal_wallis(df):
         st.error(f"Error during Kruskal-Wallis test: {e}")
     return results
 
-def calculate_site_correlation(df):
-    try:
-        site_avg = df.groupby('site')[metals].mean()
-        correlation = site_avg.transpose().corr()
-        return {'site_correlation': correlation}
-    except KeyError as e:
-        st.error(f"Missing column for correlation: {e}")
-        return {}
 
 def metal_filter():
     return st.multiselect("Select Metal(s) to View", metals, default=[metals[0]])
@@ -562,13 +554,7 @@ if uploaded_files:
 
         with tab4:
             st.subheader("Correlation Between Sites")
-            correlation_data = outputs['Correlation']
-            if selected_metal in correlation_data:
-                st.write(f"**{selected_metal.upper()} Correlation Matrix**")
-                corr_df = correlation_data[selected_metal]
-                st.dataframe(corr_df)
-                fig = px.imshow(corr_df, text_auto=True, title=f"{selected_metal.upper()} Correlation Between Sites")
-                st.plotly_chart(fig, use_container_width=True)
+            
 
         with tab5:
             st.subheader("Min-Max Averages")
