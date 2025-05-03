@@ -402,7 +402,7 @@ def calculate_kruskal_wallis(df):
 
 
 def metal_filter():
-    return st.multiselect("Select Metal(s) to View", metals, default=[metals[0]])
+    return st.sidebar.selectbox("Select a metal", ['cd', 'cr', 'hg', 'al', 'as', 'mn', 'pb'])
 
 def get_unit(metal):
     return "(µg/m³)" if metal == 'al' else "(ng/m³)"
