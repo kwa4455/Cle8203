@@ -644,7 +644,7 @@ for uploaded_file in uploaded_files:
         missing = set(required_columns) - set(df.columns)
         if missing:
             st.warning(f"File '{uploaded_file.name}' is missing required columns: {', '.join(sorted(missing))}")
-             continue
+            continue
         df = df[required_columns].copy()
         file_names.append(uploaded_file.name)
         df_cleaned = cleaned(df)
