@@ -515,15 +515,6 @@ def plot_violin_plot(df, metal):
 
     return fig
 
-# Tab 3 - Violin Plot
-with tab3:
-    for df, name in zip(dataframes, file_names):
-        st.subheader(f"Violin Plot: {name}")
-        metals = [m for m in metal_columns if m in df.columns]
-
-        metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
-        fig = plot_violin_plot(df, metal_sel)
-        st.plotly_chart(fig, use_container_width=True)
 
 # Function to calculate Kruskal-Wallis test and return a summary DataFrame
 def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
