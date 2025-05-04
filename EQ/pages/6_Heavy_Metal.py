@@ -694,76 +694,77 @@ sites = sorted(
 
 
     
-    # --- Tabs ---
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test", "🔗 Correlation", "📉 Theil-Sen Trend"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test",
+    "🔗 Correlation", "📉 Theil-Sen Trend"
+])
 
-    # --- Plotly Trend Plot ---
+# --- Tab 1: Yearly Trends ---
 with tab1:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Yearly Trend: {name}")
-        
         metals = [m for m in metal_columns if m in df.columns]
         if not metals:
             st.warning(f"No metals found in {name}. Skipping.")
             continue
-        
-        selected_metals = st.multiselect(f"Select metals for {name}", metals, default=metals, key=f"metals_{name}")
+
+        selected_metals = st.multiselect(
+            f"Select metals for {name}", metals, default=metals, key=f"metals_{name}"
+        )
 
         for metal in selected_metals:
             fig, summary = yearly_plot_bar(df, metal)
             st.plotly_chart(fig, use_container_width=True)
             st.dataframe(summary, use_container_width=True)
 
-        
-        
-        
-        
-
+# --- Tab 2: Correlation Analysis ---
 with tab2:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Correlation: {name}")
         metals = [m for m in metal_columns if m in df.columns]
-        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}")
+        site_sel = st.multiselect(
+            f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}"
+        )
         df_sub = df[df['site'].isin(site_sel)]
         correlation_analysis(df_sub, metals, site_sel, title=name)
 
-
-
-
-        
-
+# --- Tab 3: Violin Plot ---
 with tab3:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Violin Plot: {name}")
         metals = [m for m in metal_columns if m in df.columns]
-
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
         fig = plot_violin_plot(df, metal_sel)
         st.plotly_chart(fig, use_container_width=True)
-        
-        
+
+# --- Tab 4: Kruskal-Wallis Test ---
 with tab4:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Kruskal-Wallis Test: {name}")
         sites = sorted(df['site'].unique())
         metals = [m for m in metal_columns if m in df.columns]
-        site_column = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site3_{name}")
-        df_sub = df[df['site'].isin(site_sel)]
-        kruskal_df = kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95)
+        site_column = st.multiselect(
+            f"Sites for {name}", sites, default=sites, key=f"site3_{name}"
+        )
+        df_sub = df[df['site'].isin(site_column)]
+        kruskal_df = kruskal_wallis_by_test(
+            df_sub, metals, site_column, n_bootstrap=1000, ci_level=0.95
+        )
         st.write("Kruskal-Wallis Test Results:")
         st.dataframe(kruskal_df)
 
+# --- Tab 5: Theil-Sen Trend Analysis ---
 with tab5:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Time Variation: {name}")
         sites = sorted(df['site'].unique())
         metals = [m for m in metal_columns if m in df.columns]
-        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site5_{name}")
-        metal_sel = st.multiselect(f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}")
+        site_sel = st.multiselect(
+            f"Sites for {name}", sites, default=sites, key=f"site5_{name}"
+        )
+        metal_sel = st.multiselect(
+            f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}"
+        )
         df_sub = df[df['site'].isin(site_sel)]
-        fig = timeVariation(df, pollutants=pollutants, statistic=statistic)
+        fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
         st.plotly_chart(fig)
-
-        
-
-        
