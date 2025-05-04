@@ -464,6 +464,9 @@ colors = {
 }
 
 def plot_violin_plot(df, metal):
+    # Define units
+    unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
+    
     fig = go.Figure()
 
     for site in df['site'].unique():
@@ -489,7 +492,7 @@ def plot_violin_plot(df, metal):
         fig.add_annotation(
             x=site,
             y=mean_value + 0.02,
-            text=f"Mean: {mean_value:.2f}\nSD: {sd_value:.2f}\nMedian: {median_value:.2f}",
+            text=f"Mean: {mean_value:.2f}<br>SD: {sd_value:.2f}<br>Median: {median_value:.2f}",
             showarrow=True,
             arrowhead=2,
             arrowsize=1,
@@ -500,14 +503,12 @@ def plot_violin_plot(df, metal):
         )
 
     fig.update_layout(
-        title=f"{metal.upper()} (ng/m³) by Site",
+        title=f"{metal.upper()} ({unit}) by Site",
         xaxis_title="Site",
-        yaxis_title=f"{metal.upper()} (ng/m³)",
+        yaxis_title=f"{metal.upper()} ({unit})",
         template="plotly_white",
-        boxmode='group',
-        legend_title='Site',
-        xaxis_tickangle=45,
         showlegend=False,
+        xaxis_tickangle=45,
         font=dict(size=12, family="Arial", color="black"),
         plot_bgcolor='white',
         margin=dict(t=50, b=100),
@@ -772,8 +773,3 @@ with tab5:
         
 
         
-
-
-
-
-
