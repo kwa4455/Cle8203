@@ -448,20 +448,26 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
 
     return site_corrs  # Optional, if you need to use the matrices elsewhere
     
-# Function to create Violin plot
-import plotly.express as px  # Required for color palette
+# Define colors for consistent site styling
+colors = {
+    'Site1': '#1f77b4',
+    'Site2': '#ff7f0e',
+    'Site3': '#2ca02c',
+    'Site4': '#d62728',
+    'Site5': '#9467bd',
+    'Site6': '#8c564b',
+    'Site7': '#e377c2',
+    'Site8': '#7f7f7f',
+    'Site9': '#bcbd22',
+    'Site10': '#17becf'
+}
 
-def plot_violin_plot(df, metal, site_sel):
+# Violin plot function
+def plot_violin_plot(df, metal):
     fig = go.Figure()
 
-    # Filter by selected sites
-    df_filtered = df[df['site'].isin(site_sel)]
-
-    # Assign distinct colors per site
-    colors = {site: color for site, color in zip(site_sel, px.colors.qualitative.Plotly)}
-
-    for site in site_sel:
-        site_data = df_filtered[df_filtered['site'] == site]
+    for site in df['site'].unique():
+        site_data = df[df['site'] == site]
 
         fig.add_trace(go.Violin(
             x=site_data['site'],
@@ -481,9 +487,14 @@ def plot_violin_plot(df, metal, site_sel):
         median_value = site_data[metal].median()
 
         fig.add_annotation(
-            x=site, y=mean_value + (0.05 * mean_value if mean_value else 0.01),
+            x=site,
+            y=mean_value + 0.02,
             text=f"Mean: {mean_value:.2f}\nSD: {sd_value:.2f}\nMedian: {median_value:.2f}",
-            showarrow=True, arrowhead=2, arrowsize=1, ax=0, ay=-40,
+            showarrow=True,
+            arrowhead=2,
+            arrowsize=1,
+            ax=0,
+            ay=-40,
             font=dict(size=10, color="black"),
             align="center"
         )
@@ -500,10 +511,19 @@ def plot_violin_plot(df, metal, site_sel):
         font=dict(size=12, family="Arial", color="black"),
         plot_bgcolor='white',
         margin=dict(t=50, b=100),
-        yaxis=dict(autorange=True)  # Auto-scaling y-axis
     )
 
     return fig
+
+# Tab 3 - Violin Plot
+with tab3:
+    for df, name in zip(dataframes, file_names):
+        st.subheader(f"Violin Plot: {name}")
+        metals = [m for m in metal_columns if m in df.columns]
+
+        metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
+        fig = plot_violin_plot(df, metal_sel)
+        st.plotly_chart(fig, use_container_width=True)
 
 # Function to calculate Kruskal-Wallis test and return a summary DataFrame
 def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
