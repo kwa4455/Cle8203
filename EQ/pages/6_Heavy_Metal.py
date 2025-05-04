@@ -291,7 +291,8 @@ def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
 
     required_columns = [
-        'date', 'id',"cd", "cr", "hg", "al", "as", "mn", "pb", 
+    'date', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
+    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
     ]
 
     df = df[[col for col in required_columns if col in df.columns]]
