@@ -307,15 +307,20 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metals):
-    # Filter only available columns
-    available_metals = [col for col in metals if col in df.columns]
-    available_errors = [col for col in errors if col in df.columns]
+def yearly_plot_bar(df, metal_sel):
+    # Check if the selected metal and its error column are in the DataFrame
+    if metal_sel not in df.columns:
+        return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
 
-    # Combine into one aggregation dictionary
-    agg_funcs = {}
-    for col in available_metals + available_errors:
-        agg_funcs[col] = ['mean', 'std', 'median']
+    error_col = f"{metal_sel}_error"
+    has_error = error_col in df.columns
+
+    # Define aggregation logic
+    agg_funcs = {
+        metal_sel: ['mean', 'std', 'median']
+    }
+    if has_error:
+        agg_funcs[error_col] = ['mean', 'std', 'median']
 
     # Group and aggregate
     summary_data = (
@@ -324,19 +329,17 @@ def yearly_plot_bar(df, metals):
         .reset_index()
     )
 
-    # Flatten MultiIndex columns
+    # Flatten column names
     summary_data.columns = ['_'.join(col).strip('_') for col in summary_data.columns]
 
-    # Add count of samples per group
+    # Add sample count per group
     summary_data['count'] = df.groupby(['site', 'year']).size().values
 
-    # Round values
+    # Round and format
     summary_data = summary_data.round(3)
-
-    # Fix year formatting
     summary_data['year'] = summary_data['year'].astype(str)
 
-    # Define colors
+    # Define year colors
     year_colors = {
         "2018": "#008000",
         "2019": "#b30000",
@@ -345,8 +348,14 @@ def yearly_plot_bar(df, metals):
         "2022": "purple"
     }
 
-    # Ghana Pb Standard
-    ghana_limit = 0.5
+    # Metal-specific limits
+    metal_limits = {
+        "pb": 0.5,     # Ghana
+        "cr": 12,      # US EPA
+        "cd": 5        # EU AQS
+    }
+
+    limit_value = metal_limits.get(metal_sel.lower())
 
     # Build plot
     fig = go.Figure()
@@ -356,34 +365,38 @@ def yearly_plot_bar(df, metals):
 
         fig.add_trace(go.Bar(
             x=subset['site'],
-            y=subset.get(f'{metals}_median', [0]),
+            y=subset.get(f'{metal_sel}_median', [0]),
             name=year,
             error_y=dict(
                 type='data',
-                array=subset.get(f'{metals}_error_median', [0]),
-                visible=True
+                array=subset.get(f'{error_col}_median', [0]) if has_error else None,
+                visible=has_error
             ),
             marker_color=year_colors.get(year, 'gray'),
         ))
 
-    # Ghana limit line
-    fig.add_shape(
-        type="line",
-        x0=-0.5, x1=len(summary_data['site'].unique()) - 0.5,
-        y0=ghana_limit, y1=ghana_limit,
-        line=dict(color="red", dash="solid"),
-        xref="x", yref="y"
-    )
+    # Add standard limit line if available
+    if limit_value:
+        fig.add_shape(
+            type="line",
+            x0=-0.5, x1=len(summary_data['site'].unique()) - 0.5,
+            y0=limit_value, y1=limit_value,
+            line=dict(color="red", dash="solid"),
+            xref="x", yref="y"
+        )
 
-    # Optional vertical lines between sites
+    # Vertical lines between sites
     for i in range(len(summary_data['site'].unique()) - 1):
         fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
 
+    # Set units
+    unit = "μg/m³" if metal_sel.lower() == "al" else "ng/m³"
+
     fig.update_layout(
         barmode='group',
-        title=f"{metals.upper()} Pollution by Site (Median Value)",
+        title=f"{metal_sel.upper()} Pollution by Site (Median Value)",
         xaxis_title="Site",
-        yaxis_title=f"{metals.upper()} (ng/m³)",
+        yaxis_title=f"{metal_sel.upper()} ({unit})",
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
@@ -651,7 +664,6 @@ for uploaded_file in uploaded_files:
         st.stop()
 
 # Sidebar filters
-sites = sorted(set().union(*[df['site'].unique() for df in dataframes]))
 
 # Identify metal columns (exclude non-metal ones)
 non_metal_columns = {'site', 'year', 'dayofweek', 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"}
@@ -666,17 +678,7 @@ sites = sorted(
 )
 
 
-selected_sites = st.sidebar.multiselect("Select Sites", options=sites, default=sites)
-selected_metals = st.sidebar.multiselect("Select Metals", options=metals, default=metals)
 
-# Filter dataframes
-filtered_dataframes = []
-for df in dataframes:
-    df_filtered = df[df['site'].isin(selected_sites)]
-    metal_cols = [col for col in selected_metals if col in df.columns]
-    keep_cols = ['site'] + (['year'] if 'year' in df.columns else []) + metal_cols
-    df_filtered = df_filtered[keep_cols]
-    filtered_dataframes.append(df_filtered)
 
     
     # --- Tabs ---
@@ -684,54 +686,74 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 
     # --- Plotly Trend Plot ---
 with tab1:
-    selected_metals = st.multiselect("Select metals", metals, default=metals[:1])
-    st.subheader("Yearly Trend Plot")
-    for metal in selected_metals:
-        fig, summary_data = yearly_plot_bar(df, metals)
-        st.plotly_chart(fig)
-        st.dataframe(summary)
+    for df, name in zip(dataframes, file_names):
+        st.subheader(f"Yearly Trend: {name}")
+        
+        # Get available metals in the current DataFrame
+        metals = [m for m in metal_columns if m in df.columns]
+        
+        # Let user select a metal to visualize
+        metal_sel = st.selectbox(f"Select Metal for {name}", metals, key=f"metal1_{name}")
+        
+        # Call the yearly plot function (no site filtering here)
+        fig, summary = yearly_plot_bar(df, metal_sel)
+        
+        # Display the plot and summary table
+        st.plotly_chart(fig, use_container_width=True)
+        st.dataframe(summary, use_container_width=True)
 
         
         
         
+        
 
-# --- Box and Bar Plots ---
 with tab2:
-    st.subheader("Pearson Correlation per Site")
-    for df, name in zip(filtered_dataframes, file_names):
-        corrs = correlation_analysis(df, metals)
-        st.plotly_chart(corrs)
+    for df, name in zip(dataframes, file_names):
+        st.subheader(f"earson Correlation per Site: {name}")
+        sites = sorted(df['site'].unique())
+        metals = [m for m in metal_columns if m in df.columns]
+        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site4_{name}")
+        df_sub = df[df['site'].isin(site_sel)]
+        corrs = correlation_analysis(df, metals,site_sel)
+        st.plotly_chart(corrs, use_container_width=True)
+
 
         
 
-# --- Kruskal and T-test ---
 with tab3:
-    st.subheader("Violin Plot by Site")
-    for df, name in zip(filtered_dataframes, file_names):
-        fig = plot_violin_plot(df, metal)
+    for df, name in zip(dataframes, file_names):
+        st.subheader(f"Violin Plot: {name}")
+        sites = sorted(df['site'].unique())
+        metals = [m for m in metal_columns if m in df.columns]
+        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site2_{name}")
+        metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
+        df_sub = df[df['site'].isin(site_sel)]
+        fig = plot_violin_plot(df, metals,site_sel)
         st.plotly_chart(fig)
-
         
-        
-
-# --- Correlation Heatmap ---
 with tab4:
-    st.subheader("Kruskal-Wallis Test")
-    for df, name in zip(filtered_dataframes, file_names):
-        st.subheader("Kruskal-Wallis Test")
+    for df, name in zip(dataframes, file_names):
+        st.subheader(f"Kruskal-Wallis Test: {name}")
+        sites = sorted(df['site'].unique())
+        metals = [m for m in metal_columns if m in df.columns]
+        site_column = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site3_{name}")
+        df_sub = df[df['site'].isin(site_sel)]
         kruskal_df = kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95)
         st.write("Kruskal-Wallis Test Results:")
         st.dataframe(kruskal_df)
-        
-        
 
-# --- Theil-Sen Trend Analysis ---
 with tab5:
-    st.subheader("Time Variation Plot")
-    for df, name in zip(filtered_dataframes, file_names):
-        
+    for df, name in zip(dataframes, file_names):
+        st.subheader(f"Time Variation: {name}")
+        sites = sorted(df['site'].unique())
+        metals = [m for m in metal_columns if m in df.columns]
+        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site5_{name}")
+        metal_sel = st.multiselect(f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}")
+        df_sub = df[df['site'].isin(site_sel)]
         fig = timeVariation(df, pollutants=pollutants, statistic=statistic)
         st.plotly_chart(fig)
+
+        
 
         
 
