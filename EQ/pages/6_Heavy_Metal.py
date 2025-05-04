@@ -307,11 +307,8 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metals):
-    # List of metals and their corresponding error columns
-    metals = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
-    errors = ["cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"]
-
+def yearly_plot_bar(df, metals,errors):
+    
     # Define custom aggregation functions
     agg_funcs = {}
     for col in metals + errors:
@@ -660,7 +657,11 @@ sites = sorted(set().union(*[df['site'].unique() for df in dataframes]))
 # Identify metal columns (exclude non-metal ones)
 non_metal_columns = {'site', 'year', 'dayofweek', 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"}
 all_columns = set().union(*[df.columns for df in dataframes])
-metals = sorted([col for col in all_columns if col.lower() not in non_metal_columns])
+metal_columns = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
+error_columns = [f"{m}_error" for m in metal_columns]
+errors = sorted([col for col in all_columns if col.lower() in error_columns])
+non_metal_columns = {'site', 'year', 'dayofweek', 'month', 'date'}
+metals = sorted([col for col in all_columns if col.lower() in metal_columns])
 sites = sorted(
     set().union(*[df['site'].unique() for df in dataframes if 'site' in df.columns])
 )
@@ -686,7 +687,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 with tab1:
     st.subheader("Yearly Trend Plot")
     for df, name in zip(filtered_dataframes, file_names):
-        fig, summary_data = yearly_plot_bar(df, metals)
+        fig, summary_data = yearly_plot_bar(df, metals,errors)
         st.plotly_chart(fig)
         st.dataframe(summary)
 
