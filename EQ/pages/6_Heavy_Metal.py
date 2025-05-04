@@ -413,6 +413,10 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
     for site in df['site'].unique():
         if site not in selected_sites:
             continue
+     colors = {
+         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
+         "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
+     }
 
         site_df = df[df['site'] == site][metals]
         corr_matrix = site_df.corr(method='pearson')
@@ -445,13 +449,17 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
     return site_corrs  # Optional, if you need to use the matrices elsewhere
     
 # Function to create Violin plot
+import plotly.express as px  # Required for color palette
+
 def plot_violin_plot(df, metal, site_sel):
     fig = go.Figure()
 
     # Filter by selected sites
     df_filtered = df[df['site'].isin(site_sel)]
 
-    # Violin plot for each selected site
+    # Assign distinct colors per site
+    colors = {site: color for site, color in zip(site_sel, px.colors.qualitative.Plotly)}
+
     for site in site_sel:
         site_data = df_filtered[df_filtered['site'] == site]
 
@@ -473,7 +481,7 @@ def plot_violin_plot(df, metal, site_sel):
         median_value = site_data[metal].median()
 
         fig.add_annotation(
-            x=site, y=mean_value + 0.02,
+            x=site, y=mean_value + (0.05 * mean_value if mean_value else 0.01),
             text=f"Mean: {mean_value:.2f}\nSD: {sd_value:.2f}\nMedian: {median_value:.2f}",
             showarrow=True, arrowhead=2, arrowsize=1, ax=0, ay=-40,
             font=dict(size=10, color="black"),
@@ -492,6 +500,7 @@ def plot_violin_plot(df, metal, site_sel):
         font=dict(size=12, family="Arial", color="black"),
         plot_bgcolor='white',
         margin=dict(t=50, b=100),
+        yaxis=dict(autorange=True)  # Auto-scaling y-axis
     )
 
     return fig
@@ -721,17 +730,17 @@ with tab2:
 with tab3:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Violin Plot: {name}")
-        sites = sorted(df['site'].unique())
+        
+        # Get valid metal columns
         metals = [m for m in metal_columns if m in df.columns]
         
-        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site2_{name}")
+        # Metal selection (no site filter)
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
         
-        # Filter the DataFrame based on selected sites
-        df_sub = df[df['site'].isin(site_sel)]
+        # Plot using all sites in the dataset
+        fig = plot_violin_plot(df, metal_sel, df['site'].unique())
         
-        # Generate and display the violin plot
-        fig = plot_violin_plot(df_sub, metal_sel, site_sel)
+        # Show the plot
         st.plotly_chart(fig, use_container_width=True)
 
         
