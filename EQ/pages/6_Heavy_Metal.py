@@ -288,44 +288,24 @@ def generate_css(theme: dict, font_size: str) -> str:
 st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 def cleaned(df):
-    df = df.rename(columns=lambda x: x.strip().lower())
-
-    required_columns = [
-    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
-    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
-    ]
-    valid_dataframes = []
-    for i, df in enumerate(dataframes):
-        missing = set(required_columns) - set(df.columns)
-        if missing:
-            st.warning(f"File {i+1} is missing required columns: {', '.join(sorted(missing))}")
-        else:
-            valid_dataframes.append(df)
-
-    if not valid_dataframes:
-        st.error("None of the uploaded files contain all required columns.")
-        st.stop()
-
-    df = df[[col for col in required_columns if col in df.columns]]
-    # Data preprocessing steps
+    # Parse and clean date
     df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
-    df['date'] = pd.to_datetime(df['date']).dt.tz_localize(None)  # Remove timezone
+    df = df.dropna(subset=['date'])  # Drop rows with invalid dates
+    df['date'] = df['date'].dt.tz_localize(None)
     df = df.set_index('date')
 
-    # Add 'year', 'month', and 'dayofweek' columns
-    df['year'] = df.index.year  # Add year column
-    df['month'] = df.index.strftime('%b')         # Jan, Feb, ...
-    df['dayofweek'] = df.index.day_name()         # Monday, Tuesday, ...
-
-    # Convert 'month' and 'dayofweek' to categorical
-    month_order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    df['month'] = pd.Categorical(df['month'], categories=month_order, ordered=True)
-        
-    dayofweek_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    df['dayofweek'] = pd.Categorical(df['dayofweek'], categories=dayofweek_order, ordered=True)
+    # Add time features
+    df['year'] = df.index.year
+    df['month'] = pd.Categorical(df.index.strftime('%b'),
+                                 categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                                 ordered=True)
+    df['dayofweek'] = pd.Categorical(df.index.day_name(),
+                                     categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                                                 'Friday', 'Saturday', 'Sunday'],
+                                     ordered=True)
 
     return df
-
 
 def yearly_plot_bar(df, metal):
     # List of metals and their corresponding error columns
@@ -650,13 +630,23 @@ uploaded_files = st.file_uploader("Upload CSV files", accept_multiple_files=True
 if not uploaded_files:
     st.warning("Please upload at least one CSV file.")
     st.stop()
-
+required_columns = [
+    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
+    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
+]
 dataframes = []
 file_names = []
 
 for uploaded_file in uploaded_files:
     try:
         df = pd.read_csv(uploaded_file)
+        df.columns = df.columns.str.strip().str.lower()
+        missing = set(required_columns) - set(df.columns)
+        if missing:
+            st.warning(f"File '{uploaded_file.name}' is missing required columns: {', '.join(sorted(missing))}")
+             continue
+        df = df[required_columns].copy()
+        file_names.append(uploaded_file.name)
         df_cleaned = cleaned(df)
         dataframes.append(df_cleaned)
         file_names.append(uploaded_file.name)
