@@ -307,30 +307,36 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metals,errors):
-    
-    # Define custom aggregation functions
+def yearly_plot_bar(df, metals, selected_metal):
+    # Filter only available columns
+    available_metals = [col for col in metals if col in df.columns]
+    available_errors = [col for col in errors if col in df.columns]
+
+    # Combine into one aggregation dictionary
     agg_funcs = {}
-    for col in metals + errors:
+    for col in available_metals + available_errors:
         agg_funcs[col] = ['mean', 'std', 'median']
 
     # Group and aggregate
     summary_data = (
         df.groupby(['site', 'year'])
-          .agg(agg_funcs)
-          .reset_index()
+        .agg(agg_funcs)
+        .reset_index()
     )
 
-    # Flatten MultiIndex columns (e.g., ('Cd', 'mean') → 'Cd_mean')
+    # Flatten MultiIndex columns
     summary_data.columns = ['_'.join(col).strip('_') for col in summary_data.columns]
 
-    # Add count manually (as .agg(n()) in R)
+    # Add count of samples per group
     summary_data['count'] = df.groupby(['site', 'year']).size().values
 
-    # Optional: round values to 2 decimal places
+    # Round values
     summary_data = summary_data.round(3)
 
-    # Custom colors for years
+    # Fix year formatting
+    summary_data['year'] = summary_data['year'].astype(str)
+
+    # Define colors
     year_colors = {
         "2018": "#008000",
         "2019": "#b30000",
@@ -339,33 +345,28 @@ def yearly_plot_bar(df, metals,errors):
         "2022": "purple"
     }
 
-    # Ghana Pb Standard Line
-    ghana_limit = 0.5  # for lead (Pb)
+    # Ghana Pb Standard
+    ghana_limit = 0.5
 
-    # 🛠️ Fix year formatting BEFORE plotting
-    summary_data['year'] = summary_data['year'].astype(int).astype(str)
-
-    # Initialize figure
+    # Build plot
     fig = go.Figure()
 
-    # Grouped bar plot with error bars
     for year in summary_data['year'].unique():
         subset = summary_data[summary_data['year'] == year]
-        
-        # Add trace for the selected metal
+
         fig.add_trace(go.Bar(
             x=subset['site'],
-            y=subset[f'{selected_metal}_median'],
-            name=year,  # Year as a legend entry
+            y=subset.get(f'{selected_metal}_median', [0]),
+            name=year,
             error_y=dict(
                 type='data',
-                array=subset[f'{selected_metal}_error_median'],
+                array=subset.get(f'{selected_metal}_error_median', [0]),
                 visible=True
             ),
             marker_color=year_colors.get(year, 'gray'),
         ))
 
-    # Add Ghana limit reference line (horizontal)
+    # Ghana limit line
     fig.add_shape(
         type="line",
         x0=-0.5, x1=len(summary_data['site'].unique()) - 0.5,
@@ -374,26 +375,24 @@ def yearly_plot_bar(df, metals,errors):
         xref="x", yref="y"
     )
 
-    # Optional vertical dashed lines
+    # Optional vertical lines between sites
     for i in range(len(summary_data['site'].unique()) - 1):
         fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
 
-    # Layout and axis styling
     fig.update_layout(
         barmode='group',
         title=f"{selected_metal.upper()} Pollution by Site (Median Value)",
         xaxis_title="Site",
         yaxis_title=f"{selected_metal.upper()} (ng/m³)",
-        yaxis=dict(range=[0, 0.2]),  # Adjust this range based on data
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
-        font=dict(size=12, family="Arial", color="black"),
+        font=dict(size=12, family="Arial"),
         plot_bgcolor='white',
         margin=dict(t=80, b=100),
     )
 
-    return fig
+    return fig, summary_data
 
 
 
@@ -687,7 +686,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 with tab1:
     st.subheader("Yearly Trend Plot")
     for df, name in zip(filtered_dataframes, file_names):
-        fig, summary_data = yearly_plot_bar(df, metals,errors)
+        fig, summary_data = yearly_plot_bar(df, metals, selected_metal)
         st.plotly_chart(fig)
         st.dataframe(summary)
 
