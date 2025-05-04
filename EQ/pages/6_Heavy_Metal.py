@@ -440,9 +440,9 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
             width=600,
         )
 
-        st.plotly_chart(fig, use_container_width=True)  # Use Streamlit display
+        st.plotly_chart(fig, use_container_width=True)  # ✅ Display here
 
-    return site_corrs
+    return site_corrs  # Optional, if you need to use the matrices elsewhere
     
 # Function to create Violin plot
 def plot_violin_plot(df, metal):
@@ -707,14 +707,14 @@ with tab1:
         
         
 
-with tab2:
+with tab4:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Correlation: {name}")
         metals = [m for m in metal_columns if m in df.columns]
         site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}")
         df_sub = df[df['site'].isin(site_sel)]
-        site_corrs=correlation_analysis(df_sub, metals, site_sel, title=name)
-        st.plotly_chart(site_corrs, use_container_width=True)
+        correlation_analysis(df_sub, metals, site_sel, title=name)  # ✅ This now works
+
 
 
 
