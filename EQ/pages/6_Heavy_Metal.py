@@ -645,7 +645,7 @@ file_names = []
 for uploaded_file in uploaded_files:
     try:
         df = pd.read_csv(uploaded_file)
-        df_cleaned = clean(df)
+        df_cleaned = cleaned(df)
         dataframes.append(df_cleaned)
         file_names.append(uploaded_file.name)
     except Exception as e:
