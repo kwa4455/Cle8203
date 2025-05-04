@@ -686,7 +686,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 with tab1:
     st.subheader("Yearly Trend Plot")
     for df, name in zip(filtered_dataframes, file_names):
-        fig, summary_data = yearly_plot_bar(df, metal)
+        fig, summary_data = yearly_plot_bar(df, metals)
         st.plotly_chart(fig)
         st.dataframe(summary)
 
