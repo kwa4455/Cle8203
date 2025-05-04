@@ -684,8 +684,9 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 
     # --- Plotly Trend Plot ---
 with tab1:
+    selected_metals = st.multiselect("Select metals", metals, default=metals[:1])
     st.subheader("Yearly Trend Plot")
-    for df, name in zip(filtered_dataframes, file_names):
+    for metal in selected_metals:
         fig, summary_data = yearly_plot_bar(df, metals)
         st.plotly_chart(fig)
         st.dataframe(summary)
