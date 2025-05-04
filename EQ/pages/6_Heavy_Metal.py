@@ -407,7 +407,7 @@ def yearly_plot_bar(df, metal_sel):
 
     return fig, summary_data
 
-def correlation_analysis(df, metals):
+def correlation_analysis(df, metals, selected_sites):
     site_corrs = {}  # Store correlation matrices per site
 
     for site in df['site'].unique():
@@ -441,6 +441,7 @@ def correlation_analysis(df, metals):
         fig.show()  # Show each site's heatmap
 
     return site_corrs  # Optional: return all correlation matrices
+    
 # Function to create Violin plot
 def plot_violin_plot(df, metal):
     fig = go.Figure()
@@ -706,13 +707,13 @@ with tab1:
 
 with tab2:
     for df, name in zip(dataframes, file_names):
-        st.subheader(f"earson Correlation per Site: {name}")
-        sites = sorted(df['site'].unique())
+        st.subheader(f"Correlation: {name}")
         metals = [m for m in metal_columns if m in df.columns]
-        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site4_{name}")
+        site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}")
         df_sub = df[df['site'].isin(site_sel)]
-        corrs = correlation_analysis(df, metals,site_sel)
+        corrs = correlation_analysis(df_sub, metals, site_sel)
         st.plotly_chart(corrs, use_container_width=True)
+
 
 
         
