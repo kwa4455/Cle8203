@@ -307,17 +307,17 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metal):
+def yearly_plot_bar(df, metal_sel):
     # Check if the selected metal and its error column are in the DataFrame
-    if metals not in df.columns:
+    if metal_sel not in df.columns:
         return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
 
-    error_col = f"{m}_error"
+    error_col = f"{metal_sel}_error"
     has_error = error_col in df.columns
 
     # Define aggregation logic
     agg_funcs = {
-        metals: ['mean', 'std', 'median']
+        metal_sel: ['mean', 'std', 'median']
     }
     if has_error:
         agg_funcs[error_col] = ['mean', 'std', 'median']
@@ -355,7 +355,7 @@ def yearly_plot_bar(df, metal):
         "cd": 5        # EU AQS
     }
 
-    limit_value = metal_limits.get(metal.lower())
+    limit_value = metal_limits.get(metal_sel.lower())
 
     # Build plot
     fig = go.Figure()
@@ -365,7 +365,7 @@ def yearly_plot_bar(df, metal):
 
         fig.add_trace(go.Bar(
             x=subset['site'],
-            y=subset.get(f'{metal}_median', [0]),
+            y=subset.get(f'{metal_sel}_median', [0]),
             name=year,
             error_y=dict(
                 type='data',
@@ -390,13 +390,13 @@ def yearly_plot_bar(df, metal):
         fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
 
     # Set units
-    unit = "μg/m³" if metal.lower() == "al" else "ng/m³"
+    unit = "μg/m³" if metal_sel.lower() == "al" else "ng/m³"
 
     fig.update_layout(
         barmode='group',
-        title=f"{metals.upper()} Pollution by Site (Median Value)",
+        title=f"{metal_sel.upper()} Pollution by Site (Median Value)",
         xaxis_title="Site",
-        yaxis_title=f"{metal.upper()} ({unit})",
+        yaxis_title=f"{metal_sel.upper()} ({unit})",
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
@@ -406,8 +406,6 @@ def yearly_plot_bar(df, metal):
     )
 
     return fig, summary_data
-
-
 
 def correlation_analysis(df, metals):
     site_corrs = {}  # Store correlation matrices per site
