@@ -451,17 +451,10 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
 
 
 colors = {
-    'Site1': '#1f77b4',
-    'Site2': '#ff7f0e',
-    'Site3': '#2ca02c',
-    'Site4': '#d62728',
-    'Site5': '#9467bd',
-    'Site6': '#8c564b',
-    'Site7': '#e377c2',
-    'Site8': '#7f7f7f',
-    'Site9': '#bcbd22',
-    'Site10': '#17becf'
+    "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
+    "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
 }
+
 
 def plot_violin_plot(df, metal):
     # Define units
