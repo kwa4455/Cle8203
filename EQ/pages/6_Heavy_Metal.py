@@ -407,15 +407,17 @@ def yearly_plot_bar(df, metal_sel):
 
     return fig, summary_data
 
-def correlation_analysis(df, metals, selected_sites):
-    site_corrs = {}  # Store correlation matrices per site
+def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"):
+    site_corrs = {}
 
     for site in df['site'].unique():
+        if site not in selected_sites:
+            continue
+
         site_df = df[df['site'] == site][metals]
         corr_matrix = site_df.corr(method='pearson')
         site_corrs[site] = corr_matrix
 
-        # Plot correlation heatmap for each site
         fig = go.Figure(data=go.Heatmap(
             z=corr_matrix.values,
             x=corr_matrix.columns,
@@ -438,9 +440,9 @@ def correlation_analysis(df, metals, selected_sites):
             width=600,
         )
 
-        fig.show()  # Show each site's heatmap
+        st.plotly_chart(fig, use_container_width=True)  # Use Streamlit display
 
-    return site_corrs  # Optional: return all correlation matrices
+    return site_corrs
     
 # Function to create Violin plot
 def plot_violin_plot(df, metal):
@@ -711,8 +713,8 @@ with tab2:
         metals = [m for m in metal_columns if m in df.columns]
         site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}")
         df_sub = df[df['site'].isin(site_sel)]
-        corrs = correlation_analysis(df_sub, metals, site_sel)
-        st.plotly_chart(corrs, use_container_width=True)
+        site_corrs=correlation_analysis(df_sub, metals, site_sel, title=name)
+        st.plotly_chart(site_corrs, use_container_width=True)
 
 
 
