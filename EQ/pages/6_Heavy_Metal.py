@@ -307,7 +307,7 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metals):
+def yearly_plot_bar(df, metal):
     # Check if the selected metal and its error column are in the DataFrame
     if metals not in df.columns:
         return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
@@ -355,7 +355,7 @@ def yearly_plot_bar(df, metals):
         "cd": 5        # EU AQS
     }
 
-    limit_value = metal_limits.get(metals.lower())
+    limit_value = metal_limits.get(metal.lower())
 
     # Build plot
     fig = go.Figure()
@@ -365,7 +365,7 @@ def yearly_plot_bar(df, metals):
 
         fig.add_trace(go.Bar(
             x=subset['site'],
-            y=subset.get(f'{metals}_median', [0]),
+            y=subset.get(f'{metal}_median', [0]),
             name=year,
             error_y=dict(
                 type='data',
@@ -390,13 +390,13 @@ def yearly_plot_bar(df, metals):
         fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
 
     # Set units
-    unit = "μg/m³" if metals.lower() == "al" else "ng/m³"
+    unit = "μg/m³" if metal.lower() == "al" else "ng/m³"
 
     fig.update_layout(
         barmode='group',
         title=f"{metals.upper()} Pollution by Site (Median Value)",
         xaxis_title="Site",
-        yaxis_title=f"{metals.upper()} ({unit})",
+        yaxis_title=f"{metal.upper()} ({unit})",
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
@@ -686,16 +686,18 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 
     # --- Plotly Trend Plot ---
 with tab1:
+    for df, name in zip(dataframes, file_names):
         st.subheader(f"Yearly Trend: {name}")
         
-        # Get available metals in the current DataFrame
         metals = [m for m in metal_columns if m in df.columns]
+        if not metals:
+            st.warning(f"No metals found in {name}. Skipping.")
+            continue
         
-        
-        selected_metals = st.multiselect("Select metals", metals, default=metals)
-    
+        selected_metals = st.multiselect(f"Select metals for {name}", metals, default=metals, key=f"metals_{name}")
+
         for metal in selected_metals:
-            fig, summary = yearly_plot_bar(df, metals)
+            fig, summary = yearly_plot_bar(df, metal)
             st.plotly_chart(fig, use_container_width=True)
             st.dataframe(summary, use_container_width=True)
 
