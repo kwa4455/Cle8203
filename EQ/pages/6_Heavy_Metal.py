@@ -656,7 +656,7 @@ for uploaded_file in uploaded_files:
 sites = sorted(set().union(*[df['site'].unique() for df in dataframes]))
 
 # Identify metal columns (exclude non-metal ones)
-non_metal_columns = {'site', 'year', 'dayofweek'. 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"}
+non_metal_columns = {'site', 'year', 'dayofweek', 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"}
 all_columns = set().union(*[df.columns for df in dataframes])
 metals = sorted([col for col in all_columns if col.lower() not in non_metal_columns])
 
