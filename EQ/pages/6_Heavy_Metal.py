@@ -307,17 +307,17 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metal_sel):
+def yearly_plot_bar(df, metals):
     # Check if the selected metal and its error column are in the DataFrame
-    if metal_sel not in df.columns:
+    if metals not in df.columns:
         return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
 
-    error_col = f"{metal_sel}_error"
+    error_col = f"{m}_error"
     has_error = error_col in df.columns
 
     # Define aggregation logic
     agg_funcs = {
-        metal_sel: ['mean', 'std', 'median']
+        metals: ['mean', 'std', 'median']
     }
     if has_error:
         agg_funcs[error_col] = ['mean', 'std', 'median']
@@ -355,7 +355,7 @@ def yearly_plot_bar(df, metal_sel):
         "cd": 5        # EU AQS
     }
 
-    limit_value = metal_limits.get(metal_sel.lower())
+    limit_value = metal_limits.get(metals.lower())
 
     # Build plot
     fig = go.Figure()
@@ -365,7 +365,7 @@ def yearly_plot_bar(df, metal_sel):
 
         fig.add_trace(go.Bar(
             x=subset['site'],
-            y=subset.get(f'{metal_sel}_median', [0]),
+            y=subset.get(f'{metals}_median', [0]),
             name=year,
             error_y=dict(
                 type='data',
@@ -390,13 +390,13 @@ def yearly_plot_bar(df, metal_sel):
         fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
 
     # Set units
-    unit = "μg/m³" if metal_sel.lower() == "al" else "ng/m³"
+    unit = "μg/m³" if metals.lower() == "al" else "ng/m³"
 
     fig.update_layout(
         barmode='group',
-        title=f"{metal_sel.upper()} Pollution by Site (Median Value)",
+        title=f"{metals.upper()} Pollution by Site (Median Value)",
         xaxis_title="Site",
-        yaxis_title=f"{metal_sel.upper()} ({unit})",
+        yaxis_title=f"{metals.upper()} ({unit})",
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
@@ -686,21 +686,18 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["📈 Trends", "📊 Box & Bar Plots", "
 
     # --- Plotly Trend Plot ---
 with tab1:
-    for df, name in zip(dataframes, file_names):
         st.subheader(f"Yearly Trend: {name}")
         
         # Get available metals in the current DataFrame
         metals = [m for m in metal_columns if m in df.columns]
         
-        # Let user select a metal to visualize
-        metal_sel = st.selectbox(f"Select Metal for {name}", metals, key=f"metal1_{name}")
         
-        # Call the yearly plot function (no site filtering here)
-        fig, summary = yearly_plot_bar(df, metal_sel)
-        
-        # Display the plot and summary table
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(summary, use_container_width=True)
+        selected_metals = st.multiselect("Select metals", metals, default=metals)
+    
+        for metal in selected_metals:
+            fig, summary = yearly_plot_bar(df, metals)
+            st.plotly_chart(fig, use_container_width=True)
+            st.dataframe(summary, use_container_width=True)
 
         
         
