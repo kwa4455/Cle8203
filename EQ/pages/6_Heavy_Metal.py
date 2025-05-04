@@ -307,7 +307,7 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metal):
+def yearly_plot_bar(df, metals):
     # List of metals and their corresponding error columns
     metals = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
     errors = ["cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"]
