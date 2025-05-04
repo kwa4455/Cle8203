@@ -291,7 +291,7 @@ def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
 
     required_columns = [
-    'date', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
+    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
     "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
     ]
     valid_dataframes = []
