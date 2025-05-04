@@ -707,13 +707,13 @@ with tab1:
         
         
 
-with tab4:
+with tab2:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Correlation: {name}")
         metals = [m for m in metal_columns if m in df.columns]
         site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}")
         df_sub = df[df['site'].isin(site_sel)]
-        correlation_analysis(df_sub, metals, site_sel, title=name)  # ✅ This now works
+        correlation_analysis(df_sub, metals, site_sel, title=name)
 
 
 
