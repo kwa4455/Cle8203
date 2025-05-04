@@ -307,7 +307,7 @@ def cleaned(df):
 
     return df
 
-def yearly_plot_bar(df, metals, selected_metal):
+def yearly_plot_bar(df, metals):
     # Filter only available columns
     available_metals = [col for col in metals if col in df.columns]
     available_errors = [col for col in errors if col in df.columns]
@@ -356,11 +356,11 @@ def yearly_plot_bar(df, metals, selected_metal):
 
         fig.add_trace(go.Bar(
             x=subset['site'],
-            y=subset.get(f'{selected_metal}_median', [0]),
+            y=subset.get(f'{metals}_median', [0]),
             name=year,
             error_y=dict(
                 type='data',
-                array=subset.get(f'{selected_metal}_error_median', [0]),
+                array=subset.get(f'{metals}_error_median', [0]),
                 visible=True
             ),
             marker_color=year_colors.get(year, 'gray'),
@@ -381,9 +381,9 @@ def yearly_plot_bar(df, metals, selected_metal):
 
     fig.update_layout(
         barmode='group',
-        title=f"{selected_metal.upper()} Pollution by Site (Median Value)",
+        title=f"{metals.upper()} Pollution by Site (Median Value)",
         xaxis_title="Site",
-        yaxis_title=f"{selected_metal.upper()} (ng/m³)",
+        yaxis_title=f"{metals.upper()} (ng/m³)",
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
