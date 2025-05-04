@@ -294,6 +294,17 @@ def cleaned(df):
     'date', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
     "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
     ]
+    valid_dataframes = []
+    for i, df in enumerate(dataframes):
+        missing = set(required_columns) - set(df.columns)
+        if missing:
+            st.warning(f"File {i+1} is missing required columns: {', '.join(sorted(missing))}")
+        else:
+            valid_dataframes.append(df)
+
+    if not valid_dataframes:
+        st.error("None of the uploaded files contain all required columns.")
+        st.stop()
 
     df = df[[col for col in required_columns if col in df.columns]]
     # Data preprocessing steps
