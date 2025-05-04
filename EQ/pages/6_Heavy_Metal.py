@@ -445,55 +445,53 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
     return site_corrs  # Optional, if you need to use the matrices elsewhere
     
 # Function to create Violin plot
-def plot_violin_plot(df, metal):
+def plot_violin_plot(df, metal, site_sel):
     fig = go.Figure()
 
-    # Violin plot for each site
-    for site in df['site'].unique():
-        site_data = df[df['site'] == site]
+    # Filter by selected sites
+    df_filtered = df[df['site'].isin(site_sel)]
 
-        # Create a violin trace for each site
+    # Violin plot for each selected site
+    for site in site_sel:
+        site_data = df_filtered[df_filtered['site'] == site]
+
         fig.add_trace(go.Violin(
             x=site_data['site'],
             y=site_data[metal],
-            box_visible=True,  # Add box plot inside the violin
+            box_visible=True,
             line_color=colors.get(site, 'gray'),
             name=site,
-            side='positive',  # Positioning the violins side-by-side
-            meanline_visible=True,  # Show the mean line
+            side='positive',
+            meanline_visible=True,
             fillcolor=colors.get(site, 'lightgray'),
             opacity=0.6,
-            points="all",  # Show all points
+            points="all",
         ))
 
-        # Calculate the mean, standard deviation, and median for text annotations
         mean_value = site_data[metal].mean()
         sd_value = site_data[metal].std()
         median_value = site_data[metal].median()
 
-        # Dynamically adjust text position (to avoid overlapping the violins)
         fig.add_annotation(
-            x=site, y=mean_value + 0.02,  # Slightly above the mean value to avoid overlap
+            x=site, y=mean_value + 0.02,
             text=f"Mean: {mean_value:.2f}\nSD: {sd_value:.2f}\nMedian: {median_value:.2f}",
             showarrow=True, arrowhead=2, arrowsize=1, ax=0, ay=-40,
             font=dict(size=10, color="black"),
             align="center"
         )
 
-    # Layout and styling
     fig.update_layout(
         title=f"{metal.upper()} (ng/m³) by Site",
         xaxis_title="Site",
         yaxis_title=f"{metal.upper()} (ng/m³)",
-        template="plotly_white",  # White background
-        boxmode='group',  # Make sure the boxes are grouped together
+        template="plotly_white",
+        boxmode='group',
         legend_title='Site',
-        xaxis_tickangle=45,  # Rotate x-axis labels
-        showlegend=False,  # Hide legend if not necessary
+        xaxis_tickangle=45,
+        showlegend=False,
         font=dict(size=12, family="Arial", color="black"),
-        plot_bgcolor='white',  # White background
+        plot_bgcolor='white',
         margin=dict(t=50, b=100),
-        yaxis=dict(range=[0, 0.2]),  # Adjust y-axis range as needed
     )
 
     return fig
@@ -725,11 +723,17 @@ with tab3:
         st.subheader(f"Violin Plot: {name}")
         sites = sorted(df['site'].unique())
         metals = [m for m in metal_columns if m in df.columns]
+        
         site_sel = st.multiselect(f"Sites for {name}", sites, default=sites, key=f"site2_{name}")
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
+        
+        # Filter the DataFrame based on selected sites
         df_sub = df[df['site'].isin(site_sel)]
-        fig = plot_violin_plot(df, metals,site_sel)
-        st.plotly_chart(fig)
+        
+        # Generate and display the violin plot
+        fig = plot_violin_plot(df_sub, metal_sel, site_sel)
+        st.plotly_chart(fig, use_container_width=True)
+
         
 with tab4:
     for df, name in zip(dataframes, file_names):
