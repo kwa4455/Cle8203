@@ -413,11 +413,7 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
     for site in df['site'].unique():
         if site not in selected_sites:
             continue
-     colors = {
-         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
-         "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
-     }
-
+    
         site_df = df[df['site'] == site][metals]
         corr_matrix = site_df.corr(method='pearson')
         site_corrs[site] = corr_matrix
@@ -453,14 +449,10 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
 
 
 def plot_violin_plot(df, metal):
-    
-    for site in df['site'].unique():
-        if site not in selected_sites:
-            continue
-     colors = {
-         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
-         "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
-     }
+    colors = {
+        "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
+        "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
+    }
 
     # Define units
     unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
