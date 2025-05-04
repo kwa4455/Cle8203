@@ -450,13 +450,14 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
 
 
 
-colors = {
-    "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
-    "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
-}
 
 
 def plot_violin_plot(df, metal):
+    colors = {
+        "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
+        "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
+    }
+
     # Define units
     unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
     
