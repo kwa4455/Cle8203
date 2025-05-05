@@ -848,6 +848,8 @@ if uploaded_files:
                 continue
                 
             df_avg = df_melted.groupby([x_axis, "pollutant", "site"], as_index=False)["value"].mean()
+            y_title = "PM₂.₅ µg/m³"
+            plot_title = f"Aggregated {chart_type} Chart - {label}"
             if chart_type == "Line":
                 fig = px.line(
                     df_avg,
@@ -856,8 +858,8 @@ if uploaded_files:
                     color="pollutant",
                     line_group="site",
                     markers=True,
-                    title=f"Aggregated {chart_type} Chart - {label}",
-                    labels={"value": "PM₂.₅ µg/m³", x_axis: x_axis.capitalize()}
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
             else:
                 fig = px.bar(
@@ -867,8 +869,8 @@ if uploaded_files:
                     color="pollutant",
                     barmode="group",
                     facet_col="site" if len(site_in_tab) > 1 else None,
-                    title=f"Aggregated {chart_type} Chart - {label}",
-                    labels={"value": "PM₂.₅ µg/m³", x_axis: x_axis.capitalize()}
+                    title=plot_title,
+                    llabels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
                 fig.add_trace(
                     go.Scatter(
