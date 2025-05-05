@@ -568,7 +568,14 @@ if uploaded_files:
         selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
-    tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Daily Means", "Min/Max Values"])
+    
+    tabs = st.tabs([
+        "Aggregated Means", 
+        "Exceedances", 
+        "AQI Stats", 
+        "Daily Means", 
+        "Min/Max Values"
+    ])
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
