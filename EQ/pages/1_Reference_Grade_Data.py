@@ -160,7 +160,15 @@ def generate_css(theme: dict, font_size: str) -> str:
         box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
         transform: scale(1.05);
     }}
-
+    .glass-container {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        border-radius: 15px;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
     ::-webkit-scrollbar {{
         width: 8px;
     }}
@@ -694,7 +702,9 @@ if uploaded_files:
                                 title=f"{agg_label} - {', '.join(safe_pollutants)}",
                                 hover_data=["site", "pollutant", "value"]
                             )
+                            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
                             st.plotly_chart(fig, use_container_width=True)
+                            st.markdown('</div>', unsafe_allow_html=True)
                     except Exception as e:
                         st.error(f"Error plotting chart: {e}")
 
@@ -710,7 +720,9 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
             exceedances = calculate_exceedances(filtered_df)
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.dataframe(exceedances, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
             st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
 
     with tabs[2]:  # AQI
@@ -734,8 +746,10 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
             daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.dataframe(remarks_counts, use_container_width=True)
             st.dataframe(daily_avg, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
             st.download_button(f"⬇️ Download Daily Avg - {label}", to_csv_download(daily_avg), file_name=f"DailyAvg_{label}.csv")
             st.download_button(f"⬇️ Download AQI - {label}", to_csv_download(remarks_counts), file_name=f"AQI_{label}.csv")
 
@@ -774,7 +788,9 @@ if uploaded_files:
                             showlegend=False,
                             height=400
                         )
+                        st.markdown('<div class="glass-container">', unsafe_allow_html=True)
                         st.plotly_chart(fig_current, use_container_width=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
                     with col1:
                         st.markdown(f"**{previous_year} AQI**")
                         fig_prev = px.bar(
@@ -889,7 +905,9 @@ if uploaded_files:
                     legend_title="Site",
                     margin=dict(t=40, b=40),
                 )
-            st.plotly_chart(fig, use_container_width=True)
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+            st.plotly_chart(fig, use_container_width=True
+            st.markdown('</div>', unsafe_allow_html=True)
             
                     
                 
