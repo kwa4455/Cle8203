@@ -857,7 +857,7 @@ if uploaded_files:
                     line_group="site",
                     markers=True,
                     title=f"Aggregated {chart_type} Chart - {label}",
-                    labels={"value": "PM2.5 µg/m³", x_axis: x_axis.capitalize()}
+                    labels={"value": "PM₂.₅ µg/m³", x_axis: x_axis.capitalize()}
                 )
             else:
                 fig = px.bar(
@@ -868,14 +868,14 @@ if uploaded_files:
                     barmode="group",
                     facet_col="site" if len(site_in_tab) > 1 else None,
                     title=f"Aggregated {chart_type} Chart - {label}",
-                    labels={"value": "PM2.5 µg/m³", x_axis: x_axis.capitalize()}
+                    labels={"value": "PM₂.₅ µg/m³", x_axis: x_axis.capitalize()}
                 )
                 fig.add_trace(
                     go.Scatter(
                         x=df_avg[x_axis].unique(),
                         y=[35] * len(df_avg[x_axis].unique()),
                         mode="lines",
-                        line=dict(dash="dash", color="black"),
+                        line=dict(dash="solid", color="red"),
                         name="Ghana Standard (35 µg/m³)"
                     )
                 )
