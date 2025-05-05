@@ -160,7 +160,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
         transform: scale(1.05);
     }}
-    .glass-container {
+    .glass-container {{
         background: rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(10px);
         -webkit-backdrop-filter: blur(10px);
@@ -168,7 +168,7 @@ def generate_css(theme: dict, font_size: str) -> str:
         box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
         padding: 1.5rem;
         margin-bottom: 2rem;
-    }
+    }}
     .stContainer {{
         font-size: {font_size}px;
         color: {theme.get('text_color', '#000')};
