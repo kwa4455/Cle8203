@@ -697,8 +697,8 @@ sites = sorted(
 
     
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
-    "📈 Trends", "📊 Box & Bar Plots", "📐 Kruskal & T-Test",
-    "🔗 Correlation", "📉 Theil-Sen Trend"
+    "📈 Yearly Trends", "📊 Correlation Plots", "📐 Violin Plot",
+    "🔗 Kruskal-Wallis Test", "📉 Time Variation"
 ])
 
 # --- Tab 1: Yearly Trends ---
