@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import altair as alt
+import plotly.express as px
 from io import BytesIO
 
 # --- Page Configuration ---
@@ -658,15 +658,28 @@ if uploaded_files:
                             st.dataframe(df_melted.head())
                             continue
                         color_map = alt.Scale(domain=["pm25", "pm10"], range=["#1f77b4", "#ff7f0e"])
-                        chart = plot_chart(
-                            df_melted,
-                            x=x_axis,
-                            y="value",
-                            color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
-                            chart_type=chart_type_choice,
-                            title=f"{agg_label} - {', '.join(valid_pollutants)}"
-                        )
-                        st.altair_chart(chart, use_container_width=True)
+                        if chart_type_choice == "line":
+                            fig = px.line(
+                                df_melted,
+                                x=x_axis,
+                                y="value",
+                                color="pollutant",  # Changed to allow side-by-side comparison of pm10 and pm25
+                                line_group="site",
+                                markers=True,
+                                title=f"{agg_label} - {', '.join(safe_pollutants)}",
+                                hover_data=["site", "pollutant", "value"]
+                            )
+                        else:
+                            fig = px.bar(
+                                df_melted,
+                                x=x_axis,
+                                y="value",
+                                color="pollutant",
+                                barmode="group",
+                                title=f"{agg_label} - {', '.join(safe_pollutants)}",
+                                hover_data=["site", "pollutant", "value"]
+                            )
+                            st.plotly_chart(fig, use_container_width=True)
                     except Exception as e:
                         st.error(f"Error plotting chart: {e}")
 
