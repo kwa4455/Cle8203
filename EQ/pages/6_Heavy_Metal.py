@@ -762,18 +762,35 @@ with tab4:
         st.write("Kruskal-Wallis Test Results (includes bootstrapped 95% CI for group medians):")
         st.dataframe(kruskal_df,use_container_width=True)
 
-# --- Tab 5: Theil-Sen Trend Analysis ---
 with tab5:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Time Variation: {name}")
+        
         sites = sorted(df['site'].unique())
         metals = [m for m in metal_columns if m in df.columns]
+        
         site_sel = st.multiselect(
             f"Sites for {name}", sites, default=sites, key=f"site5_{name}"
         )
         metal_sel = st.multiselect(
             f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}"
         )
+
+        # New dropdown to choose statistic
+        statistic = st.selectbox(
+            f"Select statistic for {name}",
+            options=["mean", "std", "median"],
+            index=2,  # default to "median"
+            key=f"stat5_{name}"
+        )
+
+        # Filter and plot
         df_sub = df[df['site'].isin(site_sel)]
-        fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
-        st.plotly_chart(fig)
+        if not df_sub.empty and metal_sel:
+            try:
+                fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
+                st.plotly_chart(fig)
+            except ValueError as e:
+                st.warning(f"Plotting error: {e}")
+        else:
+            st.info("Please select at least one site and one metal to generate the plot.")
