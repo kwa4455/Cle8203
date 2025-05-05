@@ -464,6 +464,8 @@ def calculate_day_pm25(df):
     return df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
         'pm25': 'mean'
     })
+def unique_key(tab: str, widget: str, label: str) -> str:
+    return f"{widget}_{tab}_{label}"
 
 def plot_chart(df, x, y, color, chart_type="line", title="", bar_mode="group"):
     streamlit_theme = st.get_option("theme.base")
@@ -807,7 +809,7 @@ if uploaded_files:
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
-                 key=f"site_daily_tab3_{label}"
+                 key=unique_key("tab3", "site", label)
             )
             filtered_df = df.copy()
             if selected_years:
@@ -823,7 +825,7 @@ if uploaded_files:
                 f"Select Pollutants to Display for {label}",
                 options=["All"] + valid_pollutants,
                 default=["All"],
-                key=f"pollutants_{label}"
+                key=unique_key("tab3", "pollutants", label)
             )
             if "All" in selected_display_pollutants:
                 selected_display_pollutants = valid_pollutants
@@ -831,7 +833,7 @@ if uploaded_files:
                 f"Chart Type for {label}",
                 ["Line", "Bar"],
                 horizontal=True,
-                key=f"charttype_agg_{label}"
+                key=unique_key("tab3", "charttype", label)
             )
             x_axis = "day" if "day" in filtered_df.columns else "month"
             df_melted = filtered_df.melt(
