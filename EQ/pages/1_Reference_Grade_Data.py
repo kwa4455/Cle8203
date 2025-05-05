@@ -906,7 +906,7 @@ if uploaded_files:
                     margin=dict(t=40, b=40),
                 )
             st.markdown('<div class="glass-container">', unsafe_allow_html=True)
-            st.plotly_chart(fig, use_container_width=True
+            st.plotly_chart(fig, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
             
                     
