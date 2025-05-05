@@ -849,6 +849,7 @@ if uploaded_files:
                 
             df_avg = df_melted.groupby([x_axis, "pollutant", "site"], as_index=False)["value"].mean()
             y_title = "PM₂.₅ µg/m³"
+            
             plot_title = f"Aggregated {chart_type} Chart - {label}"
             if chart_type == "Line":
                 fig = px.line(
@@ -856,7 +857,7 @@ if uploaded_files:
                     x=x_axis,
                     y="value",
                     color="pollutant",
-                    line_group="site",
+                    line_group="pollutant",
                     markers=True,
                     title=plot_title,
                     labels={"value": y_title, x_axis: x_axis.capitalize()}
@@ -866,9 +867,9 @@ if uploaded_files:
                     df_avg,
                     x=x_axis,
                     y="value",
-                    color="pollutant",
+                    color="site",
                     barmode="group",
-                    facet_col="site" if len(site_in_tab) > 1 else None,
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
                     title=plot_title,
                     labels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
@@ -884,7 +885,7 @@ if uploaded_files:
                 fig.update_layout(
                     yaxis_title="PM2.5 µg/m³",
                     height=500,
-                    legend_title="Pollutant",
+                    legend_title="Site",
                     margin=dict(t=40, b=40),
                 )
             st.plotly_chart(fig, use_container_width=True)
