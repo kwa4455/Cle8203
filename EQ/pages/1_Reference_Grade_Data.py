@@ -703,6 +703,15 @@ if uploaded_files:
         st.header("🌫️ AQI Stats")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
+            all_years = sorted(df['year'].dropna().unique())
+            default_years = all_years[-2:] if len(all_years) >= 2 else all_years
+            selected_years = st.multiselect(
+                f"Select Year(s) for {label}",
+                options=all_years,
+                default=default_years,
+                key=f"years_aqi_{label}"
+            )
+                
             site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_aqi_{label}")
             filtered_df = df.copy()
             if selected_years:
@@ -725,13 +734,62 @@ if uploaded_files:
                 'Hazardous': '#7e0023'
             }
             remarks_counts['Color'] = remarks_counts['AQI_Remark'].map(aqi_colors)
-            aqi_chart = alt.Chart(remarks_counts).mark_bar().encode(
-                x=alt.X('Percent:Q', title='% Time in AQI Category'),
-                y=alt.Y('AQI_Remark:N', sort='-x', title='AQI Category'),
-                color=alt.Color('AQI_Remark:N', scale=alt.Scale(domain=list(aqi_colors.keys()), range=list(aqi_colors.values())), legend=None),
-                tooltip=['site', 'year', 'AQI_Remark', 'Percent']
-            ).properties(width=700, height=400, title="AQI Remark Percentages")
-            st.altair_chart(aqi_chart, use_container_width=True)
+            if len(selected_years) >= 2:
+                current_year = max(selected_years)
+                previous_year = current_year - 1
+                
+                current_df = remarks_counts[remarks_counts["year"] == current_year]
+                prev_df = remarks_counts[remarks_counts["year"] == previous_year]
+                col1, col2 = st.columns(2)
+                with st.container():
+                    with col1:
+                        st.markdown(f"**{current_year} AQI**")
+                        fig_current = px.bar(
+                            current_df,
+                            x="Percent",
+                            y="AQI_Remark",
+                            color="AQI_Remark",
+                            orientation="h",
+                            color_discrete_map=aqi_colors,
+                            hover_data=["site", "Percent"],
+                        )
+                        fig_current.update_layout(
+                            xaxis_title="% Time in AQI Category",
+                            yaxis_title="AQI Category",
+                            yaxis=dict(categoryorder="total ascending"),
+                            showlegend=False,
+                            height=400
+                        )
+                        st.plotly_chart(fig_current, use_container_width=True)
+                    with col1:
+                        st.markdown(f"**{previous_year} AQI**")
+                        fig_current = px.bar(
+                            prev_df,
+                            x="Percent",
+                            y="AQI_Remark",
+                            color="AQI_Remark",
+                            orientation="h",
+                            color_discrete_map=aqi_colors,
+                            hover_data=["site", "Percent"],
+                        )
+                        fig_current.update_layout(
+                            xaxis_title="% Time in AQI Category",
+                            yaxis_title="AQI Category",
+                            yaxis=dict(categoryorder="total ascending"),
+                            showlegend=False,
+                            height=400
+                        )
+                        st.plotly_chart(fig_prev, use_container_width=True)  
+            else:
+                st.warning("Please select at least two years to compare AQI.")
+                    
+                    
+                    
+                
+                
+                
+                    
+            
 
     with tabs[3]:  # Min/Max
         st.header("🔥 Min/Max Values")
