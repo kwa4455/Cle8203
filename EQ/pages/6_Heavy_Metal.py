@@ -4,6 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.figure_factory as ff
 from scipy.stats import kruskal, ttest_ind
+import plotly.express as px 
 from scipy import stats
 from plotly.subplots import make_subplots
 
