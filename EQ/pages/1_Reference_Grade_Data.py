@@ -763,7 +763,7 @@ if uploaded_files:
                         st.plotly_chart(fig_current, use_container_width=True)
                     with col1:
                         st.markdown(f"**{previous_year} AQI**")
-                        fig_current = px.bar(
+                        fig_prev = px.bar(
                             prev_df,
                             x="Percent",
                             y="AQI_Remark",
