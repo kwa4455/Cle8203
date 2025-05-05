@@ -807,7 +807,7 @@ if uploaded_files:
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
-                 key=f"site_agg_{label}"
+                 key=f"site_daily_tab3_{label}"
             )
             filtered_df = df.copy()
             if selected_years:
