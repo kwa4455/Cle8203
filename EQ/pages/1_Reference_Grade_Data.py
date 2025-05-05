@@ -462,9 +462,10 @@ def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
 def calculate_day_pm25(df):
-    return df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean'
-    })
+    df_grouped = df.groupby(['site', 'day', 'year', 'month'], as_index=False)['pm25'].mean()
+    df_grouped['pm25'] = df_grouped['pm25'].round(1)
+    return df_grouped
+
 def unique_key(tab: str, widget: str, label: str) -> str:
     return f"{widget}_{tab}_{label}"
 
