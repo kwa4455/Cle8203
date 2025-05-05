@@ -460,7 +460,10 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-
+def calculate_day_pm25(df):
+    return df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
+        'pm25': 'mean'
+    })
 
 def plot_chart(df, x, y, color, chart_type="line", title="", bar_mode="group"):
     streamlit_theme = st.get_option("theme.base")
@@ -565,7 +568,7 @@ if uploaded_files:
         selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
         selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
 
-    tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
+    tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Daily Means", "Min/Max Values"])
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
@@ -789,9 +792,99 @@ if uploaded_files:
                 
                 
                     
-            
+        
+    with tabs[3]: 
+        st.header("📊 Daily Means")
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df['site'].unique()),
+                 key=f"site_agg_{label}"
+            )
+            filtered_df = df.copy()
+            if selected_years:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            selected_pollutants = ['pm25', 'pm10']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
 
-    with tabs[3]:  # Min/Max
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=f"pollutants_{label}"
+            )
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=f"charttype_agg_{label}"
+            )
+            x_axis = "day" if "day" in filtered_df.columns else "month"
+            df_melted = filtered_df.melt(
+                id_vars=["site", "year", "month", "day"] if "day" in filtered_df.columns else ["site", "year", "month"],
+                value_vars=selected_display_pollutants,
+                var_name="pollutant",
+                value_name="value"
+            )
+            if df_melted.empty:
+                st.warning(f"No data to plot for {label}")
+                continue
+                
+            df_avg = df_melted.groupby([x_axis, "pollutant", "site"], as_index=False)["value"].mean()
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="pollutant",
+                    line_group="site",
+                    markers=True,
+                    title=f"Aggregated {chart_type} Chart - {label}",
+                    labels={"value": "PM2.5 µg/m³", x_axis: x_axis.capitalize()}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="pollutant",
+                    barmode="group",
+                    facet_col="site" if len(site_in_tab) > 1 else None,
+                    title=f"Aggregated {chart_type} Chart - {label}",
+                    labels={"value": "PM2.5 µg/m³", x_axis: x_axis.capitalize()}
+                )
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_avg[x_axis].unique(),
+                        y=[35] * len(df_avg[x_axis].unique()),
+                        mode="lines",
+                        line=dict(dash="dash", color="black"),
+                        name="Ghana Standard (35 µg/m³)"
+                    )
+                )
+                fig.update_layout(
+                    yaxis_title="PM2.5 µg/m³",
+                    height=500,
+                    legend_title="Pollutant",
+                    margin=dict(t=40, b=40),
+                )
+            st.plotly_chart(fig, use_container_width=True)
+            
+                    
+                
+                
+                
+
+
+            
+    with tabs[4]:  # Min/Max
         st.header("🔥 Min/Max Values")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
