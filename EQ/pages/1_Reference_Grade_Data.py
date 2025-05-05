@@ -169,6 +169,10 @@ def generate_css(theme: dict, font_size: str) -> str:
         padding: 1.5rem;
         margin-bottom: 2rem;
     }
+    .stContainer {{
+        font-size: {font_size}px;
+        color: {theme.get('text_color', '#000')};
+    }}
     ::-webkit-scrollbar {{
         width: 8px;
     }}
