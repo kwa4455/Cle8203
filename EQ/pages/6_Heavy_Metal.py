@@ -506,55 +506,53 @@ def plot_violin_plot(df, metal):
 
     return fig
 
-# Function to perform Kruskal-Wallis test with bootstrapped CIs
 def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
-    # Initialize an empty list to store results
+
     results = []
 
-    # Function to calculate the confidence interval of a sample using bootstrapping
+    # Bootstrapping confidence interval for the median
     def bootstrap_ci(data, n_bootstrap, ci_level):
-        bootstrapped_medians = []
-        for _ in range(n_bootstrap):
-            sample = np.random.choice(data, size=len(data), replace=True)
-            bootstrapped_medians.append(np.median(sample))
+        if len(data) == 0:
+            return np.nan, np.nan
+        bootstrapped_medians = [np.median(np.random.choice(data, size=len(data), replace=True))
+                                for _ in range(n_bootstrap)]
         lower_bound = np.percentile(bootstrapped_medians, (1 - ci_level) / 2 * 100)
         upper_bound = np.percentile(bootstrapped_medians, (1 + ci_level) / 2 * 100)
         return lower_bound, upper_bound
 
-    # Iterate over each metal to perform Kruskal-Wallis test
     for metal in metals:
-        # Group the data by site for each metal and perform the Kruskal-Wallis test
-        groups = [df[df[site_column] == site][metal].dropna() for site in df[site_column].unique()]
-        if all(len(group) > 0 for group in groups):  # Ensure no group is empty
-            statistic, p_value = stats.kruskal(*groups)
+        # Collect groups by site
+        grouped_data = {
+            site: df[df[site_column] == site][metal].dropna()
+            for site in df[site_column].unique()
+        }
+
+        # Filter out empty groups
+        non_empty_groups = [data for data in grouped_data.values() if len(data) > 0]
+
+        # Perform test only if at least 2 non-empty groups
+        if len(non_empty_groups) >= 2:
+            statistic, p_value = stats.kruskal(*non_empty_groups)
         else:
-            statistic, p_value = np.nan, np.nan  # Handle edge cases
+            statistic, p_value = np.nan, np.nan
 
-        # Calculate degrees of freedom
-        df_value = len(df[site_column].unique()) - 1
-        
-        # Calculate the confidence intervals for the medians of each group
-        ci_dict = {}
-        for site in df[site_column].unique():
-            site_data = df[df[site_column] == site][metal].dropna()
-            if len(site_data) > 0:
-                lower, upper = bootstrap_ci(site_data, n_bootstrap, ci_level)
-                ci_dict[site] = f"[{lower:.2f}, {upper:.2f}]"
-            else:
-                ci_dict[site] = "N/A"
+        # Confidence intervals for each site group
+        ci_dict = {
+            site: (f"[{lower:.2f}, {upper:.2f}]" if not np.isnan(lower) else "N/A")
+            for site, data in grouped_data.items()
+            for lower, upper in [bootstrap_ci(data, n_bootstrap, ci_level)]
+        }
 
-        # Store the results
+        # Store result
         results.append({
             'Variable': metal.capitalize(),
             'Statistic': statistic,
             'p_value': p_value,
-            'df': df_value,
-            **ci_dict  # Flatten CI dict into the main row
+            'df': len(grouped_data) - 1,
+            **ci_dict
         })
 
-    # Convert results to DataFrame
-    kruskal_df = pd.DataFrame(results)
-    return kruskal_df
+    return pd.DataFrame(results)
 
 
 # Function to aggregate data by month or dayofweek
