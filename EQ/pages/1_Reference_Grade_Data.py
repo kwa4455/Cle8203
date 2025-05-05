@@ -870,7 +870,7 @@ if uploaded_files:
                     barmode="group",
                     facet_col="site" if len(site_in_tab) > 1 else None,
                     title=plot_title,
-                    llabels={"value": y_title, x_axis: x_axis.capitalize()}
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
                 fig.add_trace(
                     go.Scatter(
