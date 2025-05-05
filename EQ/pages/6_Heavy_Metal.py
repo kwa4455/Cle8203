@@ -506,50 +506,56 @@ def plot_violin_plot(df, metal):
 
     return fig
 
-# Function to calculate Kruskal-Wallis test and return a summary DataFrame
+# Function to perform Kruskal-Wallis test with bootstrapped CIs
 def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
     # Initialize an empty list to store results
     results = []
 
     # Function to calculate the confidence interval of a sample using bootstrapping
     def bootstrap_ci(data, n_bootstrap, ci_level):
-        bootstrapped_means = []
+        bootstrapped_medians = []
         for _ in range(n_bootstrap):
             sample = np.random.choice(data, size=len(data), replace=True)
-            bootstrapped_means.append(np.median(sample))
-        lower_bound = np.percentile(bootstrapped_means, (1 - ci_level) / 2 * 100)
-        upper_bound = np.percentile(bootstrapped_means, (1 + ci_level) / 2 * 100)
+            bootstrapped_medians.append(np.median(sample))
+        lower_bound = np.percentile(bootstrapped_medians, (1 - ci_level) / 2 * 100)
+        upper_bound = np.percentile(bootstrapped_medians, (1 + ci_level) / 2 * 100)
         return lower_bound, upper_bound
 
     # Iterate over each metal to perform Kruskal-Wallis test
     for metal in metals:
         # Group the data by site for each metal and perform the Kruskal-Wallis test
         groups = [df[df[site_column] == site][metal].dropna() for site in df[site_column].unique()]
-        statistic, p_value = stats.kruskal(*groups)
+        if all(len(group) > 0 for group in groups):  # Ensure no group is empty
+            statistic, p_value = stats.kruskal(*groups)
+        else:
+            statistic, p_value = np.nan, np.nan  # Handle edge cases
 
-        # Calculate the degrees of freedom (df = number of unique sites - 1)
+        # Calculate degrees of freedom
         df_value = len(df[site_column].unique()) - 1
         
         # Calculate the confidence intervals for the medians of each group
         ci_dict = {}
         for site in df[site_column].unique():
             site_data = df[df[site_column] == site][metal].dropna()
-            lower, upper = bootstrap_ci(site_data, n_bootstrap, ci_level)
-            ci_dict[site] = {'lower': lower, 'upper': upper}
+            if len(site_data) > 0:
+                lower, upper = bootstrap_ci(site_data, n_bootstrap, ci_level)
+                ci_dict[site] = f"[{lower:.2f}, {upper:.2f}]"
+            else:
+                ci_dict[site] = "N/A"
 
-        # Store the results in the results list
+        # Store the results
         results.append({
             'Variable': metal.capitalize(),
             'Statistic': statistic,
             'p_value': p_value,
             'df': df_value,
-            'Confidence Intervals': ci_dict
+            **ci_dict  # Flatten CI dict into the main row
         })
 
-    # Convert the results to a DataFrame
+    # Convert results to DataFrame
     kruskal_df = pd.DataFrame(results)
-    
     return kruskal_df
+
 
 # Function to aggregate data by month or dayofweek
 def aggregate_metals(df, time_col):
@@ -733,21 +739,29 @@ with tab3:
         fig = plot_violin_plot(df, metal_sel)
         st.plotly_chart(fig, use_container_width=True)
 
-# --- Tab 4: Kruskal-Wallis Test ---
 with tab4:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Kruskal-Wallis Test: {name}")
-        sites = sorted(df['site'].unique())
+        
+        sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
-        site_column = st.multiselect(
+
+        # Multiselect sites
+        selected_sites = st.multiselect(
             f"Sites for {name}", sites, default=sites, key=f"site3_{name}"
         )
-        df_sub = df[df['site'].isin(site_column)]
+
+        # Filter by selected sites
+        df_sub = df[df['site'].isin(selected_sites)]
+
+        # Run Kruskal-Wallis test
         kruskal_df = kruskal_wallis_by_test(
-            df_sub, metals, site_column, n_bootstrap=1000, ci_level=0.95
+            df_sub, metals, site_column="site", n_bootstrap=1000, ci_level=0.95
         )
-        st.write("Kruskal-Wallis Test Results:")
-        st.dataframe(kruskal_df)
+
+        # Display result
+        st.write("Kruskal-Wallis Test Results (includes bootstrapped 95% CI for group medians):")
+        st.dataframe(kruskal_df,use_container_width=True)
 
 # --- Tab 5: Theil-Sen Trend Analysis ---
 with tab5:
