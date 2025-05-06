@@ -7,6 +7,7 @@ from scipy.stats import kruskal, ttest_ind
 import plotly.express as px 
 from scipy import stats
 from plotly.subplots import make_subplots
+from glass_plotly_style import apply_glass_style
 
 # --- Page Config ---
 st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
@@ -716,9 +717,11 @@ with tab1:
 
         for metal in selected_metals:
             fig, summary = yearly_plot_bar(df, metal)
+            fig = apply_glass_style(fig, st.session_state.get("theme", {}), st.session_state.get("font_size", "16px"))
+            summary = plotly_table(theme, font_size)
             st.plotly_chart(fig, use_container_width=True)
-            st.dataframe(summary, use_container_width=True)
-
+            st.plotly_chart(summary, use_container_width=True)
+            
 # --- Tab 2: Correlation Analysis ---
 with tab2:
     for df, name in zip(dataframes, file_names):
@@ -737,6 +740,7 @@ with tab3:
         metals = [m for m in metal_columns if m in df.columns]
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
         fig = plot_violin_plot(df, metal_sel)
+        fig = apply_glass_style(fig, st.session_state.get("theme", {}), st.session_state.get("font_size", "16px"))
         st.plotly_chart(fig, use_container_width=True)
 
 with tab4:
@@ -761,7 +765,8 @@ with tab4:
 
         # Display result
         st.write("Kruskal-Wallis Test Results (includes bootstrapped 95% CI for group medians):")
-        st.dataframe(kruskal_df,use_container_width=True)
+        fig = plotly_table(kruskal_df, theme, font_size)
+        st.plotly_chart(fig, use_container_width=True)
 
 with tab5:
     for df, name in zip(dataframes, file_names):
@@ -790,6 +795,7 @@ with tab5:
         if not df_sub.empty and metal_sel:
             try:
                 fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
+                fig = apply_glass_style(fig, st.session_state.get("theme", {}), st.session_state.get("font_size", "16px"))
                 st.plotly_chart(fig)
             except ValueError as e:
                 st.warning(f"Plotting error: {e}")
