@@ -507,39 +507,36 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
     return site_corrs  # Optional, if you need to use the matrices elsewhere
 
 
-import plotly.graph_objects as go
 
 def plot_box_plot(df, metal):
     colors = {
         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
-        "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
+        "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange",
+        "Dansoman": "maroon", "North Industrial Area": "blue"
     }
 
     unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
-
     fig = go.Figure()
 
     for site in df['site'].unique():
         site_data = df[df['site'] == site]
 
         fig.add_trace(go.Box(
-            x=[site] * len(site_data),
             y=site_data[metal],
             name=site,
+            boxpoints=False,              # disables scatter points (outliers)
+            line=dict(color=colors.get(site, 'gray')),
+            fillcolor=colors.get(site, 'lightgray'),
             marker_color=colors.get(site, 'gray'),
-            boxpoints=False,  # No outliers
-            line=dict(width=1),
-            fillcolor='rgba(0,0,0,0)',  # Transparent box fill
-            showlegend=False,
-            median=dict(line=dict(color=colors.get(site, 'gray'), width=3))
+            opacity=0.6,
+            showlegend=False
         ))
 
     fig.update_layout(
         title=f"{metal.upper()} ({unit}) by Site",
-        xaxis_title="Site",
         yaxis_title=f"{metal.upper()} ({unit})",
+        xaxis_title="Site",
         template="plotly_white",
-        showlegend=False,
         xaxis_tickangle=45,
         font=dict(size=12, family="Arial", color="black"),
         plot_bgcolor='white',
