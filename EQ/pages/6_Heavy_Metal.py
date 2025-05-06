@@ -776,12 +776,12 @@ with tab1:
         )
 
         for metal in selected_metals:
-            fig, summary = yearly_plot_bar(df, metal)
-            fig = apply_glass_style(fig, st.session_state.get("theme", {}), st.session_state.get("font_size", "16px"))
-            summary = plotly_table(theme, font_size)
+            fig, summary_df = yearly_plot_bar(df, metal)
+            fig = apply_glass_style(fig, theme, font_size)
+            summary = plotly_table(summary_df, theme, font_size)
             st.plotly_chart(fig, use_container_width=True)
             st.plotly_chart(summary, use_container_width=True)
-            
+
 # --- Tab 2: Correlation Analysis ---
 with tab2:
     for df, name in zip(dataframes, file_names):
@@ -803,6 +803,7 @@ with tab3:
         fig = apply_glass_style(fig, theme, font_size)
         st.plotly_chart(fig, use_container_width=True)
 
+# --- Tab 4: Kruskal-Wallis Test ---
 with tab4:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Kruskal-Wallis Test: {name}")
@@ -810,24 +811,21 @@ with tab4:
         sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
 
-        # Multiselect sites
         selected_sites = st.multiselect(
             f"Sites for {name}", sites, default=sites, key=f"site3_{name}"
         )
 
-        # Filter by selected sites
         df_sub = df[df['site'].isin(selected_sites)]
 
-        # Run Kruskal-Wallis test
         kruskal_df = kruskal_wallis_by_test(
             df_sub, metals, site_column="site", n_bootstrap=1000, ci_level=0.95
         )
 
-        # Display result
         st.write("Kruskal-Wallis Test Results (includes bootstrapped 95% CI for group medians):")
         fig = plotly_table(kruskal_df, theme, font_size)
         st.plotly_chart(fig, use_container_width=True)
 
+# --- Tab 5: Time Variation ---
 with tab5:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Time Variation: {name}")
@@ -842,15 +840,13 @@ with tab5:
             f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}"
         )
 
-        # New dropdown to choose statistic
         statistic = st.selectbox(
             f"Select statistic for {name}",
             options=["mean", "std", "median"],
-            index=2,  # default to "median"
+            index=2,
             key=f"stat5_{name}"
         )
 
-        # Filter and plot
         df_sub = df[df['site'].isin(site_sel)]
         if not df_sub.empty and metal_sel:
             try:
