@@ -559,7 +559,7 @@ def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0
 
 # Function to aggregate data by month or dayofweek
 def aggregate_metals(df, time_col):
-    metals = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
+    metals = ["cd", "cr", "hg", "al", "as", "mn", "pb","co","cu","ni","zn"]
     agg_funcs = {col: ['mean', 'std', 'median'] for col in metals}
     summary = df.groupby(['site', time_col]).agg(agg_funcs).reset_index()
     
@@ -655,8 +655,8 @@ if not uploaded_files:
     st.warning("Please upload at least one CSV file.")
     st.stop()
 required_columns = [
-    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb",
-    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"
+    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb","co","cu","ni","zn"
+    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error","co_error","cu_error","ni_error","zn_error"
 ]
 dataframes = []
 file_names = []
@@ -681,9 +681,9 @@ for uploaded_file in uploaded_files:
 # Sidebar filters
 
 # Identify metal columns (exclude non-metal ones)
-non_metal_columns = {'site', 'year', 'dayofweek', 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error"}
+non_metal_columns = {'site', 'year', 'dayofweek', 'month' 'date',"cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error","co_error","cu_error","ni_error","zn_error"}
 all_columns = set().union(*[df.columns for df in dataframes])
-metal_columns = ["cd", "cr", "hg", "al", "as", "mn", "pb"]
+metal_columns = ["cd", "cr", "hg", "al", "as", "mn", "pb","co","cu","ni","zn"]
 error_columns = [f"{m}_error" for m in metal_columns]
 errors = sorted([col for col in all_columns if col.lower() in error_columns])
 non_metal_columns = {'site', 'year', 'dayofweek', 'month', 'date'}
