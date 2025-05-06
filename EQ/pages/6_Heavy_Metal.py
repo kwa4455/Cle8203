@@ -303,8 +303,6 @@ def apply_glass_style(fig: go.Figure, theme: dict, font_size: str = "16px") -> g
             font_family="Poppins"
         ),
     )
-
-    # Add a rectangle shape behind the plot area to simulate shadow and blur
     fig.add_shape(
         type="rect",
         xref="paper", yref="paper",
@@ -313,10 +311,9 @@ def apply_glass_style(fig: go.Figure, theme: dict, font_size: str = "16px") -> g
         line=dict(width=0),
         layer="below"
     )
-
     return fig
 
-
+# Plotly table with theme
 
 def plotly_table(df, theme, font_size="16px"):
     headers = list(df.columns)
@@ -347,6 +344,9 @@ def plotly_table(df, theme, font_size="16px"):
         margin=dict(l=0, r=0, t=20, b=10)
     )
     return fig
+
+
+
 def cleaned(df):
     # Parse and clean date
     df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
