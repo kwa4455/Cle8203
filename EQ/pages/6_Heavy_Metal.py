@@ -798,7 +798,7 @@ with tab3:
         metals = [m for m in metal_columns if m in df.columns]
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
         fig = plot_violin_plot(df, metal_sel)
-        fig = apply_glass_style(fig, st.session_state.get("theme", {}), st.session_state.get("font_size", "16px"))
+        fig = apply_glass_style(fig, theme, font_size)
         st.plotly_chart(fig, use_container_width=True)
 
 with tab4:
@@ -853,7 +853,7 @@ with tab5:
         if not df_sub.empty and metal_sel:
             try:
                 fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
-                fig = apply_glass_style(fig, st.session_state.get("theme", {}), st.session_state.get("font_size", "16px"))
+                fig = apply_glass_style(fig, theme, font_size)
                 st.plotly_chart(fig)
             except ValueError as e:
                 st.warning(f"Plotting error: {e}")
