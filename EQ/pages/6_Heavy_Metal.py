@@ -507,52 +507,32 @@ def correlation_analysis(df, metals, selected_sites, title="Correlation Heatmap"
     return site_corrs  # Optional, if you need to use the matrices elsewhere
 
 
+import plotly.graph_objects as go
 
-
-
-def plot_violin_plot(df, metal):
+def plot_box_plot(df, metal):
     colors = {
         "Kaneshie First Light": "#ffff00", "Mallam Market": "green", "East Legon": "red",
         "Amasaman": "purple", "Tetteh Quarshie Roundabout": "orange", "Dansoman": "maroon", "North Industrial Area": "blue"
     }
 
-    # Define units
     unit = "µg/m³" if metal.lower() == "al" else "ng/m³"
-    
+
     fig = go.Figure()
 
     for site in df['site'].unique():
         site_data = df[df['site'] == site]
 
-        fig.add_trace(go.Violin(
-            x=site_data['site'],
+        fig.add_trace(go.Box(
+            x=[site] * len(site_data),
             y=site_data[metal],
-            box_visible=True,
-            line_color=colors.get(site, 'gray'),
             name=site,
-            side='positive',
-            meanline_visible=True,
-            fillcolor=colors.get(site, 'lightgray'),
-            opacity=0.6,
-            points="all",
+            marker_color=colors.get(site, 'gray'),
+            boxpoints=False,  # No outliers
+            line=dict(width=1),
+            fillcolor='rgba(0,0,0,0)',  # Transparent box fill
+            showlegend=False,
+            median=dict(line=dict(color=colors.get(site, 'gray'), width=3))
         ))
-
-        mean_value = site_data[metal].mean()
-        sd_value = site_data[metal].std()
-        median_value = site_data[metal].median()
-
-        fig.add_annotation(
-            x=site,
-            y=mean_value + 0.02,
-            text=f"Mean: {mean_value:.2f}<br>SD: {sd_value:.2f}<br>Median: {median_value:.2f}",
-            showarrow=True,
-            arrowhead=2,
-            arrowsize=1,
-            ax=0,
-            ay=-40,
-            font=dict(size=10, color="black"),
-            align="center"
-        )
 
     fig.update_layout(
         title=f"{metal.upper()} ({unit}) by Site",
@@ -567,6 +547,9 @@ def plot_violin_plot(df, metal):
     )
 
     return fig
+
+
+
 
 def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0.95):
 
@@ -793,15 +776,16 @@ with tab2:
         df_sub = df[df['site'].isin(site_sel)]
         correlation_analysis(df_sub, metals, site_sel, title=name)
 
-# --- Tab 3: Violin Plot ---
+# --- Tab 3: Box Plot (Median Only, No Outliers) ---
 with tab3:
     for df, name in zip(dataframes, file_names):
-        st.subheader(f"Violin Plot: {name}")
+        st.subheader(f"Box Plot: {name}")
         metals = [m for m in metal_columns if m in df.columns]
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
-        fig = plot_violin_plot(df, metal_sel)
+        fig = plot_box_plot(df, metal_sel)  # <-- new function
         fig = apply_glass_style(fig, theme, font_size)
         st.plotly_chart(fig, use_container_width=True)
+
 
 # --- Tab 4: Kruskal-Wallis Test ---
 with tab4:
