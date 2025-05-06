@@ -705,17 +705,18 @@ def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
 
 
 
-
-
-
 uploaded_files = st.file_uploader("Upload CSV files", accept_multiple_files=True, type=["csv"])
 if not uploaded_files:
     st.warning("Please upload at least one CSV file.")
     st.stop()
+
+# Define required columns
 required_columns = [
-    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb","co","cu","ni","zn"
-    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error","co_error","cu_error","ni_error","zn_error"
+    'date', 'site', 'id', "cd", "cr", "hg", "al", "as", "mn", "pb", "co", "cu", "ni", "zn",
+    "cd_error", "cr_error", "hg_error", "al_error", "as_error", "mn_error", "pb_error", 
+    "co_error", "cu_error", "ni_error", "zn_error"
 ]
+
 dataframes = []
 file_names = []
 
