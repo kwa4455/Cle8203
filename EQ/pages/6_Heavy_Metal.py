@@ -12,13 +12,12 @@ from plotly.subplots import make_subplots
 # --- Page Config ---
 st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
 st.title("🌍 Air Quality Data Explorer")
-
-# Initialize theme and font size in session state
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
 if "font_size" not in st.session_state:
     st.session_state.font_size = "Medium"
 
+# Sidebar theme selection
 theme_choice = st.sidebar.selectbox(
     "Choose Theme",
     ["Light", "Dark", "Blue", "Green", "Purple"],
@@ -26,13 +25,15 @@ theme_choice = st.sidebar.selectbox(
 )
 st.session_state.theme = theme_choice
 
-# Font size selection
-font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
-                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
+# Sidebar font size selection
+font_choice = st.sidebar.radio(
+    "Font Size", ["Small", "Medium", "Large"],
+    index=["Small", "Medium", "Large"].index(st.session_state.font_size)
+)
 st.session_state.font_size = font_choice
 
-# Reset to default
-if st.sidebar.button("🔄 Reset to Defaults"):
+# Reset button
+if st.sidebar.button("\U0001F504 Reset to Defaults"):
     st.session_state.theme = "Light"
     st.session_state.font_size = "Medium"
     st.success("Reset to Light theme and Medium font!")
@@ -48,7 +49,7 @@ themes = {
         "input_bg": "rgba(255, 255, 255, 0.6)"
     },
     "Dark": {
-        "background":"rgba(22, 27, 34, 0.4)",
+        "background": "rgba(22, 27, 34, 0.4)",
         "text": "#e6edf3",
         "button": "#238636",
         "hover": "#2ea043",
@@ -80,9 +81,10 @@ themes = {
 # Font size mapping
 font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
 
-# Apply theme and inject CSS
+# Apply current theme and font size
 theme = themes[st.session_state.theme]
 font_size = font_map[st.session_state.font_size]
+
 
 def generate_css(theme: dict, font_size: str) -> str:
     return f"""
