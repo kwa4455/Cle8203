@@ -603,6 +603,11 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            quarter_options = ['Q1', 'Q2', 'Q3', 'Q4']
+            selected_quarters = st.multiselect(f"Select Quarter(s) for {label}",options=quarter_options,default=quarter_options,key=f"quarter_filter_{label}")
+            if selected_quarters:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarters)]
+                
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
             if not valid_pollutants:
