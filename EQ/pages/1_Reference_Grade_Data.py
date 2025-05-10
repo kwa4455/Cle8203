@@ -577,7 +577,7 @@ def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
                 default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab5", "quarter", label)
+                key=unique_key("tab4", "quarter", label)
             ) or []
 
             if not selected_years_in_tab:
@@ -690,7 +690,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
-                key=unique_key("tab6", "site", label)
+                key=unique_key("tab5", "site", label)
             )
 
             filtered_df = df.copy()
@@ -708,7 +708,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
                 default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab6", "quarter", label)
+                key=unique_key("tab5", "quarter", label)
             ) or []
 
             # Ensure selected_years is defined and not empty
@@ -743,7 +743,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 f"Select Pollutants to Display for {label}",
                 options=["All"] + valid_pollutants,
                 default=["All"],
-                key=unique_key("tab6", "pollutants", label)
+                key=unique_key("tab5", "pollutants", label)
             )
 
             if "All" in selected_display_pollutants:
@@ -754,7 +754,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 f"Chart Type for {label}",
                 ["Line", "Bar"],
                 horizontal=True,
-                key=unique_key("tab6", "charttype", label)
+                key=unique_key("tab5", "charttype", label)
             )
 
             df_avg_list = []
@@ -1140,7 +1140,7 @@ def render_dayofweek_means_tab(tab, dfs, selected_years, calculate_dayofweek_pol
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
-                key=unique_key("tab7", "site", label)
+                key=unique_key("tab6", "site", label)
             )
 
             filtered_df = df.copy()
@@ -1158,7 +1158,7 @@ def render_dayofweek_means_tab(tab, dfs, selected_years, calculate_dayofweek_pol
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
                 default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab7", "quarter", label)
+                key=unique_key("tab6", "quarter", label)
             ) or []
 
             # Ensure selected_years is defined and not empty
@@ -1193,7 +1193,7 @@ def render_dayofweek_means_tab(tab, dfs, selected_years, calculate_dayofweek_pol
                 f"Select Pollutants to Display for {label}",
                 options=["All"] + valid_pollutants,
                 default=["All"],
-                key=unique_key("tab7", "pollutants", label)
+                key=unique_key("tab6", "pollutants", label)
             )
 
             if "All" in selected_display_pollutants:
@@ -1204,7 +1204,7 @@ def render_dayofweek_means_tab(tab, dfs, selected_years, calculate_dayofweek_pol
                 f"Chart Type for {label}",
                 ["Line", "Bar"],
                 horizontal=True,
-                key=unique_key("tab7", "charttype", label)
+                key=unique_key("tab6", "charttype", label)
             )
 
             df_avg_list = []
@@ -1391,10 +1391,11 @@ if uploaded_files:
 
     render_quarter_means_tab(tabs[1], dfs, selected_years, calculate_quarter_pollutant, unique_key)
     render_monthly_means_tab(tabs[2], dfs, selected_years, calculate_month_pollutant, unique_key)
-    render_aqi_tab(tabs[5], selected_years,  calculate_aqi_and_category, unique_key)
-    render_daily_means_tab(tabs[6], dfs, selected_years, calculate_day_pollutant, unique_key)
-    render_dayofweek_means_tab(tabs[7], dfs, selected_years, calculate_dayofweek_pollutant, unique_key)
+    render_aqi_tab(tabs[4], selected_years,  calculate_aqi_and_category, unique_key)
+    render_daily_means_tab(tabs[5], dfs, selected_years, calculate_day_pollutant, unique_key)
+    render_dayofweek_means_tab(tabs[6], dfs, selected_years, calculate_dayofweek_pollutant, unique_key)
     render_exceedances_tab(tabs[3], dfs, selected_years, calculate_exceedances,calculate_min_max)
+    
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
