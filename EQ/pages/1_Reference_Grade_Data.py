@@ -866,8 +866,9 @@ if uploaded_files:
                 default=['Q1', 'Q2', 'Q3', 'Q4'], 
                 key=unique_key("tab3", "quarter", label)
             ) or []
-            selected_quarter_nums = [quarter_map[q] for q in selected_quarters if q in quarter_map]
             quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
+            selected_quarter_nums = [quarter_map[q[-2:]] for q in selected_quarters if q[-2:] in quarter_map]
+            
             
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
