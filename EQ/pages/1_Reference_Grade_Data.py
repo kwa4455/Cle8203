@@ -421,50 +421,71 @@ def calculate_exceedances(df):
 
     return exceedance
 
-def render_exceedances_tab(tab, selected_years, calculate_exceedances, unique_key):
+def render_exceedances_tab(tab, dfs, calculate_exceedances):
     with tab:
-        st.header("🌫️ AQI Stats")
+        st.header("🌫️ Exceedances")
 
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
 
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_exc_{label}")
+            # --- Select Sites ---
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                options=sorted(df['site'].unique()),
+                key=f"site_exc_{label}"
+            )
 
+            # --- Select Years ---
+            available_years = sorted(df['year'].unique())
+            selected_years_in_tab = st.multiselect(
+                f"Select Year(s) for {label}",
+                options=available_years,
+                default=available_years,
+                key=f"year_exc_{label}"
+            )
+
+            # --- Filter by Site and Year ---
             filtered_df = df.copy()
-
             if selected_years_in_tab:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years_in_tab)]
-
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
+            # --- Select Quarters ---
             selected_quarters = st.multiselect(
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
                 default=['Q1', 'Q2', 'Q3', 'Q4'],
                 key=unique_key("tab3", "quarter", label)
-            ) or []
+            )
 
-            if not selected_years_in_tab:
-                selected_years_in_tab = sorted(df['year'].unique())
+            # --- Generate Quarter Identifiers ---
+            selected_quarter_nums = [
+                f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters
+            ] if selected_years_in_tab and selected_quarters else []
 
-            selected_quarter_nums = [f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters]
-
+            # --- Filter by Quarter ---
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
             else:
                 st.warning("No valid quarters to filter!")
                 continue
 
+            # --- Handle Empty DataFrame ---
             if filtered_df.empty:
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
 
+            # --- Calculate & Display Exceedances ---
             exceedances = calculate_exceedances(filtered_df)
             st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.dataframe(exceedances, use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
-            st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
+            st.download_button(
+                f"⬇️ Download Exceedances - {label}",
+                to_csv_download(exceedances),
+                file_name=f"Exceedances_{label}.csv"
+            )
 
 
 def calculate_min_max(df):
