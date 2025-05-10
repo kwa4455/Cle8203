@@ -472,7 +472,7 @@ def calculate_aqi_and_category(df):
 
     return daily_avg, remarks_counts
 
-def render_aqi_tab(tab, selected_years, daily_avg, remarks_counts, calculate_aqi_and_category, unique_key):
+def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
     with tab:
         st.header("🌫️ AQI Stats")
 
