@@ -942,7 +942,7 @@ def render_quarter_means_tab(tab, dfs, selected_years, calculate_quarter_polluta
             df_avg = pd.concat(df_avg_list, ignore_index=True)
 
             # Default to "day" as the x-axis, if the column exists
-            x_axis = "quarter" if "quarter" in filtered_df.columns else "month"
+            x_axis = "quarter" if "quarter" in filtered_df.columns else "year"
             y_title = "µg/m³"
             plot_title = f"Aggregated {chart_type} Chart - {label}"
 
