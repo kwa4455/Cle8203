@@ -421,6 +421,52 @@ def calculate_exceedances(df):
 
     return exceedance
 
+def render_exceedances_tab(tab, selected_years, calculate_exceedances, unique_key):
+    with tab:
+        st.header("🌫️ AQI Stats")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_exc_{label}")
+
+            filtered_df = df.copy()
+
+            if selected_years_in_tab:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years_in_tab)]
+
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab3", "quarter", label)
+            ) or []
+
+            if not selected_years_in_tab:
+                selected_years_in_tab = sorted(df['year'].unique())
+
+            selected_quarter_nums = [f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters]
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+            else:
+                st.warning("No valid quarters to filter!")
+                continue
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            exceedances = calculate_exceedances(filtered_df)
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+            st.dataframe(exceedances, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
+
+
 def calculate_min_max(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
         'pm25': 'mean',
@@ -1320,7 +1366,7 @@ if uploaded_files:
     render_aqi_tab(tabs[5], selected_years,  calculate_aqi_and_category, unique_key)
     render_daily_means_tab(tabs[6], dfs, selected_years, calculate_day_pollutant, unique_key)
     render_dayofweek_means_tab(tabs[7], dfs, selected_years, calculate_dayofweek_pollutant, unique_key)
-
+    render_exceedances_tab(tabs[3], selected_years, calculate_exceedances, unique_key)
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
@@ -1442,22 +1488,7 @@ if uploaded_files:
                     except Exception as e:
                         st.error(f"Error plotting chart: {e}")
 
-    with tabs[3]:  # Exceedances
-        st.header("🚨 Exceedances")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_exc_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            exceedances = calculate_exceedances(filtered_df)
-            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
-            st.dataframe(exceedances, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-            st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
+    
 
                        
                     
