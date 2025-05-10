@@ -421,9 +421,9 @@ def calculate_exceedances(df):
 
     return exceedance
 
-def render_exceedances_tab(tab, dfs, calculate_exceedances):
+def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances):
     with tab:
-        st.header("🌫️ Exceedances")
+        st.header("🌫️ AQI Stats")
 
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -440,7 +440,7 @@ def render_exceedances_tab(tab, dfs, calculate_exceedances):
             selected_years_in_tab = st.multiselect(
                 f"Select Year(s) for {label}",
                 options=available_years,
-                default=available_years,
+                default=selected_years if not selected_years else selected_years,
                 key=f"year_exc_{label}"
             )
 
@@ -1387,7 +1387,7 @@ if uploaded_files:
     render_aqi_tab(tabs[5], selected_years,  calculate_aqi_and_category, unique_key)
     render_daily_means_tab(tabs[6], dfs, selected_years, calculate_day_pollutant, unique_key)
     render_dayofweek_means_tab(tabs[7], dfs, selected_years, calculate_dayofweek_pollutant, unique_key)
-    render_exceedances_tab(tabs[3], selected_years, calculate_exceedances, unique_key)
+    render_exceedances_tab(tabs[3], dfs, selected_years, calculate_exceedances)
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
