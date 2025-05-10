@@ -363,6 +363,15 @@ def cleaned(df):
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 15][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
+    df['year'] = df.index.year
+    df['month'] = pd.Categorical(df.index.strftime('%b'),
+                                 categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                                 ordered=True)
+    df['dayofweek'] = pd.Categorical(df.index.day_name(),
+                                     categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                                                 'Friday', 'Saturday', 'Sunday'],
+                                     ordered=True)
     return df
 
 def parse_dates(df):
@@ -779,7 +788,7 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pollutant
 
 
 def calculate_quarter_pollutant(df, pollutant):
-    df_grouped = df.groupby(['site', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
+    df_grouped = df.groupby(['site', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
    
     return df_grouped
     
@@ -924,7 +933,7 @@ def render_quarter_means_tab(tab, dfs, selected_years, calculate_quarter_polluta
             st.markdown('</div>', unsafe_allow_html=True)
 
 def calculate_dayofweek_pollutant(df,pollutant):
-    df_grouped = df.groupby(['site', 'dayofweek', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
+    df_grouped = df.groupby(['site', 'dayofweek', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
    
     return df_grouped
 
