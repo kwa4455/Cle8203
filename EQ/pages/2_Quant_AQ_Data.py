@@ -339,10 +339,8 @@ st.title("📊 Quant LCS Data Analysis")
 @st.cache_data(ttl=600)
 
 def cleaned(df):
-    import numpy as np  # Ensure numpy is imported
-
     df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['datetime', 'site', 'pm25', 'pm10', 'sample_temp', 'sample_rh']
+    required_columns = ['datetime', 'site', 'pm25', 'pm10','sample_temp', 'sample_rh']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
 
@@ -353,14 +351,7 @@ def cleaned(df):
 
     # Apply correction formula for PM2.5 if applicable
     if all(col in df.columns for col in ['pm25', 'sample_temp', 'sample_rh']):
-        df['corrected_pm25'] = (
-            0.94 * df['pm25']
-            - 0.34 * df['sample_temp']
-            - 0.08 * df['sample_rh']
-            + 19.82
-        )
-    else:
-        df['corrected_pm25'] = np.nan  # Ensure the column exists
+        df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['sample_temp'] - 0.08 * df['sample_rh'] + 19.82
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
@@ -373,9 +364,7 @@ def cleaned(df):
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 20][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
-    
     return df
-
 def parse_dates(df):
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower():
@@ -414,11 +403,6 @@ def compute_aggregates(df, label, pollutant):
     return aggregates
 
 def calculate_exceedances(df):
-    if 'corrected_pm25' not in df.columns:
-        if 'pm25' in df.columns:
-            df['corrected_pm25'] = df['pm25']
-        else:
-            df['corrected_pm25'] = np.nan
     daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
         'corrected_pm25': 'mean',
         'pm10': 'mean'
@@ -436,17 +420,11 @@ def calculate_exceedances(df):
     return exceedance
 
 def calculate_min_max(df):
-    if 'corrected_pm25' not in df.columns:
-        if 'pm25' in df.columns:
-            df['corrected_pm25'] = df['pm25']
-        else:
-            df['corrected_pm25'] = np.nan
-    
     daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
-        'corrected_pm25': 'mean',
+        'pm25': 'mean',
         'pm10': 'mean'
     })
-    df_min_max = daily_avg.groupby(['site', 'year', 'quarter', 'month'], as_index=False).agg(
+    df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
         daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
         daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
         daily_avg_pm25_max=('pm25', lambda x: round(x.max(), 1)),
@@ -534,13 +512,7 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances, calc
 
 
 def calculate_aqi_and_category(df):
-    if 'corrected_pm25' not in df.columns:
-        if 'pm25' in df.columns:
-            df['corrected_pm25'] = df['pm25']
-        else:
-            df['corrected_pm25'] = np.nan
-            
-    daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
+    daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
         'corrected_pm25': 'mean'
     })
     breakpoints = [
