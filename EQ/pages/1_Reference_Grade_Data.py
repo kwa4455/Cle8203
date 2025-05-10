@@ -477,6 +477,7 @@ def calculate_day_pollutant(df, pollutant):
     df_grouped = df.groupby(['site', 'day', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
     return df_grouped
 
+
 def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, unique_key):
     with tab:
         st.header("📊 Daily Means")
@@ -528,11 +529,12 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "quarter", label)
             ) or []
 
-            # Correct the mapping of quarters with year
-            selected_quarter_nums = []
-            for q in selected_quarters:
-                # For each selected quarter (Q1, Q2, Q3, Q4), generate the full quarter strings
-                selected_quarter_nums += [f"{year}{q}" for year in selected_years]
+            # Ensure selected_years is defined and not empty
+            if not selected_years:
+                selected_years = sorted(df['year'].unique())  # or handle this upstream
+
+            # Correct mapping to full quarter strings like '2021Q1'
+            selected_quarter_nums = [f"{year}{q}" for year in selected_years for q in selected_quarters]
 
             st.write(f"Mapped Quarter Strings: {selected_quarter_nums}")
 
@@ -542,6 +544,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 st.write(filtered_df.head())
             else:
                 st.warning("No valid quarters to filter!")
+                continue
 
             # Check if no data remains after filtering
             if filtered_df.empty:
