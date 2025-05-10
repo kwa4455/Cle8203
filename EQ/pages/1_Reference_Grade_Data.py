@@ -911,8 +911,8 @@ if uploaded_files:
         "Exceedances", 
         "Min/Max Values"
         "AQI Stats", 
-         "Daily Means", 
-        "Day of Week Means",
+        "Daily Means", 
+        "Day of Week Means"
     ])
     
     render_daily_means_tab(tabs[7], dfs, selected_years, calculate_day_pollutant, unique_key)
