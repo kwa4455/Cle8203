@@ -868,15 +868,16 @@ if uploaded_files:
             ) or []
             
             st.write(f"Selected Quarters: {selected_quarters}")
-            quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
-            extracted_quarters = [q[-2:] for q in selected_quarters]
-            st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
-        
-            
-            if selected_quarter_nums:
-                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
-            else:
-                st.warning("No valid quarters selected.")
+            if not selected_quarters:
+                quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
+                extracted_quarters = [q[-2:] for q in selected_quarters]
+                st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
+                selected_quarter_nums = [quarter_map[q] for q in extracted_quarters if q in quarter_map]
+                st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
+                if selected_quarter_nums:
+                    filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+                else:
+                    st.warning("No valid quarters selected.")
                 
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
