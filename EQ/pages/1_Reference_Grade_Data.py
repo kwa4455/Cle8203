@@ -528,10 +528,10 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "quarter", label)
             ) or []
 
-            # Fix: Extract the quarter from the full quarter string, e.g., '2021Q1'
+            # Fix: Correct the mapping of quarters with year
             selected_quarter_nums = []
             for q in selected_quarters:
-                # Generate the year-quarter format to match the dataset format
+                # For each selected quarter (Q1, Q2, Q3, Q4), generate the full quarter strings
                 selected_quarter_nums += [f"{year}{q}" for year in selected_years]
 
             st.write(f"Mapped Quarter Strings: {selected_quarter_nums}")
