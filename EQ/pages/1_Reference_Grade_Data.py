@@ -484,12 +484,6 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
 
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
-
-            
-        
-
-            
-
             
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
@@ -503,12 +497,10 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
                 
-
             # Filter by site
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
                 
-
             # Filter by quarter
             selected_quarters = st.multiselect(
                 f"Select Quarter(s) for {label}",
@@ -525,7 +517,6 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             selected_quarter_nums = [f"{year}{q}" for year in selected_years for q in selected_quarters]
 
             
-
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
                 
@@ -642,22 +633,168 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
 
 
 
-
 def calculate_month_pm25(df, pollutant):
     df_grouped = df.groupby(['site', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
    
     return df_grouped
+
+def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pm25, unique_key):
+    with tab:
+        st.header("📆 Monthly Means")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            # Site selection
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df['site'].unique()),
+                key=unique_key("tab_month", "site", label)
+            )
+
+            # Quarter selection
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab_month", "quarter", label)
+            )
+
+            filtered_df = df.copy()
+
+            # Apply filters
+            if selected_years:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            if selected_quarters:
+                quarter_strings = [f"{year}{q}" for year in selected_years for q in selected_quarters]
+                filtered_df = filtered_df[filtered_df['quarter'].isin(quarter_strings)]
+
+            # Pollutant selection
+            selected_pollutants = ['pm25', 'pm10']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
+                continue
+
+            # Data aggregation
+            df_avg_list = []
+            for pollutant in valid_pollutants:
+                avg_df = calculate_month_pm25(filtered_df, pollutant)
+                avg_df["pollutant"] = pollutant
+                avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                df_avg_list.append(avg_df)
+
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
+                continue
+
+            df_avg = pd.concat(df_avg_list, ignore_index=True)
+
+            # Plotting
+            fig = px.line(
+                df_avg,
+                x="month",
+                y="value",
+                color="pollutant",
+                line_group="pollutant",
+                markers=True,
+                title=f"Monthly Mean Pollutant Levels - {label}",
+                labels={"value": "µg/m³", "month": "Month"}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Data table
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg)
+
 
 def calculate_dayofweek_pm25(df,pollutant):
     df_grouped = df.groupby(['site', 'dayofweek', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
    
     return df_grouped
 
+def render_dayofweek_means_tab(tab, dfs, selected_years, calculate_dayofweek_pm25, unique_key):
+    with tab:
+        st.header("📅 Day of Week Means")
 
-def calculate_season_pm25(df,pollutant):
-    df_grouped = df.groupby(['site', 'season', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            # Site selection
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df['site'].unique()),
+                key=unique_key("tab_dow", "site", label)
+            )
+
+            # Quarter selection
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab_dow", "quarter", label)
+            )
+
+            filtered_df = df.copy()
+
+            # Apply filters
+            if selected_years:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            if selected_quarters:
+                quarter_strings = [f"{year}{q}" for year in selected_years for q in selected_quarters]
+                filtered_df = filtered_df[filtered_df['quarter'].isin(quarter_strings)]
+
+            # Pollutant selection
+            selected_pollutants = ['pm25', 'pm10']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
+                continue
+
+            # Data aggregation
+            df_avg_list = []
+            for pollutant in valid_pollutants:
+                avg_df = calculate_dayofweek_pm25(filtered_df, pollutant)
+                avg_df["pollutant"] = pollutant
+                avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                df_avg_list.append(avg_df)
+
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
+                continue
+
+            df_avg = pd.concat(df_avg_list, ignore_index=True)
+
+            # Plotting
+            fig = px.line(
+                df_avg,
+                x="dayofweek",
+                y="value",
+                color="pollutant",
+                line_group="pollutant",
+                markers=True,
+                title=f"Day of Week Mean Pollutant Levels - {label}",
+                labels={"value": "µg/m³", "dayofweek": "Day of Week"}
+            )
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Data table
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg)
+
+
+def calculate_quarter_pm25(df,pollutant):
+    df_grouped = df.groupby(['site', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
 
     return df_grouped
+ 
+
 
 
 def unique_key(tab: str, widget: str, label: str) -> str:
@@ -772,10 +909,14 @@ if uploaded_files:
         "Exceedances", 
         "AQI Stats", 
         "Daily Means", 
+        "Monthly Means",
+        "Day of Week Means",
         "Min/Max Values"
     ])
     
     render_daily_means_tab(tabs[3], dfs, selected_years, calculate_day_pollutant, unique_key)
+    render_monthly_means_tab(tabs[0], dfs, selected_years, calculate_month_pm25, unique_key)
+    render_dayofweek_means_tab(tabs[1], dfs, selected_years, calculate_dayofweek_pm25, unique_key)
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
