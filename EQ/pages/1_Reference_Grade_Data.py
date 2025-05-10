@@ -877,6 +877,8 @@ if uploaded_files:
                 selected_quarter_nums = [quarter_map[q] for q in extracted_quarters if q in quarter_map]
                 st.write(f"Extracted Quarters: {extracted_quarters}")
                 st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
+                if not selected_quarter_nums:
+                    st.warning("No valid quarter numbers after mapping!")
             else:
                 st.warning("No quarters selected!")
                 
