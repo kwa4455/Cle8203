@@ -1205,10 +1205,34 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-            quarter_options = ['Q1', 'Q2', 'Q3', 'Q4']
-            selected_quarters = st.multiselect(f"Select Quarter(s) for {label}",options=quarter_options,default=quarter_options,key=f"quarter_filter_{label}")
-            if selected_quarters:
-                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarters)]
+            # Filter by quarter
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab1", "quarter", label)
+            ) or []
+
+            # Ensure selected_years is defined and not empty
+            if not selected_years:
+                selected_years = sorted(df['year'].unique())  # or handle this upstream
+
+            # Correct mapping to full quarter strings like '2021Q1'
+            selected_quarter_nums = [f"{year}{q}" for year in selected_years for q in selected_quarters]
+
+            
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+                
+            else:
+                st.warning("No valid quarters to filter!")
+                continue
+
+            # Check if no data remains after filtering
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
                 
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
