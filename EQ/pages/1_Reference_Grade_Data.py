@@ -339,7 +339,6 @@ st.title("📊 Reference Grade Monitor Data Analysis")
 @st.cache_data(ttl=600)
 
 
-import pandas as pd
 
 def cleaned(df):
     # Standardize column names
