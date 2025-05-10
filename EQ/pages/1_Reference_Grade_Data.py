@@ -473,10 +473,27 @@ def calculate_aqi_and_category(df):
 def to_csv_download(df):
     return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-def calculate_day_pm25(df):
-    df_grouped = df.groupby(['site', 'day', 'year', 'month'], as_index=False)['pm25'].mean()
-    df_grouped['pm25'] = df_grouped['pm25'].round(1)
+def calculate_day_pollutant(df, pollutant):
+    df_grouped = df.groupby(['site', 'day', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
     return df_grouped
+
+
+def calculate_month_pm25(df, pollutant):
+    df_grouped = df.groupby(['site', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
+   
+    return df_grouped
+
+def calculate_dayofweek_pm25(df,pollutant):
+    df_grouped = df.groupby(['site', 'dayofweek', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
+   
+    return df_grouped
+
+
+def calculate_season_pm25(df,pollutant):
+    df_grouped = df.groupby(['site', 'season', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
+
+    return df_grouped
+
 
 def unique_key(tab: str, widget: str, label: str) -> str:
     return f"{widget}_{tab}_{label}"
@@ -843,6 +860,10 @@ if uploaded_files:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+            selected_quarters = st.multiselect(f"Select Quarter(s) for {label}", options=['Q1', 'Q2', 'Q3', 'Q4'], default=['Q1', 'Q2', 'Q3', 'Q4'], key=f"quarter_filter_{label}")
+            quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
             if not valid_pollutants:
@@ -864,7 +885,7 @@ if uploaded_files:
             )
             x_axis = "day" if "day" in filtered_df.columns else "month"
             df_melted = filtered_df.melt(
-                id_vars=["site", "year", "month", "day"] if "day" in filtered_df.columns else ["site", "year", "month"],
+                id_vars=["site", "year", "quarter", "month", "day"] if "day" in filtered_df.columns else ["site", "year", "quarter", "month"],
                 value_vars=selected_display_pollutants,
                 var_name="pollutant",
                 value_name="value"
@@ -874,7 +895,7 @@ if uploaded_files:
                 continue
                 
             df_avg = df_melted.groupby([x_axis, "pollutant", "site"], as_index=False)["value"].mean()
-            y_title = "PM₂.₅ µg/m³"
+            y_title = "µg/m³"
             
             plot_title = f"Aggregated {chart_type} Chart - {label}"
             if chart_type == "Line":
@@ -899,24 +920,30 @@ if uploaded_files:
                     title=plot_title,
                     labels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
-                fig.add_trace(
-                    go.Scatter(
-                        x=df_avg[x_axis].unique(),
-                        y=[35] * len(df_avg[x_axis].unique()),
-                        mode="lines",
-                        line=dict(dash="solid", color="red"),
-                        name="Ghana Standard (35 µg/m³)"
+                for pollutant in selected_display_pollutants:
+                    threshold = 35 if pollutant.lower() == "pm25" else 70
+                    fig.add_trace(
+                        go.Scatter(
+                            x=df_avg[x_axis].unique(),
+                            y=[35] * len(df_avg[x_axis].unique()),
+                            mode="lines",
+                            line=dict(dash="solid", color="red"),
+                            name=f"Ghana Standard ({threshold} µg/m³)"
+                        )
                     )
-                )
+                
                 fig.update_layout(
-                    yaxis_title="PM2.5 µg/m³",
+                    yaxis_title="µg/m³",
                     height=500,
                     legend_title="Site",
                     margin=dict(t=40, b=40),
                 )
             st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True)
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg)
             st.markdown('</div>', unsafe_allow_html=True)
+        
             
                     
                 
