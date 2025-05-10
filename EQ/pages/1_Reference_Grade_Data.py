@@ -689,13 +689,31 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pm25, uni
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
                 
-            # Pollutant selection
+            # Check available pollutants in the dataset
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
             if not valid_pollutants:
                 st.warning(f"No valid pollutants found in {label}")
                 continue
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab2", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            # Choose chart type
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab2", "charttype", label)
+            )
 
             # Data aggregation
             df_avg_list = []
