@@ -843,11 +843,152 @@ def render_dayofweek_means_tab(tab, dfs, selected_years, calculate_dayofweek_pm2
                 st.dataframe(df_avg)
 
 
-def calculate_quarter_pm25(df,pollutant):
+def calculate_quarter_pollutant(df,pollutant):
     df_grouped = df.groupby(['site', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
 
     return df_grouped
  
+def render_quarter_means_tab(tab, dfs, selected_years, calculate_quarter_pollutant, unique_key):
+    with tab:
+        st.header("📊 Quarterly Means")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+            
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df['site'].unique()),
+                key=unique_key("tab1", "site", label)
+            )
+
+            filtered_df = df.copy()
+
+            # Filter by year
+            if selected_years:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+                
+            # Filter by site
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+                
+            # Filter by quarter
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab1", "quarter", label)
+            ) or []
+
+            # Ensure selected_years is defined and not empty
+            if not selected_years:
+                selected_years = sorted(df['year'].unique())  # or handle this upstream
+
+            # Correct mapping to full quarter strings like '2021Q1'
+            selected_quarter_nums = [f"{year}{q}" for year in selected_years for q in selected_quarters]
+
+            
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+                
+            else:
+                st.warning("No valid quarters to filter!")
+                continue
+
+            # Check if no data remains after filtering
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            # Check available pollutants in the dataset
+            selected_pollutants = ['pm25', 'pm10']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
+                continue
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab1", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            # Choose chart type
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab1", "charttype", label)
+            )
+
+            df_avg_list = []
+            for pollutant in selected_display_pollutants:
+                if pollutant in filtered_df.columns:
+                    avg_df = calculate_day_pollutant(filtered_df, pollutant)
+                    avg_df["pollutant"] = pollutant
+                    avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                    df_avg_list.append(avg_df)
+
+            # Check if no data is available for the selected pollutants
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
+                continue
+
+            # Combine the dataframes into one
+            df_avg = pd.concat(df_avg_list, ignore_index=True)
+
+            # Default to "day" as the x-axis, if the column exists
+            x_axis = "quarter" if "quarter" in filtered_df.columns else "month"
+            y_title = "µg/m³"
+            plot_title = f"Aggregated {chart_type} Chart - {label}"
+
+            # Generate the chart based on the selected chart type
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
+                )
+
+
+                fig.update_layout(
+                    yaxis_title=y_title,
+                    height=500,
+                    legend_title="Site",
+                    margin=dict(t=40, b=40)
+                )
+
+            # Display the chart
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+            st.plotly_chart(fig, use_container_width=True)
+
+            # Optionally, display the aggregated data table
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg)
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+
 
 
 
@@ -968,7 +1109,8 @@ if uploaded_files:
         "Daily Means", 
         "Day of Week Means"
     ])
-    
+
+    render_quartely_means_tab(tabs[1], dfs, selected_years, calculate_quarter_pollutant, unique_key)
     render_monthly_means_tab(tabs[2], dfs, selected_years, calculate_month_pm25, unique_key)
     render_daily_means_tab(tabs[6], dfs, selected_years, calculate_day_pollutant, unique_key)
     render_dayofweek_means_tab(tabs[7], dfs, selected_years, calculate_dayofweek_pm25, unique_key)
