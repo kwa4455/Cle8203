@@ -883,18 +883,21 @@ if uploaded_files:
                 horizontal=True,
                 key=unique_key("tab3", "charttype", label)
             )
-            x_axis = "day" if "day" in filtered_df.columns else "month"
-            df_melted = filtered_df.melt(
-                id_vars=["site", "year", "quarter", "month", "day"] if "day" in filtered_df.columns else ["site", "year", "quarter", "month"],
-                value_vars=selected_display_pollutants,
-                var_name="pollutant",
-                value_name="value"
-            )
-            if df_melted.empty:
-                st.warning(f"No data to plot for {label}")
+            df_avg_list = []
+            for pollutant in selected_display_pollutants:
+                 if pollutant in filtered_df.columns:
+                     avg_df = calculate_day_pollutant(filtered_df, pollutant)
+                     avg_df["pollutant"] = pollutant
+                     avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                     df_avg_list.append(avg_df)
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
                 continue
-                
-            df_avg = df_melted.groupby([x_axis, "pollutant", "site"], as_index=False)["value"].mean()
+            
+            df_avg = pd.concat(df_avg_list, ignore_index=True)
+            
+            x_axis = "day" if "day" in filtered_df.columns else "month"
+            
             y_title = "µg/m³"
             
             plot_title = f"Aggregated {chart_type} Chart - {label}"
