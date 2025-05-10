@@ -528,8 +528,13 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "quarter", label)
             ) or []
 
-            quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
-            selected_quarter_nums = [quarter_map[q] for q in selected_quarters if q in quarter_map]
+            # Fix: Extract the quarter from the full quarter string, e.g., '2021Q1'
+            selected_quarter_nums = []
+            for q in selected_quarters:
+                # Generate the year-quarter format to match the dataset format
+                selected_quarter_nums += [f"{year}{q}" for year in selected_years]
+
+            st.write(f"Mapped Quarter Strings: {selected_quarter_nums}")
 
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
@@ -644,6 +649,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 st.dataframe(df_avg)
 
             st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
