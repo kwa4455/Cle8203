@@ -353,10 +353,20 @@ def cleaned(df):
         df, _, _ = removal_box_plot(df, 'pm25', 1, 500)
 
     df['year'] = df['datetime'].dt.year
-    df['month'] = df['datetime'].dt.to_period('M').astype(str)
+    df['month'] = pd.Categorical(
+        df['datetime'].dt.strftime('%b'),
+        categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+         ordered=True
+    )
+   
     df['quarter'] = df['datetime'].dt.to_period('Q').astype(str)
     df['day'] = df['datetime'].dt.date
-    df['dayofweek'] = df['datetime'].dt.day_name()
+    df['dayofweek'] = pd.Categorical(
+        df['datetime'].dt.day_name(),
+        categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+        ordered=True
+    )
     df['weekday_type'] = df['datetime'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['datetime'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
@@ -364,14 +374,6 @@ def cleaned(df):
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 15][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
     
-    df['month'] = pd.Categorical(df.index.strftime('%b'),
-                                 categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                                 ordered=True)
-    df['dayofweek'] = pd.Categorical(df.index.day_name(),
-                                     categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday',
-                                                 'Friday', 'Saturday', 'Sunday'],
-                                     ordered=True)
     return df
 
 def parse_dates(df):
