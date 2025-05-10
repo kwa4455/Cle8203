@@ -339,27 +339,37 @@ st.title("📊 Reference Grade Monitor Data Analysis")
 @st.cache_data(ttl=600)
 
 def cleaned(df):
+    import pandas as pd
+
     df = df.rename(columns=lambda x: x.strip().lower())
+
+    if 'datetime' not in df.columns:
+        raise ValueError("Missing required 'datetime' column.")
+
+    df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
+    df = df.dropna(subset=['datetime'])
+
     required_columns = ['datetime', 'site', 'pm25', 'pm10']
     df = df[[col for col in required_columns if col in df.columns]]
     df = df.dropna(axis=1, how='all').dropna()
-    df = df[df.groupby('pm25')['pm25'].transform('count') <= 2]
+
+    # Possibly fix groupby filtering:
+    df = df[df.groupby('pm25')['pm25'].transform('count') > 2]
 
     def removal_box_plot(df, col, lower_threshold, upper_threshold):
         filtered = df[(df[col] >= lower_threshold) & (df[col] <= upper_threshold)]
         return filtered, (df[col] < lower_threshold).sum(), (df[col] > upper_threshold).sum()
 
     if 'pm25' in df.columns:
-        df, _, _ = removal_box_plot(df, 'pm25', 1, 500)
+        df, low_outliers, high_outliers = removal_box_plot(df, 'pm25', 1, 500)
 
     df['year'] = df['datetime'].dt.year
     df['month'] = pd.Categorical(
         df['datetime'].dt.strftime('%b'),
         categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-         ordered=True
+        ordered=True
     )
-   
     df['quarter'] = df['datetime'].dt.to_period('Q').astype(str)
     df['day'] = df['datetime'].dt.date
     df['dayofweek'] = pd.Categorical(
@@ -370,26 +380,21 @@ def cleaned(df):
     df['weekday_type'] = df['datetime'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
     df['season'] = df['datetime'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
+    # Filter to site-months with at least 15 daily readings
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 15][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
-    
+
     return df
-
-
 
 def parse_dates(df):
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower():
             try:
-                # Try converting this column to datetime
                 df['datetime'] = pd.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
-                print(f"Before dropna, length of df: {len(df)}")
                 df = df.dropna(subset=['datetime'])
-                print(f"After dropna, length of df: {len(df)}")
                 return df
-            except Exception as e:
-                print(f"Error in column {col}: {e}")
+            except:
                 continue
     return df
 
