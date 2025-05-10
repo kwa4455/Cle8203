@@ -909,7 +909,7 @@ if uploaded_files:
         "Quartely Means",
         "Monthly Means",
         "Exceedances", 
-        "Min/Max Values"
+        "Min/Max Values",
         "AQI Stats", 
         "Daily Means", 
         "Day of Week Means"
