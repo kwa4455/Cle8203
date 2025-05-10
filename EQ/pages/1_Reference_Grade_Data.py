@@ -376,14 +376,20 @@ def cleaned(df):
     
     return df
 
+
+
 def parse_dates(df):
     for col in df.columns:
+        # Check if the column contains 'date' or 'time' in its name
         if 'date' in col.lower() or 'time' in col.lower():
             try:
-                df['datetime'] = pd.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
-                df = df.dropna(subset=['datetime'])
-                return df
-            except:
+                # Try converting this column to datetime
+                df[col] = pd.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
+                # Drop rows where the date conversion failed
+                df = df.dropna(subset=[col])
+            except Exception as e:
+                # Handle any errors during the conversion
+                print(f"Error in column {col}: {e}")
                 continue
     return df
 
