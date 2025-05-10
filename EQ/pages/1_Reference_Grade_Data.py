@@ -916,8 +916,8 @@ if uploaded_files:
     ])
     
     render_monthly_means_tab(tabs[2], dfs, selected_years, calculate_month_pm25, unique_key)
-    render_daily_means_tab(tabs[7], dfs, selected_years, calculate_day_pollutant, unique_key)
-    render_dayofweek_means_tab(tabs[8], dfs, selected_years, calculate_dayofweek_pm25, unique_key)
+    render_daily_means_tab(tabs[6], dfs, selected_years, calculate_day_pollutant, unique_key)
+    render_dayofweek_means_tab(tabs[7], dfs, selected_years, calculate_dayofweek_pm25, unique_key)
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
