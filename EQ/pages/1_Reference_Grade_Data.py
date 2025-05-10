@@ -502,14 +502,12 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             # Filter by year
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-                st.write(f"After year filter, {len(filtered_df)} rows remain.")
-                st.write(filtered_df.head())
+                
 
             # Filter by site
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-                st.write(f"After site filter, {len(filtered_df)} rows remain.")
-                st.write(filtered_df.head())
+                
 
             # Filter by quarter
             selected_quarters = st.multiselect(
@@ -526,12 +524,11 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             # Correct mapping to full quarter strings like '2021Q1'
             selected_quarter_nums = [f"{year}{q}" for year in selected_years for q in selected_quarters]
 
-            st.write(f"Mapped Quarter Strings: {selected_quarter_nums}")
+            
 
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
-                st.write(f"After quarter filter, {len(filtered_df)} rows remain.")
-                st.write(filtered_df.head())
+                
             else:
                 st.warning("No valid quarters to filter!")
                 continue
