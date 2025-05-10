@@ -483,6 +483,8 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances,calcu
                 to_csv_download(exceedances),
                 file_name=f"Exceedances_{label}.csv"
             )
+            
+            
             min_max = calculate_min_max(filtered_df)
             st.dataframe(min_max, use_container_width=True)
             st.download_button(
