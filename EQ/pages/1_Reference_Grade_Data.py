@@ -868,18 +868,18 @@ if uploaded_files:
             ) or []
             
             st.write(f"Selected Quarters: {selected_quarters}")
+            quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
             if not selected_quarters:
                 st.warning("No quarters selected!")
                 selected_quarter_nums = [] 
             else:
-                quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
+                
                 extracted_quarters = [q[-2:] for q in selected_quarters]
+                 selected_quarter_nums = [quarter_map[q] for q in extracted_quarters if q in quarter_map]
             
                 st.write(f"Extracted Quarters: {extracted_quarters}")
-
-                selected_quarter_nums = [quarter_map[q] for q in extracted_quarters if q in quarter_map]
-
                 st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
+                
                 if not selected_quarter_nums:
                     st.warning("No valid quarter numbers after mapping!")
             if selected_quarter_nums:
