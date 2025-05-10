@@ -496,14 +496,12 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             # Apply year filter
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-
+                st.write(f"After year filter, {len(filtered_df)} rows remain.")
+            
             # Apply site filter
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            # Debugging: Check the filtered dataframe
-            st.write("Filtered DataFrame after site and year selection:")
-            st.write(filtered_df)
+                st.write(f"After site filter, {len(filtered_df)} rows remain.")
 
             # Quarter selection
             selected_quarters = st.multiselect(
@@ -513,19 +511,20 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "quarter", label)
             ) or []
 
-            # Quarter mapping and filtering
             quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
             selected_quarter_nums = [quarter_map[q] for q in selected_quarters if q in quarter_map]
 
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+                st.write(f"After quarter filter, {len(filtered_df)} rows remain.")
             else:
                 st.warning("No valid quarters to filter!")
                 continue
 
-            # Check if filtered_df is still empty after applying the quarter filter
-            st.write("Filtered DataFrame after quarter selection:")
-            st.write(filtered_df)
+            # If filtered_df is empty after filtering, warn the user
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
 
             # Pollutant selection
             selected_pollutants = ['pm25', 'pm10']
@@ -545,25 +544,20 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             if "All" in selected_display_pollutants:
                 selected_display_pollutants = valid_pollutants
 
-            # Chart type selection
-            chart_type = st.radio(
-                f"Chart Type for {label}",
-                ["Line", "Bar"],
-                horizontal=True,
-                key=unique_key("tab3", "charttype", label)
-            )
-
-            # Aggregation and plotting
+            # Aggregation logic
             df_avg_list = []
             for pollutant in selected_display_pollutants:
                 if pollutant in filtered_df.columns:
                     avg_df = calculate_day_pollutant(filtered_df, pollutant)
-                    avg_df["pollutant"] = pollutant
-                    avg_df.rename(columns={pollutant: "value"}, inplace=True)
-                    df_avg_list.append(avg_df)
+                    if avg_df.empty:
+                        st.warning(f"No data for {pollutant} in {label}")
+                    else:
+                        avg_df["pollutant"] = pollutant
+                        avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                        df_avg_list.append(avg_df)
 
             if not df_avg_list:
-                st.warning(f"No data available for selected pollutants in {label}")
+                st.warning(f"No aggregated data available for selected pollutants in {label}")
                 continue
 
             # Combine all aggregated dataframes into one
@@ -629,6 +623,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             with st.expander("Show Aggregated Data Table"):
                 st.dataframe(df_avg)
             st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 def calculate_month_pm25(df, pollutant):
