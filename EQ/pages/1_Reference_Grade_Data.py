@@ -363,7 +363,7 @@ def cleaned(df):
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 15][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
-    df['year'] = df.index.year
+    
     df['month'] = pd.Categorical(df.index.strftime('%b'),
                                  categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                                              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
