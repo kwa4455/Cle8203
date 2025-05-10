@@ -491,7 +491,7 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances,calcu
             st.download_button(f"⬇️ Download MinMax - {label}", to_csv_download(min_max), file_name=f"MinMax_{label}.csv")
 
 def calculate_min_max(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
+    daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
         'pm25': 'mean',
         'pm10': 'mean'
     })
