@@ -861,27 +861,22 @@ if uploaded_files:
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
             selected_quarters = st.multiselect(
-                f"Select Quarter(s) for {label}", 
-                options=['Q1', 'Q2', 'Q3', 'Q4'], 
-                default=['Q1', 'Q2', 'Q3', 'Q4'], 
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
                 key=unique_key("tab3", "quarter", label)
             ) or []
-            
-            st.write(f"Selected Quarters: {selected_quarters}")
+
             quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
             extracted_quarters = []
             selected_quarter_nums = []
-            
-            if not selected_quarters:
-                extracted_quarters = [q[-2:] for q in selected_quarters]
+
+            if selected_quarters:
+                extracted_quarters = [q for q in selected_quarters]
                 selected_quarter_nums = [quarter_map[q] for q in extracted_quarters if q in quarter_map]
-                st.write(f"Extracted Quarters: {extracted_quarters}")
                 st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
-                if not selected_quarter_nums:
-                    st.warning("No valid quarter numbers after mapping!")
             else:
                 st.warning("No quarters selected!")
-                
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
             else:
