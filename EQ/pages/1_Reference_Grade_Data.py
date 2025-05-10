@@ -528,7 +528,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "quarter", label)
             ) or []
 
-            # Fix: Correct the mapping of quarters with year
+            # Correct the mapping of quarters with year
             selected_quarter_nums = []
             for q in selected_quarters:
                 # For each selected quarter (Q1, Q2, Q3, Q4), generate the full quarter strings
@@ -649,7 +649,6 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 st.dataframe(df_avg)
 
             st.markdown('</div>', unsafe_allow_html=True)
-
 
 
 
