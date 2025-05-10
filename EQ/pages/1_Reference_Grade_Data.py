@@ -484,7 +484,22 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
 
-            # Site selection
+            # Inspect the columns and data types in the dataset
+            st.write(f"Columns and data types in {label}:")
+            st.write(df.dtypes)
+
+            # Inspect the first few rows to understand the data structure
+            st.write(f"First few rows in {label}:")
+            st.write(df.head())
+
+            # Check unique values for year, site, and quarter columns
+            st.write(f"Unique years in {label}: {df['year'].unique()}")
+            st.write(f"Unique sites in {label}: {df['site'].unique()}")
+            st.write(f"Unique quarters in {label}: {df['quarter'].unique()}")
+
+            # Get the unique pollutants
+            st.write(f"Available pollutants in {label}: {df.columns}")
+
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
@@ -493,17 +508,19 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
 
             filtered_df = df.copy()
 
-            # Apply year filter
+            # Filter by year
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
                 st.write(f"After year filter, {len(filtered_df)} rows remain.")
-            
-            # Apply site filter
+                st.write(filtered_df.head())
+
+            # Filter by site
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
                 st.write(f"After site filter, {len(filtered_df)} rows remain.")
+                st.write(filtered_df.head())
 
-            # Quarter selection
+            # Filter by quarter
             selected_quarters = st.multiselect(
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
@@ -517,16 +534,16 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
                 st.write(f"After quarter filter, {len(filtered_df)} rows remain.")
+                st.write(filtered_df.head())
             else:
                 st.warning("No valid quarters to filter!")
-                continue
 
-            # If filtered_df is empty after filtering, warn the user
+            # Check if no data remains after filtering
             if filtered_df.empty:
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
 
-            # Pollutant selection
+            # Check available pollutants in the dataset
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
@@ -544,35 +561,36 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             if "All" in selected_display_pollutants:
                 selected_display_pollutants = valid_pollutants
 
-            # Aggregation logic
+            # Choose chart type
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab3", "charttype", label)
+            )
+
             df_avg_list = []
             for pollutant in selected_display_pollutants:
                 if pollutant in filtered_df.columns:
                     avg_df = calculate_day_pollutant(filtered_df, pollutant)
-                    if avg_df.empty:
-                        st.warning(f"No data for {pollutant} in {label}")
-                    else:
-                        avg_df["pollutant"] = pollutant
-                        avg_df.rename(columns={pollutant: "value"}, inplace=True)
-                        df_avg_list.append(avg_df)
+                    avg_df["pollutant"] = pollutant
+                    avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                    df_avg_list.append(avg_df)
 
+            # Check if no data is available for the selected pollutants
             if not df_avg_list:
-                st.warning(f"No aggregated data available for selected pollutants in {label}")
+                st.warning(f"No data available for selected pollutants in {label}")
                 continue
 
-            # Combine all aggregated dataframes into one
+            # Combine the dataframes into one
             df_avg = pd.concat(df_avg_list, ignore_index=True)
 
-            # Debugging: Check the aggregated dataframe
-            st.write("Aggregated Data (df_avg):")
-            st.write(df_avg)
-
-            # Choose x-axis (day or month)
+            # Default to "day" as the x-axis, if the column exists
             x_axis = "day" if "day" in filtered_df.columns else "month"
             y_title = "µg/m³"
             plot_title = f"Aggregated {chart_type} Chart - {label}"
 
-            # Plot the data
+            # Generate the chart based on the selected chart type
             if chart_type == "Line":
                 fig = px.line(
                     df_avg,
@@ -596,7 +614,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                     labels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
 
-                # Add threshold lines for pollutants
+                # Add the Ghana standard threshold lines
                 for pollutant in selected_display_pollutants:
                     threshold = 35 if pollutant.lower() == "pm25" else 70
                     fig.add_trace(
@@ -617,12 +635,16 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                     margin=dict(t=40, b=40)
                 )
 
-            # Display the chart and data
+            # Display the chart
             st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True)
+
+            # Optionally, display the aggregated data table
             with st.expander("Show Aggregated Data Table"):
                 st.dataframe(df_avg)
+
             st.markdown('</div>', unsafe_allow_html=True)
+
 
 
 
