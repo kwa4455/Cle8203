@@ -488,7 +488,13 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances,calcu
             )
             min_max = calculate_min_max(filtered_df)
             st.dataframe(min_max, use_container_width=True)
-            st.download_button(f"⬇️ Download MinMax - {label}", to_csv_download(min_max), file_name=f"MinMax_{label}.csv")
+            st.download_button(
+                label=f"⬇️ Download MinMax - {label}",
+                data=to_csv_download(min_max),
+                file_name=f"MinMax_{label}.csv",
+                key=f"download_minmax_{label}"
+            )
+
 
 def calculate_min_max(df):
     daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
@@ -1517,31 +1523,7 @@ if uploaded_files:
                     
                     
                 
-                
-
-        
             
-                    
-                
-                
-                
-
-
-            
-    with tabs[4]:  # Min/Max
-        st.header("🔥 Min/Max Values")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_minmax_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-
-            min_max = calculate_min_max(filtered_df)
-            st.dataframe(min_max, use_container_width=True)
-            st.download_button(f"⬇️ Download MinMax - {label}", to_csv_download(min_max), file_name=f"MinMax_{label}.csv")
 
 else:
     st.info("Upload CSV or Excel files from different air quality sources to begin.")
