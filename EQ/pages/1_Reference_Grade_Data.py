@@ -484,6 +484,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
 
+            # Site selection
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
@@ -492,12 +493,19 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
 
             filtered_df = df.copy()
 
+            # Apply year filter
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
 
+            # Apply site filter
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
+            # Debugging: Check the filtered dataframe
+            st.write("Filtered DataFrame after site and year selection:")
+            st.write(filtered_df)
+
+            # Quarter selection
             selected_quarters = st.multiselect(
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
@@ -505,6 +513,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "quarter", label)
             ) or []
 
+            # Quarter mapping and filtering
             quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
             selected_quarter_nums = [quarter_map[q] for q in selected_quarters if q in quarter_map]
 
@@ -514,6 +523,11 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 st.warning("No valid quarters to filter!")
                 continue
 
+            # Check if filtered_df is still empty after applying the quarter filter
+            st.write("Filtered DataFrame after quarter selection:")
+            st.write(filtered_df)
+
+            # Pollutant selection
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
@@ -531,6 +545,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             if "All" in selected_display_pollutants:
                 selected_display_pollutants = valid_pollutants
 
+            # Chart type selection
             chart_type = st.radio(
                 f"Chart Type for {label}",
                 ["Line", "Bar"],
@@ -538,6 +553,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 key=unique_key("tab3", "charttype", label)
             )
 
+            # Aggregation and plotting
             df_avg_list = []
             for pollutant in selected_display_pollutants:
                 if pollutant in filtered_df.columns:
@@ -550,11 +566,19 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 st.warning(f"No data available for selected pollutants in {label}")
                 continue
 
+            # Combine all aggregated dataframes into one
             df_avg = pd.concat(df_avg_list, ignore_index=True)
+
+            # Debugging: Check the aggregated dataframe
+            st.write("Aggregated Data (df_avg):")
+            st.write(df_avg)
+
+            # Choose x-axis (day or month)
             x_axis = "day" if "day" in filtered_df.columns else "month"
             y_title = "µg/m³"
             plot_title = f"Aggregated {chart_type} Chart - {label}"
 
+            # Plot the data
             if chart_type == "Line":
                 fig = px.line(
                     df_avg,
@@ -578,6 +602,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                     labels={"value": y_title, x_axis: x_axis.capitalize()}
                 )
 
+                # Add threshold lines for pollutants
                 for pollutant in selected_display_pollutants:
                     threshold = 35 if pollutant.lower() == "pm25" else 70
                     fig.add_trace(
@@ -598,11 +623,13 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                     margin=dict(t=40, b=40)
                 )
 
+            # Display the chart and data
             st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.plotly_chart(fig, use_container_width=True)
             with st.expander("Show Aggregated Data Table"):
                 st.dataframe(df_avg)
             st.markdown('</div>', unsafe_allow_html=True)
+
 
 def calculate_month_pm25(df, pollutant):
     df_grouped = df.groupby(['site', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
