@@ -501,7 +501,7 @@ def calculate_min_max(df):
         'pm25': 'mean',
         'pm10': 'mean'
     })
-    df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
+    df_min_max = daily_avg.groupby(['year', 'quarter', 'site', 'month'], as_index=False).agg(
         daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
         daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
         daily_avg_pm25_max=('pm25', lambda x: round(x.max(), 1)),
