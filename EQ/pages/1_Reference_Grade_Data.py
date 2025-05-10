@@ -405,7 +405,7 @@ def compute_aggregates(df, label, pollutant,unique_key):
     return aggregates
 
 def calculate_exceedances(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
+    daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
         'pm25': 'mean',
         'pm10': 'mean'
     })
