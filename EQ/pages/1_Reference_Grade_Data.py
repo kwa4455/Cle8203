@@ -340,7 +340,7 @@ st.title("📊 Reference Grade Monitor Data Analysis")
 
 
 
-ef cleaned(df):
+def cleaned(df):
     df = df.rename(columns=lambda x: x.strip().lower())
     required_columns = ['datetime', 'site', 'pm25', 'pm10']
     df = df[[col for col in required_columns if col in df.columns]]
