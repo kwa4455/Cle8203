@@ -688,7 +688,7 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pm25, uni
             if filtered_df.empty:
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
-                
+
             # Check available pollutants in the dataset
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
@@ -714,6 +714,7 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pm25, uni
                 horizontal=True,
                 key=unique_key("tab2", "charttype", label)
             )
+            
 
             # Data aggregation
             df_avg_list = []
@@ -728,18 +729,35 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pm25, uni
                 continue
 
             df_avg = pd.concat(df_avg_list, ignore_index=True)
+            # Default to "day" as the x-axis, if the column exists
+            x_axis = "month" if "month" in filtered_df.columns else "day"
+            y_title = "µg/m³"
+            plot_title = f"Aggregated {chart_type} Chart - {label}"
 
             # Plotting
-            fig = px.line(
-                df_avg,
-                x="month",
-                y="value",
-                color="pollutant",
-                line_group="pollutant",
-                markers=True,
-                title=f"Monthly Mean Pollutant Levels - {label}",
-                labels={"value": "µg/m³", "month": "Month"}
-            )
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
+                )
+
             st.plotly_chart(fig, use_container_width=True)
 
             # Data table
