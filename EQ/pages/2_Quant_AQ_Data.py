@@ -414,6 +414,11 @@ def compute_aggregates(df, label, pollutant):
     return aggregates
 
 def calculate_exceedances(df):
+    if 'corrected_pm25' not in df.columns:
+        if 'pm25' in df.columns:
+            df['corrected_pm25'] = df['pm25']
+        else:
+            df['corrected_pm25'] = np.nan
     daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
         'corrected_pm25': 'mean',
         'pm10': 'mean'
@@ -431,6 +436,12 @@ def calculate_exceedances(df):
     return exceedance
 
 def calculate_min_max(df):
+    if 'corrected_pm25' not in df.columns:
+        if 'pm25' in df.columns:
+            df['corrected_pm25'] = df['pm25']
+        else:
+            df['corrected_pm25'] = np.nan
+    
     daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
         'corrected_pm25': 'mean',
         'pm10': 'mean'
@@ -523,6 +534,12 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances, calc
 
 
 def calculate_aqi_and_category(df):
+    if 'corrected_pm25' not in df.columns:
+        if 'pm25' in df.columns:
+            df['corrected_pm25'] = df['pm25']
+        else:
+            df['corrected_pm25'] = np.nan
+            
     daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
         'corrected_pm25': 'mean'
     })
