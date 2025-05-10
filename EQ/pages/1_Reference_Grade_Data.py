@@ -906,7 +906,7 @@ if uploaded_files:
     
     tabs = st.tabs([
         "Aggregated Means",
-        "Quartely Means"
+        "Quartely Means",
         "Monthly Means",
         "Exceedances", 
         "Min/Max Values"
