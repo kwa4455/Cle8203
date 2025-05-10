@@ -477,6 +477,132 @@ def calculate_day_pollutant(df, pollutant):
     df_grouped = df.groupby(['site', 'day', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
     return df_grouped
 
+def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, unique_key):
+    with tab:
+        st.header("📊 Daily Means")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df['site'].unique()),
+                key=unique_key("tab3", "site", label)
+            )
+
+            filtered_df = df.copy()
+
+            if selected_years:
+                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab3", "quarter", label)
+            ) or []
+
+            quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
+            selected_quarter_nums = [quarter_map[q] for q in selected_quarters if q in quarter_map]
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+            else:
+                st.warning("No valid quarters to filter!")
+                continue
+
+            selected_pollutants = ['pm25', 'pm10']
+            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
+
+            if not valid_pollutants:
+                st.warning(f"No valid pollutants found in {label}")
+                continue
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab3", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab3", "charttype", label)
+            )
+
+            df_avg_list = []
+            for pollutant in selected_display_pollutants:
+                if pollutant in filtered_df.columns:
+                    avg_df = calculate_day_pollutant(filtered_df, pollutant)
+                    avg_df["pollutant"] = pollutant
+                    avg_df.rename(columns={pollutant: "value"}, inplace=True)
+                    df_avg_list.append(avg_df)
+
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
+                continue
+
+            df_avg = pd.concat(df_avg_list, ignore_index=True)
+            x_axis = "day" if "day" in filtered_df.columns else "month"
+            y_title = "µg/m³"
+            plot_title = f"Aggregated {chart_type} Chart - {label}"
+
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x=x_axis,
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=plot_title,
+                    labels={"value": y_title, x_axis: x_axis.capitalize()}
+                )
+
+                for pollutant in selected_display_pollutants:
+                    threshold = 35 if pollutant.lower() == "pm25" else 70
+                    fig.add_trace(
+                        go.Scatter(
+                            x=sorted(df_avg[x_axis].unique()),
+                            y=[threshold] * len(df_avg[x_axis].unique()),
+                            mode="lines",
+                            line=dict(dash="solid", color="red"),
+                            name=f"Ghana Standard ({threshold} µg/m³)",
+                            showlegend=True
+                        )
+                    )
+
+                fig.update_layout(
+                    yaxis_title=y_title,
+                    height=500,
+                    legend_title="Site",
+                    margin=dict(t=40, b=40)
+                )
+
+            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
+            st.plotly_chart(fig, use_container_width=True)
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg)
+            st.markdown('</div>', unsafe_allow_html=True)
 
 def calculate_month_pm25(df, pollutant):
     df_grouped = df.groupby(['site', 'month', 'quarter', 'year'])[pollutant].mean().reset_index().round(1)
@@ -609,6 +735,8 @@ if uploaded_files:
         "Daily Means", 
         "Min/Max Values"
     ])
+    
+    render_daily_means_tab(tabs[3], dfs, selected_years, calculate_day_pollutant, unique_key)
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
@@ -843,127 +971,7 @@ if uploaded_files:
                     
                 
                 
-                
-                    
-        
-    with tabs[3]: 
-        st.header("📊 Daily Means")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(
-                f"Select Site(s) for {label}",
-                sorted(df['site'].unique()),
-                 key=unique_key("tab3", "site", label)
-            )
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-            selected_quarters = st.multiselect(
-                f"Select Quarter(s) for {label}",
-                options=['Q1', 'Q2', 'Q3', 'Q4'],
-                default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab3", "quarter", label)
-            ) or []
 
-            quarter_map = {'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4}
-            extracted_quarters = []
-            selected_quarter_nums = []
-
-            if selected_quarters:
-                extracted_quarters = [q for q in selected_quarters]
-                selected_quarter_nums = [quarter_map[q] for q in extracted_quarters if q in quarter_map]
-                st.write(f"Mapped Quarter Numbers: {selected_quarter_nums}")
-            else:
-                st.warning("No quarters selected!")
-            if selected_quarter_nums:
-                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
-            else:
-                st.warning("No valid quarters to filter!")
-
-            selected_pollutants = ['pm25', 'pm10']
-            valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
-            if not valid_pollutants:
-                st.warning(f"No valid pollutants found in {label}")
-
-            selected_display_pollutants = st.multiselect(
-                f"Select Pollutants to Display for {label}",
-                options=["All"] + valid_pollutants,
-                default=["All"],
-                key=unique_key("tab3", "pollutants", label)
-            )
-            if "All" in selected_display_pollutants:
-                selected_display_pollutants = valid_pollutants
-            chart_type = st.radio(
-                f"Chart Type for {label}",
-                ["Line", "Bar"],
-                horizontal=True,
-                key=unique_key("tab3", "charttype", label)
-            )
-            df_avg_list = []
-            for pollutant in selected_display_pollutants:
-                 if pollutant in filtered_df.columns:
-                     avg_df = calculate_day_pollutant(filtered_df, pollutant)
-                     avg_df["pollutant"] = pollutant
-                     avg_df.rename(columns={pollutant: "value"}, inplace=True)
-                     df_avg_list.append(avg_df)
-            if not df_avg_list:
-                st.warning(f"No data available for selected pollutants in {label}")
-                continue
-            
-            df_avg = pd.concat(df_avg_list, ignore_index=True)
-            
-            x_axis = "day" if "day" in filtered_df.columns else "month"
-            
-            y_title = "µg/m³"
-            
-            plot_title = f"Aggregated {chart_type} Chart - {label}"
-            if chart_type == "Line":
-                fig = px.line(
-                    df_avg,
-                    x=x_axis,
-                    y="value",
-                    color="pollutant",
-                    line_group="pollutant",
-                    markers=True,
-                    title=plot_title,
-                    labels={"value": y_title, x_axis: x_axis.capitalize()}
-                )
-            else:
-                fig = px.bar(
-                    df_avg,
-                    x=x_axis,
-                    y="value",
-                    color="site",
-                    barmode="group",
-                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
-                    title=plot_title,
-                    labels={"value": y_title, x_axis: x_axis.capitalize()}
-                )
-                for pollutant in selected_display_pollutants:
-                    threshold = 35 if pollutant.lower() == "pm25" else 70
-                    fig.add_trace(
-                        go.Scatter(
-                            x=df_avg[x_axis].unique(),
-                            y=[35] * len(df_avg[x_axis].unique()),
-                            mode="lines",
-                            line=dict(dash="solid", color="red"),
-                            name=f"Ghana Standard ({threshold} µg/m³)"
-                        )
-                    )
-                
-                fig.update_layout(
-                    yaxis_title="µg/m³",
-                    height=500,
-                    legend_title="Site",
-                    margin=dict(t=40, b=40),
-                )
-            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
-            st.plotly_chart(fig, use_container_width=True)
-            with st.expander("Show Aggregated Data Table"):
-                st.dataframe(df_avg)
-            st.markdown('</div>', unsafe_allow_html=True)
         
             
                     
