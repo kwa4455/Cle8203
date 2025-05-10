@@ -905,18 +905,19 @@ if uploaded_files:
 
     
     tabs = st.tabs([
-        "Aggregated Means", 
-        "Exceedances", 
-        "AQI Stats", 
-        "Daily Means", 
+        "Aggregated Means",
+        "Quartely Means"
         "Monthly Means",
-        "Day of Week Means",
+        "Exceedances", 
         "Min/Max Values"
+        "AQI Stats", 
+         "Daily Means", 
+        "Day of Week Means",
     ])
     
-    render_daily_means_tab(tabs[3], dfs, selected_years, calculate_day_pollutant, unique_key)
-    render_monthly_means_tab(tabs[0], dfs, selected_years, calculate_month_pm25, unique_key)
-    render_dayofweek_means_tab(tabs[1], dfs, selected_years, calculate_dayofweek_pm25, unique_key)
+    render_daily_means_tab(tabs[7], dfs, selected_years, calculate_day_pollutant, unique_key)
+    render_monthly_means_tab(tabs[2], dfs, selected_years, calculate_month_pm25, unique_key)
+    render_dayofweek_means_tab(tabs[8], dfs, selected_years, calculate_dayofweek_pm25, unique_key)
 
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
@@ -1042,7 +1043,7 @@ if uploaded_files:
                     except Exception as e:
                         st.error(f"Error plotting chart: {e}")
 
-    with tabs[1]:  # Exceedances
+    with tabs[3]:  # Exceedances
         st.header("🚨 Exceedances")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
@@ -1059,7 +1060,7 @@ if uploaded_files:
             st.markdown('</div>', unsafe_allow_html=True)
             st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
 
-    with tabs[2]:  # AQI
+    with tabs[5]:  # AQI
         st.header("🌫️ AQI Stats")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
