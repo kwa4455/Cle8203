@@ -421,7 +421,7 @@ def calculate_exceedances(df):
 
     return exceedance
 
-def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances):
+def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances,calculate_min_max):
     with tab:
         st.header("🌫️ AQI Stats")
 
@@ -486,7 +486,9 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances):
                 to_csv_download(exceedances),
                 file_name=f"Exceedances_{label}.csv"
             )
-
+            min_max = calculate_min_max(filtered_df)
+            st.dataframe(min_max, use_container_width=True)
+            st.download_button(f"⬇️ Download MinMax - {label}", to_csv_download(min_max), file_name=f"MinMax_{label}.csv")
 
 def calculate_min_max(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
@@ -1387,7 +1389,7 @@ if uploaded_files:
     render_aqi_tab(tabs[5], selected_years,  calculate_aqi_and_category, unique_key)
     render_daily_means_tab(tabs[6], dfs, selected_years, calculate_day_pollutant, unique_key)
     render_dayofweek_means_tab(tabs[7], dfs, selected_years, calculate_dayofweek_pollutant, unique_key)
-    render_exceedances_tab(tabs[3], dfs, selected_years, calculate_exceedances)
+    render_exceedances_tab(tabs[3], dfs, selected_years, calculate_exceedances,calculate_min_max)
     with tabs[0]:  # Aggregated Means
         st.header("📊 Aggregated Means")
         for label, df in dfs.items():
