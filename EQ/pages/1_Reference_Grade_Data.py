@@ -485,22 +485,12 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
 
-            # Inspect the columns and data types in the dataset
-            st.write(f"Columns and data types in {label}:")
-            st.write(df.dtypes)
+            
+        
 
-            # Inspect the first few rows to understand the data structure
-            st.write(f"First few rows in {label}:")
-            st.write(df.head())
+            
 
-            # Check unique values for year, site, and quarter columns
-            st.write(f"Unique years in {label}: {df['year'].unique()}")
-            st.write(f"Unique sites in {label}: {df['site'].unique()}")
-            st.write(f"Unique quarters in {label}: {df['quarter'].unique()}")
-
-            # Get the unique pollutants
-            st.write(f"Available pollutants in {label}: {df.columns}")
-
+            
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
