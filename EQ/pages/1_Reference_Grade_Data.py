@@ -488,7 +488,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
-                key=unique_key("tab3", "site", label)
+                key=unique_key("tab6", "site", label)
             )
 
             filtered_df = df.copy()
@@ -506,7 +506,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 f"Select Quarter(s) for {label}",
                 options=['Q1', 'Q2', 'Q3', 'Q4'],
                 default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab3", "quarter", label)
+                key=unique_key("tab6", "quarter", label)
             ) or []
 
             # Ensure selected_years is defined and not empty
@@ -541,7 +541,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 f"Select Pollutants to Display for {label}",
                 options=["All"] + valid_pollutants,
                 default=["All"],
-                key=unique_key("tab3", "pollutants", label)
+                key=unique_key("tab6", "pollutants", label)
             )
 
             if "All" in selected_display_pollutants:
@@ -552,7 +552,7 @@ def render_daily_means_tab(tab, dfs, selected_years, calculate_day_pollutant, un
                 f"Chart Type for {label}",
                 ["Line", "Bar"],
                 horizontal=True,
-                key=unique_key("tab3", "charttype", label)
+                key=unique_key("tab6", "charttype", label)
             )
 
             df_avg_list = []
@@ -644,33 +644,51 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pm25, uni
 
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
-
-            # Site selection
+            
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
                 sorted(df['site'].unique()),
-                key=unique_key("tab_month", "site", label)
-            )
-
-            # Quarter selection
-            selected_quarters = st.multiselect(
-                f"Select Quarter(s) for {label}",
-                options=['Q1', 'Q2', 'Q3', 'Q4'],
-                default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab_month", "quarter", label)
+                key=unique_key("tab2", "site", label)
             )
 
             filtered_df = df.copy()
 
-            # Apply filters
+            # Filter by year
             if selected_years:
                 filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+                
+            # Filter by site
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
-            if selected_quarters:
-                quarter_strings = [f"{year}{q}" for year in selected_years for q in selected_quarters]
-                filtered_df = filtered_df[filtered_df['quarter'].isin(quarter_strings)]
+                
+            # Filter by quarter
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=['Q1', 'Q2', 'Q3', 'Q4'],
+                default=['Q1', 'Q2', 'Q3', 'Q4'],
+                key=unique_key("tab2", "quarter", label)
+            ) or []
 
+            # Ensure selected_years is defined and not empty
+            if not selected_years:
+                selected_years = sorted(df['year'].unique())  # or handle this upstream
+
+            # Correct mapping to full quarter strings like '2021Q1'
+            selected_quarter_nums = [f"{year}{q}" for year in selected_years for q in selected_quarters]
+
+            
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+                
+            else:
+                st.warning("No valid quarters to filter!")
+                continue
+
+            # Check if no data remains after filtering
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+                
             # Pollutant selection
             selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
