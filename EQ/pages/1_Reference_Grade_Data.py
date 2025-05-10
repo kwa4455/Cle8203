@@ -928,7 +928,7 @@ def render_quarter_means_tab(tab, dfs, selected_years, calculate_quarter_polluta
             df_avg_list = []
             for pollutant in selected_display_pollutants:
                 if pollutant in filtered_df.columns:
-                    avg_df = calculate_day_pollutant(filtered_df, pollutant)
+                    avg_df = calculate_quarter_pollutant(filtered_df, pollutant)
                     avg_df["pollutant"] = pollutant
                     avg_df.rename(columns={pollutant: "value"}, inplace=True)
                     df_avg_list.append(avg_df)
