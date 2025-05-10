@@ -338,49 +338,62 @@ st.title("📊 Reference Grade Monitor Data Analysis")
 
 @st.cache_data(ttl=600)
 
-def cleaned(df):
-    import pandas as pd
+import pandas as pd
 
+def cleaned(df):
+    # Standardize column names
     df = df.rename(columns=lambda x: x.strip().lower())
 
+    # Check for datetime column
     if 'datetime' not in df.columns:
         raise ValueError("Missing required 'datetime' column.")
 
+    # Parse datetime and drop rows with parsing failures
     df['datetime'] = pd.to_datetime(df['datetime'], errors='coerce')
     df = df.dropna(subset=['datetime'])
 
+    # Filter to only existing required columns
     required_columns = ['datetime', 'site', 'pm25', 'pm10']
     df = df[[col for col in required_columns if col in df.columns]]
+
+    # Drop all-null columns and rows with any nulls
     df = df.dropna(axis=1, how='all').dropna()
 
-    # Possibly fix groupby filtering:
-    df = df[df.groupby('pm25')['pm25'].transform('count') > 2]
-
-    def removal_box_plot(df, col, lower_threshold, upper_threshold):
-        filtered = df[(df[col] >= lower_threshold) & (df[col] <= upper_threshold)]
-        return filtered, (df[col] < lower_threshold).sum(), (df[col] > upper_threshold).sum()
-
+    # Filter out PM2.5 values that occur <= 2 times (optional; adjust if needed)
     if 'pm25' in df.columns:
-        df, low_outliers, high_outliers = removal_box_plot(df, 'pm25', 1, 500)
+        df = df[df.groupby('pm25')['pm25'].transform('count') > 2]
 
+        # Remove outliers: PM2.5 values outside [1, 500]
+        df = df[(df['pm25'] >= 1) & (df['pm25'] <= 500)]
+
+    # Time-based features
     df['year'] = df['datetime'].dt.year
+
     df['month'] = pd.Categorical(
-        df['datetime'].dt.strftime('%b'),
+        df['datetime'].dt.month.map({
+            1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr',
+            5: 'May', 6: 'Jun', 7: 'Jul', 8: 'Aug',
+            9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'
+        }),
         categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
                     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
         ordered=True
     )
+
     df['quarter'] = df['datetime'].dt.to_period('Q').astype(str)
     df['day'] = df['datetime'].dt.date
+
     df['dayofweek'] = pd.Categorical(
         df['datetime'].dt.day_name(),
         categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
         ordered=True
     )
+
     df['weekday_type'] = df['datetime'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
+
     df['season'] = df['datetime'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
-    # Filter to site-months with at least 15 daily readings
+    # Keep only site-month pairs with 15+ unique observation days
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
     sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 15][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
