@@ -266,7 +266,7 @@ def compute_aggregates(df, label, pollutant):
     return aggregates
 
 def calculate_exceedances(df):
-    daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
+    daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
         'corrected_pm25': 'mean',
         'pm10': 'mean'
     })
@@ -284,7 +284,7 @@ def calculate_exceedances(df):
 
 def calculate_min_max(df):
     daily_avg = df.groupby(['site', 'day', 'year','quarter', 'month'], as_index=False).agg({
-        'pm25': 'mean',
+        'corrected_pm25': 'mean',
         'pm10': 'mean'
     })
     df_min_max = daily_avg.groupby(['year','quarter', 'site', 'month'], as_index=False).agg(
