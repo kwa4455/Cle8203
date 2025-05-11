@@ -333,7 +333,7 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
 # --- Title and Logo ---
-st.title("📊 Reference Grade Monitor Data Analysis")
+st.title("📊 Airqo LCS Data Analyzer")
 # --- Helper Functions ---
 
 @st.cache_data(ttl=600)
