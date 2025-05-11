@@ -373,6 +373,16 @@ def standardize_columns(df):
     pm10_cols = ['pm10', 'PM10', 'pm_10']
     site_cols = ['site', 'station', 'location']
 
+    for col in df.columns:
+        col_lower = col.strip().lower()
+        if col_lower in [c.lower() for c in pm25_cols]:
+            df.rename(columns={col: 'pm25'}, inplace=True)
+        if col_lower in [c.lower() for c in pm10_cols]:
+            df.rename(columns={col: 'pm10'}, inplace=True)
+        if col_lower in [c.lower() for c in site_cols]:
+            df.rename(columns={col: 'site'}, inplace=True)
+    return df
+
 def compute_aggregates(df, label, pollutant,unique_key):
     aggregates = {}
     aggregates[f'{label} - Daily Avg ({pollutant})'] = df.groupby(['day', 'site'])[pollutant].mean().reset_index().round(1)
