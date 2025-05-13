@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from io import BytesIO
 
 # --- Page Configuration ---
-st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
+st.set_page_config(page_title="Gravimetric Data Analyser Tool",page_icon="🛠️", layout="wide")
 
 if "theme" not in st.session_state:
     st.session_state.theme = "Light"
@@ -333,7 +333,7 @@ st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 
 # --- Title and Logo ---
-st.title("📊 Reference Grade Monitor Data Analysis")
+st.title("📊 Gravimetric Data Analyser Tool")
 # --- Helper Functions ---
 
 @st.cache_data(ttl=600)
