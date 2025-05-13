@@ -345,13 +345,13 @@ def cleaned(df):
     df = df.dropna(axis=1, how='all').dropna()
 
     # Keep only rows with all required numeric columns > 0
-    for col in ['pm1', 'pm25', 'pm10', 'temp', 'rh']:
+    for col in ['pm1', 'pm25', 'pm10', 'sample_temp', 'sample_rh']:
         if col in df.columns:
             df = df[df[col] > 0]
 
     # Apply correction formula for PM2.5 if applicable
     if all(col in df.columns for col in ['pm25', 'sample_temp', 'sample_rh']):
-        df['corrected_pm25'] = 0.94 * df['pm25'] - 0.34 * df['sample_temp'] - 0.08 * df['sample_rh'] + 19.82
+        df['pm25'] = 0.94 * df['pm25'] - 0.34 * df['sample_temp'] - 0.08 * df['sample_rh'] + 19.82
 
     df['year'] = df['datetime'].dt.year
     df['month'] = df['datetime'].dt.to_period('M').astype(str)
