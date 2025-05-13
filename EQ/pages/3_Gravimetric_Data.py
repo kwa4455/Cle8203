@@ -339,12 +339,25 @@ st.title("📊 Reference Grade Monitor Data Analysis")
 @st.cache_data(ttl=600)
 
 def cleaned(df):
+    # Normalize column names
     df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['date', 'site', 'pm25', 'pm10']
-    df = df[[col for col in required_columns if col in df.columns]]
-    df = df.dropna(axis=1, how='all').dropna()
-   
 
+    # Ensure required columns exist
+    required_columns = ['date', 'site', 'pm25', 'pm10']
+    missing_cols = [col for col in required_columns if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    # Subset and drop empty rows/columns
+    df = df[required_columns]
+    df = df.dropna(axis=1, how='all').dropna()
+
+    # Convert 'date' to datetime
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
+    if df['date'].isnull().any():
+        raise ValueError("Some 'date' values could not be converted to datetime.")
+
+    # Add time-based features
     df['year'] = df['date'].dt.year
     df['month'] = df['date'].dt.to_period('M').astype(str)
     df['quarter'] = df['date'].dt.to_period('Q').astype(str)
@@ -354,6 +367,7 @@ def cleaned(df):
     df['season'] = df['date'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
     return df
+
 
 def parse_dates(df):
     for col in df.columns:
