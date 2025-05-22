@@ -369,39 +369,31 @@ def cleaned(df):
 
     return df
 
+import plotly.graph_objects as go
+import pandas as pd
+
 def yearly_plot_bar(df, metal_sel):
-    # Check if the selected metal and its error column are in the DataFrame
     if metal_sel not in df.columns:
-        return go.Figure(), pd.DataFrame()  # Return empty plot and data if missing
+        return go.Figure(), pd.DataFrame()
 
     error_col = f"{metal_sel}_error"
     has_error = error_col in df.columns
 
-    # Define aggregation logic
-    agg_funcs = {
-        metal_sel: ['mean', 'std', 'median']
-    }
+    # Aggregation
+    agg_funcs = {metal_sel: ['mean', 'std', 'median']}
     if has_error:
         agg_funcs[error_col] = ['mean', 'std', 'median']
 
-    # Group and aggregate
     summary_data = (
         df.groupby(['site', 'year'])
         .agg(agg_funcs)
         .reset_index()
     )
-
-    # Flatten column names
     summary_data.columns = ['_'.join(col).strip('_') for col in summary_data.columns]
-
-    # Add sample count per group
     summary_data['count'] = df.groupby(['site', 'year']).size().values
-
-    # Round and format
     summary_data = summary_data.round(3)
     summary_data['year'] = summary_data['year'].astype(str)
 
-    # Define year colors
     year_colors = {
         "2018": "#008000",
         "2019": "#b30000",
@@ -410,21 +402,19 @@ def yearly_plot_bar(df, metal_sel):
         "2022": "purple"
     }
 
-    # Metal-specific limits
     metal_limits = {
-        "pb": 0.5,     # Ghana
-        "cr": 12,      # US EPA
-        "cd": 5        # EU AQS
+        "pb": 0.5,  # Ghana
+        "cr": 12,   # US EPA
+        "cd": 5     # EU AQS
     }
 
     limit_value = metal_limits.get(metal_sel.lower())
+    metal_label = metal_sel.capitalize()
 
-    # Build plot
     fig = go.Figure()
 
     for year in summary_data['year'].unique():
         subset = summary_data[summary_data['year'] == year]
-
         fig.add_trace(go.Bar(
             x=subset['site'],
             y=subset.get(f'{metal_sel}_median', [0]),
@@ -437,8 +427,9 @@ def yearly_plot_bar(df, metal_sel):
             marker_color=year_colors.get(year, 'gray'),
         ))
 
-    # Add standard limit line if available
-    if limit_value:
+    # Add limit line and legend
+    if limit_value is not None:
+        # Add the visible shape line
         fig.add_shape(
             type="line",
             x0=-0.5, x1=len(summary_data['site'].unique()) - 0.5,
@@ -446,19 +437,28 @@ def yearly_plot_bar(df, metal_sel):
             line=dict(color="red", dash="solid"),
             xref="x", yref="y"
         )
+        # Add a dummy trace for the legend
+        fig.add_trace(go.Scatter(
+            x=[None], y=[None],
+            mode='lines',
+            line=dict(color="red", dash="solid"),
+            name=f"Standard limit ({limit_value})"
+        ))
 
-    # Vertical lines between sites
     for i in range(len(summary_data['site'].unique()) - 1):
         fig.add_vline(x=i + 0.5, line_dash="dash", line_color="black")
 
-    # Set units
     unit = "μg/m³" if metal_sel.lower() == "al" else "ng/m³"
 
     fig.update_layout(
         barmode='group',
-        title=f"{metal_sel.upper()} Pollution by Site (Median Value)",
+        title={
+            'text': f"{metal_label} Pollution by Site (2018–2022, Median Values)",
+            'x': 0.5,
+            'xanchor': 'center'
+        },
         xaxis_title="Site",
-        yaxis_title=f"{metal_sel.upper()} ({unit})",
+        yaxis_title=f"{metal_label} ({unit})",
         xaxis_tickangle=45,
         legend_title_text='Year',
         template="plotly_white",
