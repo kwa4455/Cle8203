@@ -453,7 +453,7 @@ def yearly_plot_bar(df, metal_sel):
     fig.update_layout(
         barmode='group',
         title={
-            'text': f"{metal_label} Pollution by Site (2018–2022, Median Values)",
+            'text': f" Annual Median Concentrations of {metal_label} by Site (2018–2022)",
             'x': 0.5,
             'xanchor': 'center'
         },
