@@ -458,21 +458,20 @@ def render_exceedances_tab(tab, dfs, selected_years, calculate_exceedances, calc
             )
 
             # --- Generate Quarter Identifiers ---
-            selected_quarter_nums = [
-                f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters
-            ] if selected_years_in_tab and selected_quarters else []
-
-            # --- Filter by Quarter ---
-            if selected_quarter_nums:
-                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
-            else:
-                st.warning("No valid quarters to filter!")
-                continue
+           if selected_years_in_tab:
+               if selected_quarters:
+                    selected_quarter_nums = [f"{year}Q{q}" for year in selected_years_in_tab for q in selected_quarters]
+                   filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
+               else:
+                   filtered_df = filtered_df[filtered_df['quarter'].str[:4].isin(selected_years_in_tab)]
+               else:
+                   st.warning("No valid years selected!")
+                   continue
 
             # --- Handle Empty DataFrame ---
-            if filtered_df.empty:
-                st.warning(f"No data remaining for {label} after filtering.")
-                continue
+           if filtered_df.empty:
+               st.warning(f"No data remaining for {label} after filtering.")
+               continue
 
             # --- Calculate & Display Exceedances ---
             exceedances = calculate_exceedances(filtered_df)
