@@ -9,7 +9,6 @@ from io import BytesIO
 # --- Page Configuration ---
 st.set_page_config(page_title="Reference Grade Monitor",page_icon="🛠️", layout="wide")
 # Inject Dynamic Theme
-st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
 
 st.markdown("""
 <style>
