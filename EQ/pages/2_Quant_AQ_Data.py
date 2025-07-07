@@ -9,328 +9,6 @@ from io import BytesIO
 # --- Page Configuration ---
 st.set_page_config(page_title="Quant AQ LCS Data Analyzer",page_icon="🛠️", layout="wide")
 
-if "theme" not in st.session_state:
-    st.session_state.theme = "Light"
-if "font_size" not in st.session_state:
-    st.session_state.font_size = "Medium"
-theme_choice = st.sidebar.selectbox(
-    "Choose Theme",
-    ["Light", "Dark", "Blue", "Green", "Purple"],
-    index=["Light", "Dark", "Blue", "Green", "Purple"].index(st.session_state.theme)
-)
-st.session_state.theme = theme_choice
-
-# Font size selection
-font_choice = st.sidebar.radio("Font Size", ["Small", "Medium", "Large"],
-                               index=["Small", "Medium", "Large"].index(st.session_state.font_size))
-st.session_state.font_size = font_choice
-
-# Reset to default
-if st.sidebar.button("🔄 Reset to Defaults"):
-    st.session_state.theme = "Light"
-    st.session_state.font_size = "Medium"
-    st.success("Reset to Light theme and Medium font!")
-    st.rerun()
-
-# Theme settings dictionary
-themes = {
-    "Light": {
-        "background": "rgba(255, 255, 255, 0.4)",
-        "text": "#004d40",
-        "button": "#00796b",
-        "hover": "#004d40",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    },
-    "Dark": {
-        "background":"rgba(22, 27, 34, 0.4)",
-        "text": "#e6edf3",
-        "button": "#238636",
-        "hover": "#2ea043",
-        "input_bg": "rgba(33, 38, 45, 0.6)"
-    },
-    "Blue": {
-        "background": "rgba(210, 230, 255, 0.4)",
-        "text": "#0a2540",
-        "button": "#1e88e5",
-        "hover": "#1565c0",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    },
-    "Green": {
-        "background": "rgba(223, 255, 231, 0.4)", 
-        "text": "#1b5e20",
-        "button": "#43a047",
-        "hover": "#2e7d32",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    },
-    "Purple": {
-        "background": "rgba(240, 225, 255, 0.4)",
-        "text": "#4a148c",
-        "button": "#8e24aa",
-        "hover": "#6a1b9a",
-        "input_bg": "rgba(255, 255, 255, 0.6)"
-    }
-}
-
-# Font size mapping
-font_map = {"Small": "14px", "Medium": "16px", "Large": "18px"}
-
-# Apply theme and inject CSS
-theme = themes[st.session_state.theme]
-font_size = font_map[st.session_state.font_size]
-def generate_css(theme: dict, font_size: str) -> str:
-    return f"""
-    <style>
-    html, body, .stApp, [class^="css"], button, input, label, textarea, select {{
-        font-size: {font_size} !important;
-        color: {theme["text"]} !important;
-        font-family: 'Segoe UI', 'Roboto', sans-serif;
-    }}
-    .stApp {{
-        background-color: {theme["background"]} !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        background-attachment: fixed;
-        transition: background 0.5s ease, color 0.5s ease;
-    }}
-    html, body, [class^="css"] {{
-        background-color: transparent !important;
-    }}
-    h1, h2, h3 {{
-        font-weight: bold;
-    }}
-    .stTextInput > div > input,
-    .stSelectbox > div > div,
-    .stRadio > div,
-    textarea {{
-        background-color: {theme["input_bg"]} !important;
-        color: {theme["text"]} !important;
-        border: 1px solid {theme["button"]};
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-    }}
-    div.stButton > button {{
-        background-color: {theme["button"]};
-        color: white;
-        padding: 0.5em 1.5em;
-        border-radius: 8px;
-        transition: background-color 0.3s ease;
-    }}
-    div.stButton > button:hover {{
-        background-color: {theme["hover"]};
-    }}
-
-    body, .stApp {{
-        font-family: 'Poppins', sans-serif;
-        transition: all 0.5s ease;
-    }}
-
-    body.light-mode, .stApp.light-mode {{
-        background: linear-gradient(135deg, #f8fdfc, #d8f3dc);
-        color: #1b4332;
-    }}
-
-    body.dark-mode, .stApp.dark-mode {{
-        background: rgba(22, 27, 34, 0.4);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        color: #e6edf3;
-    }}
-
-    [data-testid="stSidebar"] {{
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(12px);
-        border-right: 2px solid #74c69d;
-        transition: all 0.5s ease;
-    }}
-
-    .stButton>button, .stDownloadButton>button {{
-        background: background-color;
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.7em 1.5em;
-        font-weight: bold;
-        font-size: 1rem;
-        box-shadow: 0 0 15px #52b788;
-        transition: 0.3s ease;
-    }}
-
-    .stButton>button:hover, .stDownloadButton>button:hover {{
-        background: background-color);
-        box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
-        transform: scale(1.05);
-    }}
-    .glass-container {{
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border-radius: 15px;
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-    }}
-    .stContainer {{
-        font-size: {font_size}px;
-        color: {theme.get('text_color', '#000')};
-    }}
-    ::-webkit-scrollbar {{
-        width: 8px;
-    }}
-    ::-webkit-scrollbar-thumb {{
-        background: #74c69d;
-        border-radius: 10px;
-    }}
-    ::-webkit-scrollbar-thumb:hover {{
-        background: #52b788;
-    }}
-
-    .glow-text {{
-        text-align: center;
-        font-size: 3em;
-        color: #52b788;
-        text-shadow: 0 0 5px #52b788, 0 0 10px #52b788, 0 0 20px #52b788;
-        margin-bottom: 20px;
-    }}
-
-    html, body, .stApp {{
-        transition: background 0.5s ease, color 0.5s ease;
-    }}
-
-    .stDownloadButton>button {{
-        background: background-color;
-        box-shadow: 0 0 10px #1b4332;
-    }}
-
-    .stButton>button:active, .stDownloadButton>button:active {{
-        transform: scale(0.97);
-    }}
-
-    .stDataFrame, .stTable {{
-        background: rgba(255, 255, 255, 0.6);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        padding: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        overflow: hidden;
-        font-size: 15px;
-    }}
-
-    thead tr th {{
-        background: background-color;
-        color: white;
-        font-weight: bold;
-        text-align: center;
-        padding: 0.5em;
-    }}
-
-    tbody tr:nth-child(even) {{
-        background-color: #eeeeee;
-    }}
-    tbody tr:nth-child(odd) {{
-        background-color: #ffffff;
-    }}
-    tbody tr:hover {{
-        background-color: #b7e4c7;
-        transition: background-color 0.3s ease;
-    }}
-    .altair-glass {{
-        background: rgba(255, 255, 255, 0.2); 
-        backdrop-filter: blur(12px);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        transition: all 0.3s ease-in-out;
-    }}
-    body.dark-mode .altair-glass {{
-        background: rgba(22, 27, 34, 0.3);
-        box-shadow: 0 8px 24px rgba(88, 166, 255, 0.2);
-    }}
-
-    .element-container iframe {{
-        background: rgba(255, 255, 255, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }}
-
-    body.dark-mode .stDataFrame, body.dark-mode .stTable {{
-        background: rgba(33, 38, 45, 0.6);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-        font-size: 15px;
-        overflow: hidden;
-    }}
-
-    body.dark-mode thead tr th {{
-        background: linear-gradient(135deg, #238636, #2ea043);
-        color: #ffffff;
-        font-weight: bold;
-        text-align: center;
-    }}
-
-    body.dark-mode tbody tr:nth-child(even) {{
-        background: linear-gradient(90deg, #21262d, #30363d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }}
-
-    body.dark-mode tbody tr:nth-child(odd) {{
-        background: linear-gradient(90deg, #161b22, #21262d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }}
-
-    body.dark-mode tbody tr:hover {{
-        background: linear-gradient(90deg, #21262d, #30363d);
-        box-shadow: 0 0 15px #58a6ff;
-        transform: scale(1.01);
-    }}
-
-    body.dark-mode .element-container iframe {{
-        background: rgba(33, 38, 45, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border: 2px solid #58a6ff;
-        padding: 10px;
-        border-radius: 16px;
-        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
-        animation: pulse-glow-dark 3s infinite ease-in-out;
-    }}
-
-    @keyframes pulse-glow {{
-      0% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
-      50% {{ box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }}
-      100% {{ box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }}
-    }}
-    @keyframes pulse-glow-dark {{
-      0% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
-      50% {{ box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }}
-      100% {{ box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }}
-    }}
-
-    .footer {{
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: {theme["background"]};
-        color: {theme["text"]};
-        text-align: center;
-        padding: 12px 0;
-        font-size: 14px;
-        font-weight: bold;
-        box-shadow: 0px -2px 10px rgba(0,0,0,0.1);
-        backdrop-filter: blur(8px);
-    }}
-    </style>
-    """
-
-# Inject Dynamic Theme
-st.markdown(generate_css(theme, font_size), unsafe_allow_html=True)
-
-
 
 # --- Title and Logo ---
 st.title("📊 Quant AQ LCS Data Analyzer")
@@ -405,10 +83,10 @@ def compute_aggregates(df, label, pollutant,unique_key):
 
 def calculate_exceedances(df):
     daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'corrected_pm25': 'mean',
+        'pm25': 'mean',
         'pm10': 'mean'
     })
-    pm25_exceed = daily_avg[daily_avg['corrected_pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
+    pm25_exceed = daily_avg[daily_avg['pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
     pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
     total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
 
@@ -510,10 +188,14 @@ def calculate_min_max(df):
     )
     return df_min_max
 
+
 def calculate_aqi_and_category(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'corrected_pm25': 'mean'
+    # Group by site, day, year, quarter, and month, and compute mean of pm25 rounded to 1 decimal place
+    daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
+        'pm25': lambda x: round(x.mean(), 1)
     })
+
+    # Define AQI breakpoints
     breakpoints = [
         (0.0, 9.0, 0, 50),
         (9.1, 35.4, 51, 100),
@@ -524,13 +206,17 @@ def calculate_aqi_and_category(df):
         (325.5, 99999.9, 501, 999)
     ]
 
+    # AQI calculation function
     def calculate_aqi(pm):
         for low, high, aqi_low, aqi_high in breakpoints:
             if low <= pm <= high:
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg['AQI'] = daily_avg['corrected_pm25'].apply(calculate_aqi)
+    # Apply AQI calculation
+    daily_avg['AQI'] = daily_avg['pm25'].apply(calculate_aqi)
+
+    # Define AQI categories
     conditions = [
         (daily_avg['AQI'] > 300),
         (daily_avg['AQI'] > 200),
@@ -542,6 +228,7 @@ def calculate_aqi_and_category(df):
     remarks = ['Hazardous', 'Very Unhealthy', 'Unhealthy', 'Unhealthy for Sensitive Groups', 'Moderate', 'Good']
     daily_avg['AQI_Remark'] = np.select(conditions, remarks, default='Unknown')
 
+    # Count AQI categories and compute percentages
     remarks_counts = daily_avg.groupby(['site', 'year', 'AQI_Remark']).size().reset_index(name='Count')
     remarks_counts['Total_Count_Per_Site_Year'] = remarks_counts.groupby(['site', 'year'])['Count'].transform('sum')
     remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Site_Year']) * 100, 1)
@@ -895,7 +582,7 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pollutant
                 continue
 
             # Check available pollutants in the dataset
-            selected_pollutants = ['corrected_pm25', 'pm10']
+            selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
             if not valid_pollutants:
@@ -1041,7 +728,7 @@ def render_quarter_means_tab(tab, dfs, selected_years, calculate_quarter_polluta
                 continue
 
             # Check available pollutants in the dataset
-            selected_pollutants = ['corrected_pm25', 'pm10']
+            selected_pollutants = ['pm25', 'pm10']
             valid_pollutants = [p for p in selected_pollutants if p in filtered_df.columns]
 
             if not valid_pollutants:
