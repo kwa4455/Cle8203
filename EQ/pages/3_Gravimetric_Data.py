@@ -514,9 +514,11 @@ def calculate_min_max(df):
     )
     return df_min_max
 
+
+
 def calculate_aqi_and_category(df):
-    # Group by site, day, year, quarter, and month, and compute mean of pm25 rounded to 1 decimal place
-    daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
+    # Group by day, year, quarter, and month across all selected sites
+    daily_avg = df.groupby(['day', 'year', 'quarter', 'month'], as_index=False).agg({
         'pm25': lambda x: round(x.mean(), 1)
     })
 
@@ -553,16 +555,19 @@ def calculate_aqi_and_category(df):
     remarks = ['Hazardous', 'Very Unhealthy', 'Unhealthy', 'Unhealthy for Sensitive Groups', 'Moderate', 'Good']
     daily_avg['AQI_Remark'] = np.select(conditions, remarks, default='Unknown')
 
-    # Count AQI categories and compute percentages
-    remarks_counts = daily_avg.groupby(['site', 'year', 'AQI_Remark']).size().reset_index(name='Count')
-    remarks_counts['Total_Count_Per_Site_Year'] = remarks_counts.groupby(['site', 'year'])['Count'].transform('sum')
-    remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Site_Year']) * 100, 1)
+    # Count AQI categories per year (not per site)
+    remarks_counts = daily_avg.groupby(['year', 'AQI_Remark']).size().reset_index(name='Count')
+
+    # Calculate total counts per year and percentage
+    remarks_counts['Total_Count_Per_Year'] = remarks_counts.groupby('year')['Count'].transform('sum')
+    remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Year']) * 100, 1)
 
     return daily_avg, remarks_counts
+
     
 
 
-def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
+def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key, dfs, to_csv_download):
     with tab:
         st.header("🌫️ AQI Stats")
 
@@ -578,7 +583,11 @@ def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
                 key=f"years_aqi_{label}"
             )
 
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_aqi_{label}")
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df['site'].unique()),
+                key=f"site_aqi_{label}"
+            )
 
             filtered_df = df.copy()
 
@@ -610,6 +619,7 @@ def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
 
+            # ✅ Aggregate AQI across selected sites
             daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
 
             st.markdown('<div class="glass-container">', unsafe_allow_html=True)
@@ -641,7 +651,7 @@ def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
                 col1, col2 = st.columns(2)
                 with st.container():
                     with col1:
-                        st.markdown(f"**{current_year} AQI**")
+                        st.markdown(f"**{current_year} AQI (All Selected Sites)**")
                         fig_current = px.bar(
                             current_df,
                             x="Percent",
@@ -649,21 +659,18 @@ def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
                             color="AQI_Remark",
                             orientation="h",
                             color_discrete_map=aqi_colors,
-                            hover_data=["site", "Percent"],
+                            hover_data=["Percent"],
                         )
                         fig_current.update_layout(
                             xaxis_title="% Time in AQI Category",
-                            yaxis_title="AQI Category",
                             yaxis=dict(categoryorder="total ascending"),
                             showlegend=False,
                             height=400
                         )
-                        
                         st.plotly_chart(fig_current, use_container_width=True)
-                        st.markdown('</div>', unsafe_allow_html=True)
 
                     with col2:
-                        st.markdown(f"**{previous_year} AQI**")
+                        st.markdown(f"**{previous_year} AQI (All Selected Sites)**")
                         fig_prev = px.bar(
                             prev_df,
                             x="Percent",
@@ -671,11 +678,10 @@ def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
                             color="AQI_Remark",
                             orientation="h",
                             color_discrete_map=aqi_colors,
-                            hover_data=["site", "Percent"],
+                            hover_data=["Percent"],
                         )
                         fig_prev.update_layout(
                             xaxis_title="% Time in AQI Category",
-                            yaxis_title="AQI Category",
                             yaxis=dict(categoryorder="total ascending"),
                             showlegend=False,
                             height=400
