@@ -991,7 +991,7 @@ def render_monthly_means_tab(tab, dfs, selected_years, calculate_month_pollutant
             # Optionally, display the aggregated data table
             with st.expander("Show Aggregated Data Table"):
                 st.dataframe(df_avg)
-
+            st.download_button(f"⬇️ Download Monthly Avg - {label}", to_csv_download(df_avg), file_name=f"MonthlyAvg_{label}.csv")
             st.markdown('</div>', unsafe_allow_html=True)
 
 
@@ -1137,7 +1137,7 @@ def render_quarter_means_tab(tab, dfs, selected_years, calculate_quarter_polluta
             # Optionally, display the aggregated data table
             with st.expander("Show Aggregated Data Table"):
                 st.dataframe(df_avg)
-
+            st.download_button(f"⬇️ Download Quarterly Avg - {label}", to_csv_download(df_avg), file_name=f"QuarterlyAvg_{label}.csv")
             st.markdown('</div>', unsafe_allow_html=True)
 
 def calculate_dayofweek_pollutant(df,pollutant):
