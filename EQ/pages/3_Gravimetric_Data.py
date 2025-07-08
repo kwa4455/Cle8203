@@ -1413,8 +1413,8 @@ if uploaded_files:
     render_quarter_means_tab(tabs[1], dfs, selected_years, calculate_quarter_pollutant, unique_key)
     render_monthly_means_tab(tabs[2], dfs, selected_years, calculate_month_pollutant, unique_key)
     render_aqi_tab(tabs[4], selected_years,  calculate_aqi_and_category, unique_key)
-    render_daily_means_tab(tabs[5], dfs, selected_years, calculate_day_pollutant, unique_key)
-    render_dayofweek_means_tab(tabs[6], dfs, selected_years, calculate_dayofweek_pollutant, unique_key)
+    render_daily_means_tab(tabs[5], dfs, selected_years, calculate_day_pollutant, unique_key,dfs,)
+    render_dayofweek_means_tab(tabs[6], dfs, selected_years, calculate_dayofweek_pollutant, unique_key,to_csv_download)
     render_exceedances_tab(tabs[3], dfs, selected_years, calculate_exceedances,calculate_min_max)
     
     with tabs[0]:  # Aggregated Means
