@@ -504,7 +504,7 @@ def calculate_min_max(df):
 
 
 
-ef calculate_aqi_and_category(df):
+def calculate_aqi_and_category(df):
     # Group by day, year, quarter, and month across all selected sites
     daily_avg = df.groupby(['day', 'year', 'quarter', 'month'], as_index=False).agg({
         'pm25': lambda x: round(x.mean(), 1)
