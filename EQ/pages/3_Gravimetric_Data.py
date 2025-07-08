@@ -515,9 +515,12 @@ def calculate_min_max(df):
     return df_min_max
 
 def calculate_aqi_and_category(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'quarter' , 'month'], as_index=False).agg({
-        'pm25': 'mean'
+    # Group by site, day, year, quarter, and month, and compute mean of pm25 rounded to 1 decimal place
+    daily_avg = df.groupby(['site', 'day', 'year', 'quarter', 'month'], as_index=False).agg({
+        'pm25': lambda x: round(x.mean(), 1)
     })
+
+    # Define AQI breakpoints
     breakpoints = [
         (0.0, 9.0, 0, 50),
         (9.1, 35.4, 51, 100),
@@ -528,13 +531,17 @@ def calculate_aqi_and_category(df):
         (325.5, 99999.9, 501, 999)
     ]
 
+    # AQI calculation function
     def calculate_aqi(pm):
         for low, high, aqi_low, aqi_high in breakpoints:
             if low <= pm <= high:
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
+    # Apply AQI calculation
     daily_avg['AQI'] = daily_avg['pm25'].apply(calculate_aqi)
+
+    # Define AQI categories
     conditions = [
         (daily_avg['AQI'] > 300),
         (daily_avg['AQI'] > 200),
@@ -546,11 +553,14 @@ def calculate_aqi_and_category(df):
     remarks = ['Hazardous', 'Very Unhealthy', 'Unhealthy', 'Unhealthy for Sensitive Groups', 'Moderate', 'Good']
     daily_avg['AQI_Remark'] = np.select(conditions, remarks, default='Unknown')
 
+    # Count AQI categories and compute percentages
     remarks_counts = daily_avg.groupby(['site', 'year', 'AQI_Remark']).size().reset_index(name='Count')
     remarks_counts['Total_Count_Per_Site_Year'] = remarks_counts.groupby(['site', 'year'])['Count'].transform('sum')
     remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Site_Year']) * 100, 1)
 
     return daily_avg, remarks_counts
+    
+
 
 def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key):
     with tab:
