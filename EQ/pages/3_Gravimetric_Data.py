@@ -530,7 +530,7 @@ def calculate_aqi_and_category(df):
         (55.5, 125.4, 151, 200),
         (125.5, 225.4, 201, 300),
         (225.5, 325.4, 301, 500),
-        (325.5, 99999.9, 501, 999)
+        (325.5, 99999.9, 501, 999)  # Extended range
     ]
 
     # AQI calculation function
@@ -545,14 +545,14 @@ def calculate_aqi_and_category(df):
 
     # Define AQI categories
     conditions = [
-        (daily_avg['AQI'] > 300),
-        (daily_avg['AQI'] > 200),
-        (daily_avg['AQI'] > 150),
-        (daily_avg['AQI'] > 100),
-        (daily_avg['AQI'] > 50),
-        (daily_avg['AQI'] >= 0)
+        (daily_avg['AQI'] >= 0) & (daily_avg['AQI'] <= 50),
+        (daily_avg['AQI'] > 50) & (daily_avg['AQI'] <= 100),
+        (daily_avg['AQI'] > 100) & (daily_avg['AQI'] <= 150),
+        (daily_avg['AQI'] > 150) & (daily_avg['AQI'] <= 200),
+        (daily_avg['AQI'] > 200) & (daily_avg['AQI'] <= 300),
+        (daily_avg['AQI'] > 300)
     ]
-    remarks = ['Hazardous', 'Very Unhealthy', 'Unhealthy', 'Unhealthy for Sensitive Groups', 'Moderate', 'Good']
+    remarks = ['Good', 'Moderate', 'Unhealthy for Sensitive Groups', 'Unhealthy', 'Very Unhealthy', 'Hazardous']
     daily_avg['AQI_Remark'] = np.select(conditions, remarks, default='Unknown')
 
     # Count AQI categories per year (not per site)
@@ -563,6 +563,7 @@ def calculate_aqi_and_category(df):
     remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Year']) * 100, 1)
 
     return daily_avg, remarks_counts
+
 
     
 
