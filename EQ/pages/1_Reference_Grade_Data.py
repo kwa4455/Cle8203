@@ -62,11 +62,13 @@ st.markdown("""
         border-radius: 12px;
         font-weight: bold;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        transition: transform 0.3s, box-shadow 0.3s;
     }
 
     button[data-testid="baseButton-primary"]:hover {
         transform: scale(1.03);
         background: linear-gradient(to right, #ff3d5a, #ffb347) !important;
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
     }
 
     div[data-testid="stAlert-info"] {
@@ -130,11 +132,13 @@ st.markdown("""
         border-radius: 12px;
         font-weight: bold;
         box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s, box-shadow 0.3s;
     }
 
     button[data-testid="baseButton-primary"]:hover {
         transform: scale(1.03);
         background: linear-gradient(to right, #007be5, #0044aa) !important;
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
     }
 
     div[data-testid="stAlert-info"] {
@@ -170,7 +174,21 @@ section.main > div,
     backdrop-filter: blur(12px);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
     padding: 1rem;
+    transition: transform 0.3s, box-shadow 0.3s;
 }
+
+/* Hover effects for tables and graphs */
+.stDataFrame:hover, .stTable:hover, .element-container:hover {
+    transform: scale(1.02);
+    box-shadow: 0 10px 36px rgba(0, 0, 0, 0.3);
+}
+
+/* Optional: lighter hover for performance */
+button:hover, input:hover, select:hover, textarea:hover {
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+}
+
+/* HR and spacing */
 hr {
     border: none;
     border-top: 1px solid rgba(255, 255, 255, 0.2);
@@ -178,6 +196,7 @@ hr {
 }
 </style>
 """, unsafe_allow_html=True)
+
 
 # --- Title and Logo ---
 st.title("📊 Reference Grade Monitor Data Analysis")
