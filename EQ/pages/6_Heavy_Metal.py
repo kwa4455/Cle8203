@@ -11,6 +11,7 @@ from plotly.subplots import make_subplots
 
 # --- Page Config ---
 st.set_page_config(page_title="Air Quality Dashboard", layout="wide")
+
 st.markdown("""
 <style>
 
