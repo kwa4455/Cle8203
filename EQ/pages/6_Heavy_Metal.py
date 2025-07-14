@@ -202,7 +202,7 @@ hr {
 
 st.title("🌍 Air Quality Data Explorer")
 
-def apply_glass_style(fig: go.Figure, theme: dict, font_size: str = "16px") -> go.Figure:
+def apply_glass_style(fig: go.Figure,  font_size: str = "16px") -> go.Figure:
     fig.update_layout(
         paper_bgcolor="rgba(255, 255, 255, 0.1)",
         plot_bgcolor="rgba(255, 255, 255, 0.1)",
