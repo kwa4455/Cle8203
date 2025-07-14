@@ -218,7 +218,10 @@ def apply_glass_style(fig, theme=None, font_size=14):
 
 # Plotly table with theme
 
-def plotly_table(df,  font_size="16px"):
+def plotly_table(df, font_size="16px", theme=None):
+    if theme is None:
+        theme = {"text": "#000000", "button": "#4CAF50"}
+
     headers = list(df.columns)
     cells = [df[col].astype(str).tolist() for col in headers]
 
