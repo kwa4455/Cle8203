@@ -202,26 +202,17 @@ hr {
 
 st.title("🌍 Air Quality Data Explorer")
 
-def apply_glass_style(fig: go.Figure,  font_size: str = "16px") -> go.Figure:
+def apply_glass_style(fig, theme=None, font_size=14):
+    default_text_color = "#000000"
+    if theme is None:
+        theme = {"text": default_text_color}
     fig.update_layout(
         paper_bgcolor="rgba(255, 255, 255, 0.1)",
         plot_bgcolor="rgba(255, 255, 255, 0.1)",
-        font=dict(color=theme.get("text", "#000000"), size=int(font_size.replace("px", ""))),
+        font=dict(color=theme.get("text", default_text_color), size=int(font_size)),
         margin=dict(l=40, r=40, t=60, b=40),
-        title_font=dict(size=20, color=theme.get("text", "#000000"), family="Poppins"),
-        hoverlabel=dict(
-            bgcolor="rgba(255, 255, 255, 0.3)",
-            font_size=14,
-            font_family="Poppins"
-        ),
-    )
-    fig.add_shape(
-        type="rect",
-        xref="paper", yref="paper",
-        x0=0, y0=0, x1=1, y1=1,
-        fillcolor="rgba(255, 255, 255, 0.15)",
-        line=dict(width=0),
-        layer="below"
+        title_font=dict(size=20, color=theme.get("text", default_text_color), family="Arial"),
+        hoverlabel=dict(bgcolor="rgba(255,255,255,0.3)", font_size=13, font_family="Arial")
     )
     return fig
 
