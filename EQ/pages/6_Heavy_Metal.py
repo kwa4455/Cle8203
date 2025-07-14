@@ -667,7 +667,7 @@ with tab1:
 
         for metal in selected_metals:
             fig, summary_df = yearly_plot_bar(df, metal)
-            fig = apply_glass_style(fig, theme, font_size)
+            fig = apply_glass_style(fig, font_size)
             summary = plotly_table(summary_df, theme, font_size)
             st.plotly_chart(fig, use_container_width=True)
             st.plotly_chart(summary, use_container_width=True)
@@ -690,7 +690,7 @@ with tab3:
         metals = [m for m in metal_columns if m in df.columns]
         metal_sel = st.selectbox(f"Metal for {name}", metals, key=f"metal2_{name}")
         fig = plot_box_plot(df, metal_sel)  # <-- new function
-        fig = apply_glass_style(fig, theme, font_size)
+        fig = apply_glass_style(fig, font_size)
         st.plotly_chart(fig, use_container_width=True)
 
 
@@ -713,7 +713,7 @@ with tab4:
         )
 
         st.write("Kruskal-Wallis Test Results (includes bootstrapped 95% CI for group medians):")
-        fig = plotly_table(kruskal_df, theme, font_size)
+        fig = plotly_table(kruskal_df, font_size)
         st.plotly_chart(fig, use_container_width=True)
 
 # --- Tab 5: Time Variation ---
@@ -742,7 +742,7 @@ with tab5:
         if not df_sub.empty and metal_sel:
             try:
                 fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
-                fig = apply_glass_style(fig, theme, font_size)
+                fig = apply_glass_style(fig, font_size)
                 st.plotly_chart(fig)
             except ValueError as e:
                 st.warning(f"Plotting error: {e}")
