@@ -655,12 +655,12 @@ with tab1:
             st.warning(f"No metals found in {name}. Skipping.")
             continue
 
-        selected_metals = st.selectbox(
-            f"Select metals for {name}", metals,  key=f"metals_{name}"
+        selected_metal = st.selectbox(
+            f"Select metal for {name}", metals, key=f"metals_{name}"
         )
 
         
-        fig, summary_df = yearly_plot_bar(df, metal_sel)
+        fig, summary_df = yearly_plot_bar(df, selected_metal)
         fig = apply_glass_style(fig)
         summary = plotly_table(summary_df)
         st.plotly_chart(fig, use_container_width=True)
