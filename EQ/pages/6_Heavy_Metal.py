@@ -655,12 +655,12 @@ with tab1:
             st.warning(f"No metals found in {name}. Skipping.")
             continue
 
-        selected_metals = st.multiselect(
-            f"Select metals for {name}", metals, default=metals, key=f"metals_{name}"
+        selected_metals = st.selectbox(
+            f"Select metals for {name}", metals,  key=f"metals_{name}"
         )
 
         for metal in selected_metals:
-            fig, summary_df = yearly_plot_bar(df, metal)
+            fig, summary_df = yearly_plot_bar(df, selected_metal)
             fig = apply_glass_style(fig)
             summary = plotly_table(summary_df)
             st.plotly_chart(fig, use_container_width=True)
@@ -674,7 +674,7 @@ with tab2:
         site_sel = st.selectbox(
             f"Sites for {name}", sites, key=f"site_corr_{name}"
         )
-        df_sub = df[df['site'].isin(site_sel)]
+        df[df['site'] == site_sel]
         correlation_analysis(df_sub, metals, site_sel, title=name)
 
 # --- Tab 3: Box Plot (Median Only, No Outliers) ---
@@ -696,7 +696,7 @@ with tab4:
         sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
 
-        selected_sites = st.selectbox(
+        selected_sites = st.multiselect(
             f"Sites for {name}", sites,  key=f"site3_{name}"
         )
 
@@ -721,8 +721,8 @@ with tab5:
         site_sel = st.selectbox(
             f"Sites for {name}", sites,  key=f"site5_{name}"
         )
-        metal_sel = st.multiselect(
-            f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}"
+        metal_sel = st.selectbox(
+            f"Metals for {name}", metals,  key=f"metal5_{name}"
         )
 
         statistic = st.selectbox(
