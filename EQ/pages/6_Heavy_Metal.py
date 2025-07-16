@@ -671,8 +671,8 @@ with tab2:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Correlation: {name}")
         metals = [m for m in metal_columns if m in df.columns]
-        site_sel = st.multiselect(
-            f"Sites for {name}", sites, default=sites, key=f"site_corr_{name}"
+        site_sel = st.selectbox(
+            f"Sites for {name}", sites, key=f"site_corr_{name}"
         )
         df_sub = df[df['site'].isin(site_sel)]
         correlation_analysis(df_sub, metals, site_sel, title=name)
@@ -696,8 +696,8 @@ with tab4:
         sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
 
-        selected_sites = st.multiselect(
-            f"Sites for {name}", sites, default=sites, key=f"site3_{name}"
+        selected_sites = st.selectbox(
+            f"Sites for {name}", sites,  key=f"site3_{name}"
         )
 
         df_sub = df[df['site'].isin(selected_sites)]
@@ -718,8 +718,8 @@ with tab5:
         sites = sorted(df['site'].unique())
         metals = [m for m in metal_columns if m in df.columns]
         
-        site_sel = st.multiselect(
-            f"Sites for {name}", sites, default=sites, key=f"site5_{name}"
+        site_sel = st.selectbox(
+            f"Sites for {name}", sites,  key=f"site5_{name}"
         )
         metal_sel = st.multiselect(
             f"Metals for {name}", metals, default=metals[:1], key=f"metal5_{name}"
