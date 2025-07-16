@@ -674,7 +674,7 @@ with tab2:
         site_sel = st.selectbox(
             f"Sites for {name}", sites, key=f"site_corr_{name}"
         )
-        df[df['site'] == site_sel]
+        df_sub = df[df['site'] == site_sel]
         correlation_analysis(df_sub, metals, site_sel, title=name)
 
 # --- Tab 3: Box Plot (Median Only, No Outliers) ---
