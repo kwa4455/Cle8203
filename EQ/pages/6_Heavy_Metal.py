@@ -659,12 +659,12 @@ with tab1:
             f"Select metals for {name}", metals,  key=f"metals_{name}"
         )
 
-        for metal in selected_metals:
-            fig, summary_df = yearly_plot_bar(df, selected_metal)
-            fig = apply_glass_style(fig)
-            summary = plotly_table(summary_df)
-            st.plotly_chart(fig, use_container_width=True)
-            st.plotly_chart(summary, use_container_width=True)
+        
+        fig, summary_df = yearly_plot_bar(df, selected_metal)
+        fig = apply_glass_style(fig)
+        summary = plotly_table(summary_df)
+        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(summary, use_container_width=True)
 
 # --- Tab 2: Correlation Analysis ---
 with tab2:
