@@ -660,7 +660,7 @@ with tab1:
         )
 
         
-        fig, summary_df = yearly_plot_bar(df, selected_metal)
+        fig, summary_df = yearly_plot_bar(df, metal_sel)
         fig = apply_glass_style(fig)
         summary = plotly_table(summary_df)
         st.plotly_chart(fig, use_container_width=True)
