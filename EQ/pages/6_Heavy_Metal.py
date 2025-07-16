@@ -732,7 +732,7 @@ with tab5:
             key=f"stat5_{name}"
         )
 
-        df_sub = df[df['site'].isin(site_sel)]
+        df_sub = df[df['site'] == site_sel] 
         if not df_sub.empty and metal_sel:
             try:
                 fig = timeVariation(df_sub, pollutants=metal_sel, statistic=statistic)
