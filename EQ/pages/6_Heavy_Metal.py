@@ -251,27 +251,34 @@ def plotly_table(df, font_size="16px", theme=None):
     )
     return fig
 
-
-
 def cleaned(df):
-    # Parse and clean date
+    df.columns = [col.strip().lower() for col in df.columns]
+
+    if 'date' not in df.columns:
+        raise ValueError("Expected a 'date' column in the input DataFrame.")
+
     df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['date'])  # Drop rows with invalid dates
+    df = df.dropna(subset=['date'])
     df['date'] = df['date'].dt.tz_localize(None)
     df = df.set_index('date')
 
-    # Add time features
     df['year'] = df.index.year
-    df['month'] = pd.Categorical(df.index.strftime('%b'),
-                                 categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-                                             'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                                 ordered=True)
-    df['dayofweek'] = pd.Categorical(df.index.day_name(),
-                                     categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday',
-                                                 'Friday', 'Saturday', 'Sunday'],
-                                     ordered=True)
-
+    df['month'] = pd.Categorical(
+        df.index.strftime('%b'),
+        categories=['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+                    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+        ordered=True
+    )
+    df['dayofweek'] = pd.Categorical(
+        df.index.day_name(),
+        categories=['Monday', 'Tuesday', 'Wednesday', 'Thursday',
+                    'Friday', 'Saturday', 'Sunday'],
+        ordered=True
+    )
     return df
+
+
+
 
 import plotly.graph_objects as go
 import pandas as pd
