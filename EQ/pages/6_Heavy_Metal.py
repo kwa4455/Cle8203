@@ -744,7 +744,7 @@ with tab5:
         st.subheader(f"Time Variation: {name}")
 
         try:
-            st.write(f"Columns before cleaning for `{name}`: {df.columns.tolist()}")  # Debug
+            st.write(f"Columns before cleaning for `{name}`: {df.columns.tolist()}")
             df = cleaned(df)
         except Exception as e:
             st.warning(f"Could not clean data for {name}: {e}")
@@ -757,24 +757,36 @@ with tab5:
         sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
 
-        site_sel = st.selectbox(f"Sites for {name}", sites, key=f"site5_{name}")
-        metal_sel = st.selectbox(f"Metals for {name}", metals, key=f"metal5_{name}")
+        site_sel = st.multiselect(f"Select Site(s) for {name}", sites, default=sites[:1], key=f"site5_{name}")
+        metal_sel = st.selectbox(f"Select Metal for {name}", metals, key=f"metal5_{name}")
+        statistic = st.selectbox("Statistic", options=["mean", "std", "median"], index=2, key=f"stat5_{name}")
 
-        statistic = st.selectbox(
-            f"Select statistic for {name}",
-            options=["mean", "std", "median"],
-            index=2,
-            key=f"stat5_{name}"
-        )
-
-        df_sub = df[df['site'] == site_sel].copy()
+        df_sub = df[df['site'].isin(site_sel)].copy()
 
         if not df_sub.empty and metal_sel:
             try:
-                fig = timeVariation(df_sub, pollutants=[metal_sel], statistic=statistic)
-                fig = apply_glass_style(fig)
-                st.plotly_chart(fig, use_container_width=True)
-            except ValueError as e:
-                st.warning(f"Plotting error: {e}")
+                st.markdown("#### 📅 Monthly Variation")
+                fig_month = plot_by_month(df_sub, metal_sel, statistic)
+                fig_month = apply_glass_style(fig_month)
+                st.plotly_chart(fig_month, use_container_width=True)
+
+                st.markdown("#### 📆 Day of Week Variation")
+                fig_day = plot_by_dayofweek(df_sub, metal_sel, statistic)
+                fig_day = apply_glass_style(fig_day)
+                st.plotly_chart(fig_day, use_container_width=True)
+
+                # Downloadable CSV
+                csv = df_sub.to_csv(index=False).encode('utf-8')
+                st.download_button("📥 Download Filtered Data (CSV)", csv, file_name=f"{name}_filtered.csv")
+
+                # Download Plot (HTML)
+                html_month = fig_month.to_html()
+                st.download_button("📤 Download Monthly Plot (HTML)", html_month, file_name=f"{name}_monthly_plot.html")
+
+                html_day = fig_day.to_html()
+                st.download_button("📤 Download Day-of-Week Plot (HTML)", html_day, file_name=f"{name}_dayofweek_plot.html")
+
+            except Exception as e:
+                st.warning(f"Plotting error for {name}: {e}")
         else:
-            st.info("Please select at least one site and one metal to generate the plot.")
+            st.info("Please select at least one site and one metal to generate the plots.")
