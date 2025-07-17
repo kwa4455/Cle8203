@@ -516,24 +516,18 @@ def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
     if colors is None:
         colors = px.colors.qualitative.Plotly
 
-    # Create subplots: 1 row, 2 columns
     fig = make_subplots(
         rows=1, cols=2, 
         subplot_titles=["Time Variation by Month", "Time Variation by Day of Week"],
         shared_yaxes=True
     )
 
-    # Aggregate by 'month'
     df_month_agg = aggregate_metals(df, time_col="month")
-    
-    # Plot for 'month'
     for i, pollutant in enumerate(pollutants):
         col_name = f"{pollutant}_{statistic}"
         if col_name not in df_month_agg.columns:
             raise ValueError(f"'{col_name}' not found in DataFrame.")
-
         df_clean = df_month_agg.dropna(subset=[col_name])
-
         fig.add_trace(go.Scatter(
             x=df_clean['month'],
             y=df_clean[col_name],
@@ -542,17 +536,12 @@ def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
             line=dict(color=colors[i % len(colors)]),
         ), row=1, col=1)
 
-    # Aggregate by 'dayofweek'
     df_dayofweek_agg = aggregate_metals(df, time_col="dayofweek")
-    
-    # Plot for 'dayofweek'
     for i, pollutant in enumerate(pollutants):
         col_name = f"{pollutant}_{statistic}"
         if col_name not in df_dayofweek_agg.columns:
             raise ValueError(f"'{col_name}' not found in DataFrame.")
-
         df_clean = df_dayofweek_agg.dropna(subset=[col_name])
-
         fig.add_trace(go.Scatter(
             x=df_clean['dayofweek'],
             y=df_clean[col_name],
@@ -561,33 +550,26 @@ def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
             line=dict(color=colors[i % len(colors)]),
         ), row=1, col=2)
 
-    # Update layout and titles
     fig.update_layout(
         title=f"Time Variation of Pollutants ({statistic.capitalize()})",
-        xaxis_title="Month",
-        yaxis_title="Concentration",
         template="plotly",
         showlegend=True,
         height=500
     )
 
-    # X-axis label for dayofweek subplot
-    fig.update_xaxes(title_text="Day", row=1, col=2)  # Label x-axis for dayofweek plot
+    fig.update_xaxes(title_text="Month", type="category", row=1, col=1)
+    fig.update_xaxes(title_text="Day", type="category", row=1, col=2)
 
-    # Custom Y-axis labels based on pollutant
-    for pollutant in pollutants:
-        if pollutant == "al":  # For Al, use "µg/m³"
-            fig.update_yaxes(title_text="Concentration (µg/m³)", row=1, col=1)
-            fig.update_yaxes(title_text="Concentration (µg/m³)", row=1, col=2)
-        else:  # For other metals, use "ng/m³"
-            fig.update_yaxes(title_text="Concentration (ng/m³)", row=1, col=1)
-            fig.update_yaxes(title_text="Concentration (ng/m³)", row=1, col=2)
-
-    # Update x-axis type for categorical variables
-    fig.update_xaxes(type='category', row=1, col=1)  # 'month' is categorical
-    fig.update_xaxes(type='category', row=1, col=2)  # 'dayofweek' is categorical
+    # Unified Y-axis label
+    if any(p.lower() == "al" for p in pollutants):
+        y_label = "Concentration (µg/m³)"
+    else:
+        y_label = "Concentration (ng/m³)"
+    fig.update_yaxes(title_text=y_label, row=1, col=1)
+    fig.update_yaxes(title_text=y_label, row=1, col=2)
 
     return fig
+
 
 
 
