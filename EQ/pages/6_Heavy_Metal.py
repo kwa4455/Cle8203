@@ -254,10 +254,13 @@ def plotly_table(df, font_size="16px", theme=None):
 def cleaned(df):
     df.columns = [col.strip().lower() for col in df.columns]
 
-    if 'date' not in df.columns:
-        raise ValueError("Expected a 'date' column in the input DataFrame.")
-
-    df['date'] = pd.to_datetime(df['date'], dayfirst=True, errors='coerce')
+    # Try to infer the correct 'date' column
+    possible_date_cols = [col for col in df.columns if 'date' in col]
+    if not possible_date_cols:
+        raise ValueError("Expected a column with 'date' in its name in the input DataFrame.")
+    
+    date_col = possible_date_cols[0]  # Use the first matched date column
+    df['date'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
     df = df.dropna(subset=['date'])
     df['date'] = df['date'].dt.tz_localize(None)
     df = df.set_index('date')
@@ -276,6 +279,7 @@ def cleaned(df):
         ordered=True
     )
     return df
+
 
 
 
