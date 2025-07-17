@@ -512,21 +512,32 @@ def aggregate_metals(df, time_col):
     return summary
 
 # Time Variation Plotting Function
+def aggregate_metals(df, time_col="month", stat="median"):
+    group_cols = [time_col]
+    agg_dict = {
+        f"{col}_{stat}": (col, stat)
+        for col in df.columns
+        if col not in ['site', 'year', 'month', 'dayofweek']
+    }
+    return df.groupby(group_cols).agg(**agg_dict).reset_index()
+
+# --- Time Variation Plot ---
 def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
     if colors is None:
         colors = px.colors.qualitative.Plotly
 
     fig = make_subplots(
-        rows=1, cols=2, 
+        rows=1, cols=2,
         subplot_titles=["Time Variation by Month", "Time Variation by Day of Week"],
         shared_yaxes=True
     )
 
-    df_month_agg = aggregate_metals(df, time_col="month")
+    # Aggregate and plot by month
+    df_month_agg = aggregate_metals(df, time_col="month", stat=statistic)
     for i, pollutant in enumerate(pollutants):
         col_name = f"{pollutant}_{statistic}"
         if col_name not in df_month_agg.columns:
-            raise ValueError(f"'{col_name}' not found in DataFrame.")
+            continue
         df_clean = df_month_agg.dropna(subset=[col_name])
         fig.add_trace(go.Scatter(
             x=df_clean['month'],
@@ -536,12 +547,13 @@ def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
             line=dict(color=colors[i % len(colors)]),
         ), row=1, col=1)
 
-    df_dayofweek_agg = aggregate_metals(df, time_col="dayofweek")
+    # Aggregate and plot by dayofweek
+    df_day_agg = aggregate_metals(df, time_col="dayofweek", stat=statistic)
     for i, pollutant in enumerate(pollutants):
         col_name = f"{pollutant}_{statistic}"
-        if col_name not in df_dayofweek_agg.columns:
-            raise ValueError(f"'{col_name}' not found in DataFrame.")
-        df_clean = df_dayofweek_agg.dropna(subset=[col_name])
+        if col_name not in df_day_agg.columns:
+            continue
+        df_clean = df_day_agg.dropna(subset=[col_name])
         fig.add_trace(go.Scatter(
             x=df_clean['dayofweek'],
             y=df_clean[col_name],
@@ -557,14 +569,10 @@ def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
         height=500
     )
 
-    fig.update_xaxes(title_text="Month", type="category", row=1, col=1)
-    fig.update_xaxes(title_text="Day", type="category", row=1, col=2)
+    fig.update_xaxes(title_text="Month", type='category', row=1, col=1)
+    fig.update_xaxes(title_text="Day", type='category', row=1, col=2)
 
-    # Unified Y-axis label
-    if any(p.lower() == "al" for p in pollutants):
-        y_label = "Concentration (µg/m³)"
-    else:
-        y_label = "Concentration (ng/m³)"
+    y_label = "Concentration (µg/m³)" if any(p.lower() == "al" for p in pollutants) else "Concentration (ng/m³)"
     fig.update_yaxes(title_text=y_label, row=1, col=1)
     fig.update_yaxes(title_text=y_label, row=1, col=2)
 
