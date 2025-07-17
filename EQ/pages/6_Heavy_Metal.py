@@ -719,12 +719,17 @@ with tab5:
         st.subheader(f"Time Variation: {name}")
 
         try:
+            st.write(f"Columns before cleaning for `{name}`: {df.columns.tolist()}")  # Debug
             df = cleaned(df)
         except Exception as e:
             st.warning(f"Could not clean data for {name}: {e}")
             continue
 
-        sites = sorted(df['site'].unique())
+        if 'site' not in df.columns:
+            st.warning(f"No 'site' column in {name}. Skipping...")
+            continue
+
+        sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
 
         site_sel = st.selectbox(f"Sites for {name}", sites, key=f"site5_{name}")
@@ -742,7 +747,7 @@ with tab5:
         if not df_sub.empty and metal_sel:
             try:
                 fig = timeVariation(df_sub, pollutants=[metal_sel], statistic=statistic)
-                fig = apply_glass_style(fig)  # Optional styling
+                fig = apply_glass_style(fig)
                 st.plotly_chart(fig, use_container_width=True)
             except ValueError as e:
                 st.warning(f"Plotting error: {e}")
