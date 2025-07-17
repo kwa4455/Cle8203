@@ -612,6 +612,7 @@ def plot_by_dayofweek(df, pollutant, statistic="median", colors=None):
     return fig
 
 
+
 # --- Time Variation Plot ---
 def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
     if colors is None:
@@ -810,32 +811,57 @@ with tab5:
             st.warning(f"No 'site' column in {name}. Skipping...")
             continue
 
+        # --- UI Controls ---
         sites = sorted(df['site'].dropna().unique())
         metals = [m for m in metal_columns if m in df.columns]
 
-        site_sel = st.multiselect(f"Select Site(s) for {name}", sites, default=sites[:1], key=f"site5_{name}")
-        metal_sel = st.selectbox(f"Select Metal for {name}", metals, key=f"metal5_{name}")
-        statistic = st.selectbox("Statistic", options=["mean", "std", "median"], index=2, key=f"stat5_{name}")
+        site_sel = st.multiselect(
+            f"Select Site(s) for {name}",
+            options=sites,
+            default=sites[:1],
+            key=f"site5_{name}"
+        )
 
+        metal_sel = st.selectbox(
+            f"Select Metal for {name}",
+            metals,
+            key=f"metal5_{name}"
+        )
+
+        statistic = st.selectbox(
+            "Statistic",
+            options=["mean", "std", "median"],
+            index=2,
+            key=f"stat5_{name}"
+        )
+
+        plot_type = st.radio(
+            "Plot Type",
+            options=["line", "bar"],
+            index=0,
+            horizontal=True,
+            key=f"plottype5_{name}"
+        )
+
+        # --- Filter and Plot ---
         df_sub = df[df['site'].isin(site_sel)].copy()
 
         if not df_sub.empty and metal_sel:
             try:
                 st.markdown("#### 📅 Monthly Variation")
-                fig_month = plot_by_month(df_sub, metal_sel, statistic)
+                fig_month = plot_by_month(df_sub, metal_sel, statistic, plot_type)
                 fig_month = apply_glass_style(fig_month)
                 st.plotly_chart(fig_month, use_container_width=True)
 
                 st.markdown("#### 📆 Day of Week Variation")
-                fig_day = plot_by_dayofweek(df_sub, metal_sel, statistic)
+                fig_day = plot_by_dayofweek(df_sub, metal_sel, statistic, plot_type)
                 fig_day = apply_glass_style(fig_day)
                 st.plotly_chart(fig_day, use_container_width=True)
 
-                # Downloadable CSV
+                # --- Downloads ---
                 csv = df_sub.to_csv(index=False).encode('utf-8')
                 st.download_button("📥 Download Filtered Data (CSV)", csv, file_name=f"{name}_filtered.csv")
 
-                # Download Plot (HTML)
                 html_month = fig_month.to_html()
                 st.download_button("📤 Download Monthly Plot (HTML)", html_month, file_name=f"{name}_monthly_plot.html")
 
