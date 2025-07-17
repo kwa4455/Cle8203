@@ -529,6 +529,12 @@ def kruskal_wallis_by_test(df, metals, site_column, n_bootstrap=1000, ci_level=0
 
     return pd.DataFrame(results)
 
+def format_metal_label(metal):
+    metal_clean = metal.strip().lower()
+    unit = "µg/m³" if metal_clean == "al" else "ng/m³"
+    label = metal_clean.capitalize()
+    return f"{label} ({unit})"
+
 
 # Function to aggregate data by month or dayofweek
 def aggregate_metals(df, time_col):
