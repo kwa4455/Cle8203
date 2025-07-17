@@ -253,7 +253,7 @@ def plotly_table(df, font_size="16px", theme=None):
 
 def cleaned(df):
     df.columns = [col.strip().lower() for col in df.columns]
-    st.write(f"Columns in {name}:", df.columns.tolist())
+   
     # Try to infer the correct 'date' column
     possible_date_cols = [col for col in df.columns if 'date' in col]
     if not possible_date_cols:
