@@ -543,12 +543,18 @@ def aggregate_metals(df, time_col):
 # Time Variation Plotting Function
 def aggregate_metals(df, time_col="month", stat="median"):
     group_cols = [time_col]
+    
+    # Only aggregate numeric columns
+    numeric_cols = df.select_dtypes(include='number').columns
+    numeric_cols = [col for col in numeric_cols if col not in group_cols + ['year']]  # exclude group columns
+    
     agg_dict = {
         f"{col}_{stat}": (col, stat)
-        for col in df.columns
-        if col not in ['site', 'year', 'month', 'dayofweek']
+        for col in numeric_cols
     }
+
     return df.groupby(group_cols).agg(**agg_dict).reset_index()
+
 
 # --- Time Variation Plot ---
 def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
