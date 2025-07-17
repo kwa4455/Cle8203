@@ -253,18 +253,35 @@ def plotly_table(df, font_size="16px", theme=None):
 
 def cleaned(df):
     df.columns = [col.strip().lower() for col in df.columns]
-   
-    # Try to infer the correct 'date' column
-    possible_date_cols = [col for col in df.columns if 'date' in col]
-    if not possible_date_cols:
-        raise ValueError("Expected a column with 'date' in its name in the input DataFrame.")
-    
-    date_col = possible_date_cols[0]  # Use the first matched date column
-    df['date'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
-    df = df.dropna(subset=['date'])
-    df['date'] = df['date'].dt.tz_localize(None)
-    df = df.set_index('date')
-    
+
+    # Case 1: Has a date column
+    date_col_candidates = [col for col in df.columns if 'date' in col]
+    if date_col_candidates:
+        date_col = date_col_candidates[0]
+        df[date_col] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
+        df = df.dropna(subset=[date_col])
+        df[date_col] = df[date_col].dt.tz_localize(None)
+        df = df.set_index(date_col)
+
+    # Case 2: Reconstruct date from year/month/day
+    elif 'year' in df.columns and 'month' in df.columns:
+        if df['month'].dtype == object or df['month'].dtype.name == 'category':
+            month_str_to_num = {
+                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'may': 5, 'jun': 6,
+                'jul': 7, 'aug': 8, 'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+            }
+            df['month'] = df['month'].str.lower().map(month_str_to_num)
+        df['day'] = 1
+        df['date'] = pd.to_datetime(df[['year', 'month', 'day']], errors='coerce')
+        df = df.dropna(subset=['date'])
+        df = df.set_index('date')
+
+    else:
+        raise ValueError("No usable date information found (neither 'date' nor 'year/month').")
+
+    df.index = df.index.tz_localize(None)
+
+    # Add derived time features
     df['year'] = df.index.year
     df['month'] = pd.Categorical(
         df.index.strftime('%b'),
@@ -278,7 +295,9 @@ def cleaned(df):
                     'Friday', 'Saturday', 'Sunday'],
         ordered=True
     )
+
     return df
+
 
 
 
