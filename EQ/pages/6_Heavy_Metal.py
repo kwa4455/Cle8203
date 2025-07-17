@@ -556,6 +556,62 @@ def aggregate_metals(df, time_col="month", stat="median"):
     return df.groupby(group_cols).agg(**agg_dict).reset_index()
 
 
+
+
+def plot_by_month(df, pollutant, statistic="median", colors=None):
+    if colors is None:
+        colors = px.colors.qualitative.Plotly
+
+    fig = go.Figure()
+    for i, site in enumerate(df['site'].unique()):
+        site_df = df[df['site'] == site]
+        agg = aggregate_metals(site_df, time_col="month", stat=statistic)
+        col_name = f"{pollutant}_{statistic}"
+        if col_name in agg.columns:
+            fig.add_trace(go.Scatter(
+                x=agg['month'],
+                y=agg[col_name],
+                name=site,
+                mode='lines+markers',
+                line=dict(color=colors[i % len(colors)])
+            ))
+
+    fig.update_layout(
+        title=f"{pollutant.upper()} Monthly Variation ({statistic})",
+        xaxis_title="Month",
+        yaxis_title="Concentration (ng/m³)" if pollutant.lower() != 'al' else "Concentration (µg/m³)",
+        template="plotly"
+    )
+    return fig
+
+
+def plot_by_dayofweek(df, pollutant, statistic="median", colors=None):
+    if colors is None:
+        colors = px.colors.qualitative.Plotly
+
+    fig = go.Figure()
+    for i, site in enumerate(df['site'].unique()):
+        site_df = df[df['site'] == site]
+        agg = aggregate_metals(site_df, time_col="dayofweek", stat=statistic)
+        col_name = f"{pollutant}_{statistic}"
+        if col_name in agg.columns:
+            fig.add_trace(go.Scatter(
+                x=agg['dayofweek'],
+                y=agg[col_name],
+                name=site,
+                mode='lines+markers',
+                line=dict(color=colors[i % len(colors)])
+            ))
+
+    fig.update_layout(
+        title=f"{pollutant.upper()} Day-of-Week Variation ({statistic})",
+        xaxis_title="Day of Week",
+        yaxis_title="Concentration (ng/m³)" if pollutant.lower() != 'al' else "Concentration (µg/m³)",
+        template="plotly"
+    )
+    return fig
+
+
 # --- Time Variation Plot ---
 def timeVariation(df, pollutants=["pb"], statistic="median", colors=None):
     if colors is None:
