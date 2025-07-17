@@ -594,7 +594,7 @@ def plot_by_month(df, pollutant, statistic="median", plot_type="line", colors=No
     fig.update_layout(
         title=f"{pollutant.upper()} Monthly Variation ({statistic})",
         xaxis_title="Month",
-        yaxis_title=f"{pollutant.upper()} ({unit})",
+        yaxis_title=format_metal_label(pollutant),
         template="plotly"
     )
     return fig
@@ -628,9 +628,9 @@ def plot_by_dayofweek(df, pollutant, statistic="median", plot_type="line", color
 
     unit = "µg/m³" if pollutant.lower() == "al" else "ng/m³"
     fig.update_layout(
-        title=f"{pollutant.upper()} Day-of-Week Variation ({statistic})",
+       title=f"{pollutant.upper()} Weekly Variation ({statistic})",
         xaxis_title="Day of Week",
-        yaxis_title=f"{pollutant.upper()} ({unit})",
+       yaxis_title=format_metal_label(pollutant),
         template="plotly"
     )
     return fig
