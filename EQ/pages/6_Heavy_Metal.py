@@ -730,8 +730,3 @@ with tab5:
                 st.warning(f"Plotting error: {e}")
         else:
             st.info("Please select at least one site and one metal to generate the plot.")
-────────────────────────────────────────────────────────────────────────────────
-
-   /mount/src/cle8203/EQ/pages/6_Heavy_Metal.py:702                             
-
-              except Exception as e:   
