@@ -253,7 +253,7 @@ def plotly_table(df, font_size="16px", theme=None):
 
 def cleaned(df):
     df.columns = [col.strip().lower() for col in df.columns]
-
+    st.write(f"Columns in {name}:", df.columns.tolist())
     # Try to infer the correct 'date' column
     possible_date_cols = [col for col in df.columns if 'date' in col]
     if not possible_date_cols:
@@ -264,7 +264,7 @@ def cleaned(df):
     df = df.dropna(subset=['date'])
     df['date'] = df['date'].dt.tz_localize(None)
     df = df.set_index('date')
-
+    
     df['year'] = df.index.year
     df['month'] = pd.Categorical(
         df.index.strftime('%b'),
@@ -281,12 +281,10 @@ def cleaned(df):
     return df
 
 
-st.write(f"Columns in {name}:", df.columns.tolist())
 
 
 
-import plotly.graph_objects as go
-import pandas as pd
+
 
 def yearly_plot_bar(df, metal_sel):
     if metal_sel not in df.columns:
