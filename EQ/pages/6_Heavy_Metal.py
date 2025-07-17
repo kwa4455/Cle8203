@@ -281,6 +281,7 @@ def cleaned(df):
     return df
 
 
+st.write(f"Columns in {name}:", df.columns.tolist())
 
 
 
