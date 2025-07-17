@@ -696,6 +696,12 @@ with tab4:
 with tab5:
     for df, name in zip(dataframes, file_names):
         st.subheader(f"Time Variation: {name}")
+
+        try:
+            df = cleaned(df)
+            except Exception as e:
+                st.warning(f"Could not clean data for {name}: {e}")
+                continue
         
         sites = sorted(df['site'].unique())
         metals = [m for m in metal_columns if m in df.columns]
