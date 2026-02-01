@@ -221,7 +221,7 @@ def cleaned(df):
     df['season'] = df['datetime'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
 
     daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
-    sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 20][['site', 'month']]
+    sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 10][['site', 'month']]
     df = df.merge(sufficient_sites, on=['site', 'month'])
     return df
 
