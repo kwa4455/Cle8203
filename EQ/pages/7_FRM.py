@@ -173,59 +173,99 @@ def apply_period_completeness(
     out.loc[out["capture"] < min_capture, pollutant] = np.nan
     return out
 
-
 def compute_aggregates(df: pd.DataFrame, label: str, pollutant: str):
-    """Returns dict of DataFrames for this pollutant with completeness applied."""
+    """Returns dict of DataFrames for this pollutant with completeness applied and counts."""
     aggregates = {}
     daily_valid = build_valid_daily_means(df, pollutant, DAILY_MIN_OBS)
 
-    aggregates[f"{label} - Daily Avg ({pollutant})"] = daily_valid[["day", "site", pollutant]].round(1)
+    # Daily: count of valid daily rows per day/site (usually 1 if daily_valid has one row per day/site)
+    daily_counts = (
+        daily_valid.groupby(["day", "site"])[pollutant]
+        .count()
+        .reset_index(name="n_valid_days")
+    )
+    daily_df = daily_valid[["day", "site", pollutant]].round(1).merge(
+        daily_counts, on=["day", "site"]
+    )
+    aggregates[f"{label} - Daily Avg ({pollutant})"] = daily_df
 
+    # Monthly: compute monthly aggregate (with completeness) then attach counts
     monthly = apply_period_completeness(
         daily_valid, ["month", "site"], pollutant,
         total_days_fn=lambda r: pd.Period(r["month"], "M").days_in_month
     )
-    aggregates[f"{label} - Monthly Avg ({pollutant})"] = monthly[["month", "site", pollutant]].round(1)
+    monthly_counts = (
+        daily_valid.groupby(["month", "site"])[pollutant]
+        .count()
+        .reset_index(name="n_valid_days")
+    )
+    monthly_df = monthly[["month", "site", pollutant]].round(1).merge(
+        monthly_counts, on=["month", "site"], how="left"
+    )
+    aggregates[f"{label} - Monthly Avg ({pollutant})"] = monthly_df
 
+    # Quarterly
     quarterly = apply_period_completeness(
         daily_valid, ["quarter", "site"], pollutant,
         total_days_fn=lambda r: _days_in_quarter(r["quarter"])
     )
-    aggregates[f"{label} - Quarterly Avg ({pollutant})"] = quarterly[["quarter", "site", pollutant]].round(1)
+    quarterly_counts = (
+        daily_valid.groupby(["quarter", "site"])[pollutant]
+        .count()
+        .reset_index(name="n_valid_days")
+    )
+    quarterly_df = quarterly[["quarter", "site", pollutant]].round(1).merge(
+        quarterly_counts, on=["quarter", "site"], how="left"
+    )
+    aggregates[f"{label} - Quarterly Avg ({pollutant})"] = quarterly_df
 
+    # Yearly
     yearly = apply_period_completeness(
         daily_valid, ["year", "site"], pollutant,
         total_days_fn=lambda r: _days_in_year(r["year"])
     )
-    aggregates[f"{label} - Yearly Avg ({pollutant})"] = yearly[["year", "site", pollutant]].round(1)
-
-    aggregates[f"{label} - Day of Week Avg ({pollutant})"] = (
-        daily_valid.groupby(["dayofweek", "site"])[pollutant].mean().reset_index().round(1)
+    yearly_counts = (
+        daily_valid.groupby(["year", "site"])[pollutant]
+        .count()
+        .reset_index(name="n_valid_days")
     )
-    aggregates[f"{label} - Weekday Type Avg ({pollutant})"] = (
-        daily_valid.groupby(["weekday_type", "site"])[pollutant].mean().reset_index().round(1)
+    yearly_df = yearly[["year", "site", pollutant]].round(1).merge(
+        yearly_counts, on=["year", "site"], how="left"
     )
+    aggregates[f"{label} - Yearly Avg ({pollutant})"] = yearly_df
 
-    # Season completeness per (year, season, site)
-    def season_total_days(row):
-        y = int(row["year"])
-        s = row["season"]
-        if s == "Harmattan":
-            # Jan + Feb + Dec within same calendar year
-            return (pd.Period(f"{y}-01", "M").days_in_month +
-                    pd.Period(f"{y}-02", "M").days_in_month +
-                    pd.Period(f"{y}-12", "M").days_in_month)
-        else:
-            months = [f"{y}-{m:02d}" for m in range(3, 12)]  # Mar..Nov
-            return sum(pd.Period(m, "M").days_in_month for m in months)
-
-    season = apply_period_completeness(
-        daily_valid, ["season", "year", "site"], pollutant,
-        total_days_fn=season_total_days
+    # Day of week average and counts
+    dow_mean = (
+        daily_valid.groupby(["dayofweek", "site"])[pollutant]
+        .mean()
+        .reset_index()
+        .round(1)
     )
-    aggregates[f"{label} - Season Avg ({pollutant})"] = season[["season", "year", "site", pollutant]].round(1)
+    dow_counts = (
+        daily_valid.groupby(["dayofweek", "site"])[pollutant]
+        .count()
+        .reset_index(name="n_valid_days")
+    )
+    dow_df = dow_mean.merge(dow_counts, on=["dayofweek", "site"], how="left")
+    aggregates[f"{label} - Day of Week Avg ({pollutant})"] = dow_df
+
+    # Weekday type average and counts
+    wtype_mean = (
+        daily_valid.groupby(["weekday_type", "site"])[pollutant]
+        .mean()
+        .reset_index()
+        .round(1)
+    )
+    wtype_counts = (
+        daily_valid.groupby(["weekday_type", "site"])[pollutant]
+        .count()
+        .reset_index(name="n_valid_days")
+    )
+    wtype_df = wtype_mean.merge(wtype_counts, on=["weekday_type", "site"], how="left")
+    aggregates[f"{label} - Weekday Type Avg ({pollutant})"] = wtype_df
 
     return aggregates
+
 
 
 # -------------------------
