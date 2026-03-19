@@ -106,7 +106,7 @@ def cleaned(df: pd.DataFrame) -> pd.DataFrame:
 
     # Optional: minimum days/month filter (NOT the 75% rule; extra filter)
     daily_counts = df.groupby(["site", "month"])["day"].nunique().reset_index(name="daily_counts")
-    sufficient_sites = daily_counts[daily_counts["daily_counts"] >= 15][["site", "month"]]
+    sufficient_sites = daily_counts[daily_counts["daily_counts"] >= 1][["site", "month"]]
     df = df.merge(sufficient_sites, on=["site", "month"], how="inner")
 
     return df
