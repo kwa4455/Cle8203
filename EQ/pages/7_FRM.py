@@ -314,7 +314,7 @@ def calculate_aqi_and_category(df: pd.DataFrame):
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg = daily[["day", "year", "quarter", "month", "pm25"]].copy()
+    daily_avg = daily[["site","day", "year", "quarter", "month", "pm25"]].copy()
     daily_avg["pm25"] = daily_avg["pm25"].round(1)
     daily_avg["AQI"] = daily_avg["pm25"].apply(calculate_aqi)
 
