@@ -13,7 +13,7 @@ from functools import reduce
 # Completeness parameters
 # -------------------------
 DAILY_MIN_OBS = 18         # >= 18 hourly records for a valid daily mean (set to 1 if data is already daily)
-PERIOD_MIN_CAPTURE = 0.25  # >= 75% of days in the period must be valid
+PERIOD_MIN_CAPTURE = 0.0  # >= 75% of days in the period must be valid
 
 
 # -------------------------
