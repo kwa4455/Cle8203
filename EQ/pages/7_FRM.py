@@ -31,17 +31,47 @@ def unique_key(tab: str, widget: str, label: str) -> str:
 # Parsing & Standardization
 # -------------------------
 def parse_dates(df: pd.DataFrame) -> pd.DataFrame:
-    """Find a datetime-like column and standardize to df['datetime']."""
+    """Automatically detect the best datetime column and standardize to df['datetime'].""" 
+    
+    best_col = None
+    best_dt = None
+    max_valid = 0
+
     for col in df.columns:
-        cl = col.strip().lower()
-        if "date" in cl or "time" in cl or "datetime" in cl or "timestamp" in cl:
-            dt = pd.to_datetime(df[col], errors="coerce", infer_datetime_format=True)
-            if dt.notna().any():
-                df = df.copy()
-                df["datetime"] = dt
-                df = df.dropna(subset=["datetime"])
-                return df
+        try:
+            series = df[col].astype(str).str.strip()
+
+            dt = pd.to_datetime(
+                series,
+                errors="coerce",
+                dayfirst=True
+            )
+
+            valid_count = dt.notna().sum()
+
+            # Debug (optional)
+            # print(f"{col}: {valid_count} valid dates")
+
+            if valid_count > max_valid:
+                max_valid = valid_count
+                best_col = col
+                best_dt = dt
+
+        except Exception as e:
+            print(f"Skipping column '{col}': {e}")
+
+    # Apply best column if found
+    if best_col and max_valid > 0:
+        df = df.copy()
+        df["datetime"] = best_dt
+        df = df.dropna(subset=["datetime"])
+
+        print(f"✅ Using column '{best_col}' as datetime ({max_valid} valid values)")
+        return df
+
+    print("⚠️ No valid datetime column found")
     return df
+
 
 
 def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
