@@ -8,7 +8,7 @@ from io import BytesIO
 import plotly.express as px
 import plotly.graph_objects as go
 from functools import reduce
-
+from dateutil import parser
 # -------------------------
 # Completeness parameters
 # -------------------------
@@ -30,27 +30,67 @@ def unique_key(tab: str, widget: str, label: str) -> str:
 # -------------------------
 # Parsing & Standardization
 # -------------------------
-def parse_dates(df: pd.DataFrame) -> pd.DataFrame:
-    """Automatically detect the best datetime column and standardize to df['datetime'].""" 
+
+def robust_parse(series: pd.Series) -> pd.Series:
+    """Apply multiple parsing strategies to maximize datetime detection."""
+
+    # Convert to string and clean
+    series = series.astype(str).str.strip()
+
+    # Strategy 1: dayfirst=True
+    dt1 = pd.to_datetime(series, errors="coerce", dayfirst=True)
+
+    # Strategy 2: dayfirst=False
+    dt2 = pd.to_datetime(series, errors="coerce", dayfirst=False)
+
+    # Combine both
+    dt = dt1.fillna(dt2)
+
+    # Strategy 3: Unix timestamps (seconds & milliseconds)
+    if dt.isna().mean() > 0.3:
+        dt_sec = pd.to_datetime(series, errors="coerce", unit="s")
+        dt = dt.fillna(dt_sec)
+
+        dt_ms = pd.to_datetime(series, errors="coerce", unit="ms")
+        dt = dt.fillna(dt_ms)
+
+    # Strategy 4: dateutil fallback (handles messy formats)
+    if dt.isna().any():
+        def safe_parse(x):
+            try:
+                return parser.parse(x)
+            except:
+                return pd.NaT
+
+        dt_fallback = series.apply(safe_parse)
+        dt = dt.fillna(dt_fallback)
+
+    return dt
+
+
+def parse_dates(df: pd.DataFrame, debug: bool = False) -> pd.DataFrame:
+    """
+    Automatically detect the best datetime column and standardize to df['datetime'].
     
+    Parameters:
+        df (pd.DataFrame): Input dataframe
+        debug (bool): If True, prints problematic values
+    
+    Returns:
+        pd.DataFrame: DataFrame with standardized 'datetime' column
+    """
+
     best_col = None
     best_dt = None
     max_valid = 0
 
     for col in df.columns:
         try:
-            series = df[col].astype(str).str.strip()
-
-            dt = pd.to_datetime(
-                series,
-                errors="coerce",
-                dayfirst=True
-            )
-
+            dt = robust_parse(df[col])
             valid_count = dt.notna().sum()
 
-            # Debug (optional)
-            # print(f"{col}: {valid_count} valid dates")
+            if debug:
+                print(f"{col}: {valid_count} valid dates")
 
             if valid_count > max_valid:
                 max_valid = valid_count
@@ -58,19 +98,38 @@ def parse_dates(df: pd.DataFrame) -> pd.DataFrame:
                 best_dt = dt
 
         except Exception as e:
-            print(f"Skipping column '{col}': {e}")
+            if debug:
+                print(f"Skipping column '{col}': {e}")
 
-    # Apply best column if found
+    # Apply best column
     if best_col and max_valid > 0:
         df = df.copy()
         df["datetime"] = best_dt
-        df = df.dropna(subset=["datetime"])
+
+        # Debug failed values
+        if debug:
+            failed = df.loc[df["datetime"].isna(), best_col]
+            if not failed.empty:
+                print("\n⚠️ Failed to parse some values:")
+                print(failed.unique()[:20])
+
+        # Clean final output
+        df = (
+            df.dropna(subset=["datetime"])
+              .sort_values("datetime")
+              .reset_index(drop=True)
+        )
 
         print(f"✅ Using column '{best_col}' as datetime ({max_valid} valid values)")
         return df
 
     print("⚠️ No valid datetime column found")
     return df
+
+
+
+
+
 
 
 
