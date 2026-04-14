@@ -433,131 +433,62 @@ def calculate_aqi_and_category(df):
     return daily_avg, remarks_counts
 
 
-    
-
-
-def render_aqi_tab(tab, selected_years, calculate_aqi_and_category, unique_key, dfs, to_csv_download):
+   def render_aqi_tab(tab, selected_years, dfs):
     with tab:
-        st.header("🌫️ AQI Stats")
+        st.header("🌫️ AQI Stats (valid daily pm25 only)")
 
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
 
-            all_years = sorted(df['year'].dropna().unique())
+            all_years = sorted(df["year"].dropna().unique())
             default_years = all_years[-2:] if len(all_years) >= 2 else all_years
             selected_years_in_tab = st.multiselect(
                 f"Select Year(s) for {label}",
                 options=all_years,
                 default=default_years,
-                key=f"years_aqi_{label}"
+                key=f"years_aqi_{label}",
             )
 
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
-                sorted(df['site'].unique()),
-                key=f"site_aqi_{label}"
+                sorted(df["site"].unique()),
+                key=f"site_aqi_{label}",
             )
 
             filtered_df = df.copy()
-
             if selected_years_in_tab:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years_in_tab)]
-
+                filtered_df = filtered_df[filtered_df["year"].isin(selected_years_in_tab)]
             if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
 
             selected_quarters = st.multiselect(
                 f"Select Quarter(s) for {label}",
-                options=['Q1', 'Q2', 'Q3', 'Q4'],
-                default=['Q1', 'Q2', 'Q3', 'Q4'],
-                key=unique_key("tab4", "quarter", label)
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=unique_key("tab_aqi", "quarter", label),
             ) or []
 
-            if not selected_years_in_tab:
-                selected_years_in_tab = sorted(df['year'].unique())
-
             selected_quarter_nums = [f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters]
-
-            if selected_quarter_nums:
-                filtered_df = filtered_df[filtered_df['quarter'].isin(selected_quarter_nums)]
-            else:
-                st.warning("No valid quarters to filter!")
-                continue
+            filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
 
             if filtered_df.empty:
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
 
-            # ✅ Aggregate AQI across selected sites
             daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
+            if daily_avg.empty:
+                st.warning(f"No valid daily pm25 (>= {DAILY_MIN_OBS} obs/day) for AQI calculation.")
+                continue
 
-            st.markdown('<div class="glass-container">', unsafe_allow_html=True)
             st.dataframe(remarks_counts, use_container_width=True)
             st.dataframe(daily_avg, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
 
             st.download_button(f"⬇️ Download Daily Avg - {label}", to_csv_download(daily_avg), file_name=f"DailyAvg_{label}.csv")
             st.download_button(f"⬇️ Download AQI - {label}", to_csv_download(remarks_counts), file_name=f"AQI_{label}.csv")
+ 
 
-            aqi_colors = {
-                'Good': '#00e400',
-                'Moderate': '#ffff00',
-                'Unhealthy for Sensitive Groups': '#ff7e00',
-                'Unhealthy': '#ff0000',
-                'Very Unhealthy': '#8f3f97',
-                'Hazardous': '#7e0023'
-            }
 
-            remarks_counts['Color'] = remarks_counts['AQI_Remark'].map(aqi_colors)
 
-            if len(selected_years_in_tab) >= 2:
-                current_year = max(selected_years_in_tab)
-                previous_year = current_year - 1
-
-                current_df = remarks_counts[remarks_counts["year"] == current_year]
-                prev_df = remarks_counts[remarks_counts["year"] == previous_year]
-
-                col1, col2 = st.columns(2)
-                with st.container():
-                    with col1:
-                        st.markdown(f"**{current_year} AQI (All Selected Sites)**")
-                        fig_current = px.bar(
-                            current_df,
-                            x="Percent",
-                            y="AQI_Remark",
-                            color="AQI_Remark",
-                            orientation="h",
-                            color_discrete_map=aqi_colors,
-                            hover_data=["Percent"],
-                        )
-                        fig_current.update_layout(
-                            xaxis_title="% Time in AQI Category",
-                            yaxis=dict(categoryorder="total ascending"),
-                            showlegend=False,
-                            height=400
-                        )
-                        st.plotly_chart(fig_current, use_container_width=True)
-
-                    with col2:
-                        st.markdown(f"**{previous_year} AQI (All Selected Sites)**")
-                        fig_prev = px.bar(
-                            prev_df,
-                            x="Percent",
-                            y="AQI_Remark",
-                            color="AQI_Remark",
-                            orientation="h",
-                            color_discrete_map=aqi_colors,
-                            hover_data=["Percent"],
-                        )
-                        fig_prev.update_layout(
-                            xaxis_title="% Time in AQI Category",
-                            yaxis=dict(categoryorder="total ascending"),
-                            showlegend=False,
-                            height=400
-                        )
-                        st.plotly_chart(fig_prev, use_container_width=True)
-            else:
-                st.warning("Please select at least two years to compare AQI.")
 
 
 
