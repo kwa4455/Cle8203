@@ -257,9 +257,11 @@ def calculate_min_max(df):
 
 
 def calculate_aqi_and_category(df):
-    daily_avg = df.groupby(["day", "year", "quarter", "month"], as_index=False).agg({
-        "pm25": lambda x: round(x.mean(), 1)
-    })
+    # Combine all selected sites into one daily mean per day
+    daily_avg = (
+        df.groupby(["day", "year", "quarter", "month"], as_index=False)
+        .agg(pm25=("pm25", lambda x: round(x.mean(), 1)))
+    )
 
     breakpoints = [
         (0.0, 9.0, 0, 50),
@@ -287,6 +289,7 @@ def calculate_aqi_and_category(df):
         (daily_avg["AQI"] > 200) & (daily_avg["AQI"] <= 300),
         (daily_avg["AQI"] > 300)
     ]
+
     remarks = [
         "Good",
         "Moderate",
@@ -298,7 +301,12 @@ def calculate_aqi_and_category(df):
 
     daily_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
 
-    remarks_counts = daily_avg.groupby(["year", "AQI_Remark"]).size().reset_index(name="Count")
+    remarks_counts = (
+        daily_avg.groupby(["year", "AQI_Remark"], as_index=False)
+        .size()
+        .rename(columns={"size": "Count"})
+    )
+
     remarks_counts["Total_Count_Per_Year"] = remarks_counts.groupby("year")["Count"].transform("sum")
     remarks_counts["Percent"] = (
         remarks_counts["Count"] / remarks_counts["Total_Count_Per_Year"] * 100
@@ -397,13 +405,15 @@ def render_aqi_tab(tab, selected_years, dfs):
 
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
-                sorted(df["site"].unique()),
+                options=sorted(df["site"].unique()),
                 key=f"site_aqi_{label}"
             )
 
             filtered_df = df.copy()
+
             if selected_years_in_tab:
                 filtered_df = filtered_df[filtered_df["year"].isin(selected_years_in_tab)]
+
             if site_in_tab:
                 filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
 
@@ -411,12 +421,12 @@ def render_aqi_tab(tab, selected_years, dfs):
                 f"Select Quarter(s) for {label}",
                 options=["Q1", "Q2", "Q3", "Q4"],
                 default=["Q1", "Q2", "Q3", "Q4"],
-                key=unique_key("tab_aqi", "quarter", label),
+                key=unique_key("tab_aqi", "quarter", label)
             ) or []
 
             selected_quarter_nums = [
                 f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters
-            ]
+            ] if selected_years_in_tab else []
 
             if selected_quarter_nums:
                 filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
@@ -425,7 +435,18 @@ def render_aqi_tab(tab, selected_years, dfs):
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
 
+            if site_in_tab and len(site_in_tab) == 1:
+                st.caption("AQI is based on the selected site.")
+            elif site_in_tab and len(site_in_tab) > 1:
+                st.caption("AQI is based on the combined daily mean PM2.5 across the selected sites.")
+            else:
+                st.caption("AQI is based on the combined daily mean PM2.5 across all available sites after filtering.")
+
             daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
+
+            if daily_avg.empty:
+                st.warning(f"No AQI results available for {label}.")
+                continue
 
             st.dataframe(remarks_counts, use_container_width=True)
             st.dataframe(daily_avg, use_container_width=True)
@@ -436,6 +457,7 @@ def render_aqi_tab(tab, selected_years, dfs):
                 file_name=f"DailyAvg_{label}.csv",
                 key=f"download_dailyavg_{label}"
             )
+
             st.download_button(
                 f"⬇️ Download AQI - {label}",
                 to_csv_download(remarks_counts),
