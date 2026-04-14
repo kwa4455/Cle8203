@@ -261,11 +261,13 @@ def calculate_min_max(df):
     return result.dropna()
 
 
-def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"):
-    work = df[["day", "year", "quarter", "month", "pm25"]].dropna()
+def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites", single_site=False):
+    # Keep needed columns only and drop NaN
+    work = df[["site", "day", "year", "quarter", "month", "pm25"]].dropna().copy()
 
-    daily_avg = (
-        work.groupby(["day", "year", "quarter", "month"], as_index=False)
+    # Always calculate AQI at site-day level first
+    daily_site_avg = (
+        work.groupby(["site", "day", "year", "quarter", "month"], as_index=False)
         .agg(pm25=("pm25", lambda x: round(x.mean(), 1)))
         .dropna()
     )
@@ -286,16 +288,17 @@ def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg["AQI"] = daily_avg["pm25"].apply(calculate_aqi)
+    daily_site_avg["AQI"] = daily_site_avg["pm25"].apply(calculate_aqi)
 
     conditions = [
-        (daily_avg["AQI"] >= 0) & (daily_avg["AQI"] <= 50),
-        (daily_avg["AQI"] > 50) & (daily_avg["AQI"] <= 100),
-        (daily_avg["AQI"] > 100) & (daily_avg["AQI"] <= 150),
-        (daily_avg["AQI"] > 150) & (daily_avg["AQI"] <= 200),
-        (daily_avg["AQI"] > 200) & (daily_avg["AQI"] <= 300),
-        (daily_avg["AQI"] > 300)
+        (daily_site_avg["AQI"] >= 0) & (daily_site_avg["AQI"] <= 50),
+        (daily_site_avg["AQI"] > 50) & (daily_site_avg["AQI"] <= 100),
+        (daily_site_avg["AQI"] > 100) & (daily_site_avg["AQI"] <= 150),
+        (daily_site_avg["AQI"] > 150) & (daily_site_avg["AQI"] <= 200),
+        (daily_site_avg["AQI"] > 200) & (daily_site_avg["AQI"] <= 300),
+        (daily_site_avg["AQI"] > 300)
     ]
+
     remarks = [
         "Good",
         "Moderate",
@@ -305,19 +308,40 @@ def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"
         "Hazardous"
     ]
 
-    daily_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
-    daily_avg["site_label"] = site_mode_label
-    daily_avg = daily_avg.dropna()
+    daily_site_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
+    daily_site_avg = daily_site_avg.dropna()
 
-    remarks_counts = (
-        daily_avg.groupby(["site_label", "year", "AQI_Remark"], as_index=False)
-        .size()
-        .rename(columns={"size": "Count"})
-    )
+    # Daily output table
+    if single_site:
+        daily_avg = daily_site_avg.copy()
+        daily_avg["site_label"] = daily_avg["site"]
+    else:
+        daily_avg = daily_site_avg.copy()
+        daily_avg["site_label"] = site_mode_label
 
-    remarks_counts["Total_Count_Per_Year"] = (
-        remarks_counts.groupby(["site_label", "year"])["Count"].transform("sum")
-    )
+    # Summary output table
+    if single_site:
+        remarks_counts = (
+            daily_avg.groupby(["site_label", "year", "AQI_Remark"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+        )
+        remarks_counts["Total_Count_Per_Year"] = (
+            remarks_counts.groupby(["site_label", "year"])["Count"].transform("sum")
+        )
+    else:
+        remarks_counts = (
+            daily_avg.groupby(["year", "AQI_Remark"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+        )
+        remarks_counts["site_label"] = site_mode_label
+        remarks_counts["Total_Count_Per_Year"] = (
+            remarks_counts.groupby(["year"])["Count"].transform("sum")
+        )
+        remarks_counts = remarks_counts[
+            ["site_label", "year", "AQI_Remark", "Count", "Total_Count_Per_Year"]
+        ]
 
     remarks_counts["Percent"] = (
         remarks_counts["Count"] / remarks_counts["Total_Count_Per_Year"] * 100
@@ -453,17 +477,21 @@ def render_aqi_tab(tab, selected_years, dfs):
 
             if site_in_tab and len(site_in_tab) == 1:
                 site_mode_label = site_in_tab[0]
+                single_site = True
                 st.caption(f"AQI is based on the selected site: {site_mode_label}")
             elif site_in_tab and len(site_in_tab) > 1:
                 site_mode_label = "Combined_Selected_Sites"
-                st.caption("AQI is based on the combined daily mean PM2.5 across the selected sites.")
+                single_site = False
+                st.caption("AQI summary is based on the sum of site-level daily AQI records across the selected sites.")
             else:
                 site_mode_label = "Combined_All_Filtered_Sites"
-                st.caption("AQI is based on the combined daily mean PM2.5 across all filtered sites.")
+                single_site = False
+                st.caption("AQI summary is based on the sum of site-level daily AQI records across all filtered sites.")
 
             daily_avg, remarks_counts = calculate_aqi_and_category(
                 filtered_df,
-                site_mode_label=site_mode_label
+                site_mode_label=site_mode_label,
+                single_site=single_site
             )
 
             if daily_avg.empty:
@@ -486,7 +514,6 @@ def render_aqi_tab(tab, selected_years, dfs):
                 file_name=f"AQI_{label}.csv",
                 key=f"download_aqi_{label}"
             )
-
 
 def render_daily_means_tab(tab, dfs, selected_years):
     with tab:
