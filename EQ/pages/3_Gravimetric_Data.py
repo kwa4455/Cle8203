@@ -25,28 +25,22 @@ st.title("📊 Gravimetric Data Analyser Tool")
 def cleaned(df):
     df = df.copy()
 
-    # Normalize column names
     df.columns = [str(col).strip().lower() for col in df.columns]
 
-    # Ensure required columns exist
     required_columns = ["date", "site", "pm25", "pm10"]
     missing_cols = [col for col in required_columns if col not in df.columns]
     if missing_cols:
         raise ValueError(f"Missing required columns: {missing_cols}")
 
-    # Keep only required columns
     df = df[required_columns].copy()
 
-    # Standardize types
     df["site"] = df["site"].astype(str).str.strip()
     df["date"] = pd.to_datetime(df["date"], errors="coerce", dayfirst=True)
     df["pm25"] = pd.to_numeric(df["pm25"], errors="coerce")
     df["pm10"] = pd.to_numeric(df["pm10"], errors="coerce")
 
-    # Drop all rows with any NaN in required analytical columns
     df = df.dropna(subset=["date", "site", "pm25", "pm10"])
 
-    # Add time-based features
     df["year"] = df["date"].dt.year
     df["month"] = df["date"].dt.to_period("M").astype(str)
     df["quarter"] = df["date"].dt.to_period("Q").astype(str)
@@ -55,21 +49,17 @@ def cleaned(df):
     df["weekday_type"] = np.where(df["date"].dt.weekday >= 5, "Weekend", "Weekday")
     df["season"] = np.where(df["date"].dt.month.isin([12, 1, 2]), "Harmattan", "Non-Harmattan")
 
-    # Final hard drop of any remaining NaN
     df = df.dropna()
-
     return df
 
 
 def parse_dates(df):
     df = df.copy()
-
     for col in df.columns:
         if "date" in str(col).lower():
             parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
             if parsed.notna().sum() > 0:
                 df[col] = parsed
-
     return df
 
 
@@ -91,8 +81,7 @@ def standardize_columns(df):
         elif col_lower in [c.lower() for c in site_cols]:
             rename_map[col] = "site"
 
-    df = df.rename(columns=rename_map)
-    return df
+    return df.rename(columns=rename_map)
 
 
 def to_csv_download(df):
@@ -120,17 +109,13 @@ def expected_weekly_samples_for_period(period_value, period_type):
     start = p.start_time.normalize()
     end = p.end_time.normalize()
 
-    # Count Mondays across the period as weekly monitoring opportunities
     week_points = pd.date_range(start=start, end=end, freq="W-MON")
     expected = max(len(week_points), 1)
-
     return expected
 
 
 def aggregate_with_weekly_completeness(df, pollutant, period_type, threshold=0.75):
     work = df.copy()
-
-    # Drop NaN before calculation
     keep_cols = ["site", "day", "month", "quarter", "year", pollutant]
     work = work[keep_cols].dropna()
 
@@ -169,7 +154,6 @@ def aggregate_with_weekly_completeness(df, pollutant, period_type, threshold=0.7
 
     valid_df = grouped[grouped["is_valid"]].copy()
     invalid_df = grouped[~grouped["is_valid"]].copy()
-
     return valid_df, invalid_df
 
 
@@ -276,11 +260,10 @@ def calculate_min_max(df):
 
     return result.dropna()
 
+
 def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"):
-    # Drop NaN before AQI calculation
     work = df[["day", "year", "quarter", "month", "pm25"]].dropna()
 
-    # Combine selected sites into one daily mean
     daily_avg = (
         work.groupby(["day", "year", "quarter", "month"], as_index=False)
         .agg(pm25=("pm25", lambda x: round(x.mean(), 1)))
@@ -313,7 +296,6 @@ def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"
         (daily_avg["AQI"] > 200) & (daily_avg["AQI"] <= 300),
         (daily_avg["AQI"] > 300)
     ]
-
     remarks = [
         "Good",
         "Moderate",
@@ -344,12 +326,10 @@ def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"
     remarks_counts = remarks_counts.dropna()
 
     return daily_avg, remarks_counts
-    
-
 
 
 # -----------------------------
-# Tabs
+# Tab Renderers
 # -----------------------------
 
 def render_exceedances_tab(tab, dfs, selected_years):
@@ -419,6 +399,7 @@ def render_exceedances_tab(tab, dfs, selected_years):
                 key=f"download_minmax_{label}"
             )
 
+
 def render_aqi_tab(tab, selected_years, dfs):
     with tab:
         st.header("🌫️ AQI Stats")
@@ -470,7 +451,6 @@ def render_aqi_tab(tab, selected_years, dfs):
                 st.warning(f"No data remaining for {label} after filtering.")
                 continue
 
-            # Decide label to show in AQI outputs
             if site_in_tab and len(site_in_tab) == 1:
                 site_mode_label = site_in_tab[0]
                 st.caption(f"AQI is based on the selected site: {site_mode_label}")
@@ -1062,7 +1042,6 @@ if uploaded_files:
                             )
                             temp = valid_df[group_keys + ["value"]].rename(columns={"value": pollutant})
                             agg_dfs.append(temp)
-
                             if not invalid_df.empty:
                                 invalid_df["pollutant"] = pollutant
                                 excluded_frames.append(invalid_df)
@@ -1073,7 +1052,6 @@ if uploaded_files:
                             )
                             temp = valid_df[group_keys + ["value"]].rename(columns={"value": pollutant})
                             agg_dfs.append(temp)
-
                             if not invalid_df.empty:
                                 invalid_df["pollutant"] = pollutant
                                 excluded_frames.append(invalid_df)
@@ -1084,7 +1062,6 @@ if uploaded_files:
                             )
                             temp = valid_df[group_keys + ["value"]].rename(columns={"value": pollutant})
                             agg_dfs.append(temp)
-
                             if not invalid_df.empty:
                                 invalid_df["pollutant"] = pollutant
                                 excluded_frames.append(invalid_df)
@@ -1108,6 +1085,10 @@ if uploaded_files:
                         agg_dfs
                     ).dropna()
 
+                    if merged_df.empty:
+                        st.warning(f"No valid records for {agg_label}")
+                        continue
+
                     display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
                     editable_df = merged_df[display_cols].dropna()
 
@@ -1128,7 +1109,10 @@ if uploaded_files:
 
                     if excluded_frames:
                         with st.expander(f"Show excluded periods for {agg_label}"):
-                            st.dataframe(pd.concat(excluded_frames, ignore_index=True).dropna(), use_container_width=True)
+                            st.dataframe(
+                                pd.concat(excluded_frames, ignore_index=True).dropna(),
+                                use_container_width=True
+                            )
 
                     st.markdown("---")
 
