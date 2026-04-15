@@ -46,11 +46,21 @@ def unique_key(tab: str, widget: str, label: str) -> str:
 # Parsing & Standardization
 # -------------------------
 def robust_parse(series: pd.Series) -> pd.Series:
+    """Apply multiple parsing strategies to maximize datetime detection."""
+
+    # Convert to string and clean
     series = series.astype(str).str.strip()
 
+    # Strategy 1: dayfirst=True
     dt1 = pd.to_datetime(series, errors="coerce", dayfirst=True)
-    dt = dt1.copy()
 
+    # Strategy 2: dayfirst=False
+    #dt2 = pd.to_datetime(series, errors="coerce", dayfirst=False)
+
+    # Combine both
+    dt = dt1.fillna(nan)
+
+    # Strategy 3: Unix timestamps (seconds & milliseconds)
     if dt.isna().mean() > 0.3:
         dt_sec = pd.to_datetime(series, errors="coerce", unit="s")
         dt = dt.fillna(dt_sec)
@@ -58,11 +68,12 @@ def robust_parse(series: pd.Series) -> pd.Series:
         dt_ms = pd.to_datetime(series, errors="coerce", unit="ms")
         dt = dt.fillna(dt_ms)
 
+    # Strategy 4: dateutil fallback (handles messy formats)
     if dt.isna().any():
         def safe_parse(x):
             try:
                 return parser.parse(x)
-            except Exception:
+            except:
                 return pd.NaT
 
         dt_fallback = series.apply(safe_parse)
@@ -72,6 +83,17 @@ def robust_parse(series: pd.Series) -> pd.Series:
 
 
 def parse_dates(df: pd.DataFrame, debug: bool = False) -> pd.DataFrame:
+    """
+    Automatically detect the best datetime column and standardize to df['datetime'].
+    
+    Parameters:
+        df (pd.DataFrame): Input dataframe
+        debug (bool): If True, prints problematic values
+    
+    Returns:
+        pd.DataFrame: DataFrame with standardized 'datetime' column
+    """
+
     best_col = None
     best_dt = None
     max_valid = 0
@@ -93,28 +115,29 @@ def parse_dates(df: pd.DataFrame, debug: bool = False) -> pd.DataFrame:
             if debug:
                 print(f"Skipping column '{col}': {e}")
 
-    if best_col is not None and max_valid > 0:
+    # Apply best column
+    if best_col and max_valid > 0:
         df = df.copy()
         df["datetime"] = best_dt
 
+        # Debug failed values
         if debug:
             failed = df.loc[df["datetime"].isna(), best_col]
             if not failed.empty:
                 print("\n⚠️ Failed to parse some values:")
                 print(failed.unique()[:20])
 
+        # Clean final output
         df = (
             df.dropna(subset=["datetime"])
               .sort_values("datetime")
               .reset_index(drop=True)
         )
 
-        if debug:
-            print(f"✅ Using column '{best_col}' as datetime ({max_valid} valid values)")
+        print(f"✅ Using column '{best_col}' as datetime ({max_valid} valid values)")
         return df
 
-    if debug:
-        print("⚠️ No valid datetime column found")
+    print("⚠️ No valid datetime column found")
     return df
 
 
