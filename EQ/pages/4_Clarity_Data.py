@@ -2,296 +2,316 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import altair as alt
+import plotly.express as px
+import plotly.graph_objects as go
 from io import BytesIO
+from functools import reduce
 
 # --- Page Configuration ---
-st.set_page_config(page_title="Clarity LCS Data Analysis", page_icon="🔬",layout="wide")
+st.set_page_config(
+    page_title="Gravimetric Data Analyser Tool",
+    page_icon="🛠️",
+    layout="wide"
+)
+
+st.title("📊 Gravimetric Data Analyser Tool")
+
+# -----------------------------
+# Global Setting
+# -----------------------------
+ANCHOR_DATE = "2025-01-01"  # change this if the monitoring cycle started on a different date
 
 
-# Insert your CSS here
-st.markdown("""
-    <style>
-    /* --- your CSS --- */
-    body, .stApp {
-        font-family: 'Poppins', sans-serif;
-        transition: all 0.5s ease;
-    }
-    
-    /* Light Mode */
-    body.light-mode, .stApp.light-mode {
-        background: linear-gradient(135deg, #f8fdfc, #d8f3dc);
-        color: #1b4332;
-    }
-    
-    /* Dark Mode */
-    body.dark-mode, .stApp.dark-mode {
-        background: linear-gradient(135deg, #0e1117, #161b22);
-        color: #e6edf3;
-    }
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {
-        background: rgba(255, 255, 255, 0.2);
-        backdrop-filter: blur(12px);
-        border-right: 2px solid #74c69d;
-        transition: all 0.5s ease;
-    }
-
-    /* Buttons */
-    .stButton>button, .stDownloadButton>button {
-        background: linear-gradient(135deg, #40916c, #52b788);
-        color: white;
-        border: none;
-        border-radius: 10px;
-        padding: 0.7em 1.5em;
-        font-weight: bold;
-        font-size: 1rem;
-        box-shadow: 0 0 15px #52b788;
-        transition: 0.3s ease;
-    }
-    
-    .stButton>button:hover, .stDownloadButton>button:hover {
-        background: linear-gradient(135deg, #2d6a4f, #40916c);
-        box-shadow: 0 0 25px #74c69d, 0 0 35px #74c69d;
-        transform: scale(1.05);
-    }
-
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-        width: 8px;
-    }
-    ::-webkit-scrollbar-thumb {
-        background: #74c69d;
-        border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-        background: #52b788;
-    }
-
-    /* Glowing Title */
-    .glow-text {
-        text-align: center;
-        font-size: 3em;
-        color: #52b788;
-        text-shadow: 0 0 5px #52b788, 0 0 10px #52b788, 0 0 20px #52b788;
-        margin-bottom: 20px;
-    }
-
-    /* Smooth theme transition */
-    html, body, .stApp {
-        transition: background 0.5s ease, color 0.5s ease;
-    }
-
-    /* Download Button Specific */
-    .stDownloadButton>button {
-        background: linear-gradient(135deg, #1b4332, #2d6a4f);
-        box-shadow: 0 0 10px #1b4332;
-    }
-
-    /* Button Press Animation */
-    .stButton>button:active, .stDownloadButton>button:active {
-        transform: scale(0.97);
-    }
-
-    /* Tables */
-    .stDataFrame, .stTable {
-        background: rgba(255, 255, 255, 0.6);
-        border-radius: 12px;
-        backdrop-filter: blur(10px);
-        padding: 1rem;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-        overflow: hidden;
-        font-size: 15px;
-    }
-
-    /* Table Headers */
-    thead tr th {
-        background: linear-gradient(135deg, #52b788, #74c69d);
-        color: white;
-        font-weight: bold;
-        text-align: center;
-        padding: 0.5em;
-    }
-
-    /* Table Rows */
-    tbody tr:nth-child(even) {
-        background-color: #e9f7ef;
-    }
-    tbody tr:nth-child(odd) {
-        background-color: #ffffff;
-    }
-    tbody tr:hover {
-        background-color: #b7e4c7;
-        transition: background-color 0.3s ease;
-    }
-
-    /* Graph iframe Glass Effect */
-    .element-container iframe {
-        background: rgba(255, 255, 255, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 12px;
-        padding: 10px;
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    /* Dark Mode Table */
-    body.dark-mode .stDataFrame, body.dark-mode .stTable {
-        background: #161b22cc;
-        border-radius: 10px;
-        backdrop-filter: blur(8px);
-        font-size: 15px;
-        overflow: hidden;
-    }
-    body.dark-mode thead tr th {
-        background: linear-gradient(135deg, #238636, #2ea043);
-        color: #ffffff;
-        font-weight: bold;
-        text-align: center;
-    }
-    body.dark-mode tbody tr:nth-child(even) {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }
-    body.dark-mode tbody tr:nth-child(odd) {
-        background: linear-gradient(90deg, #161b22, #21262d);
-        color: #e6edf3;
-        transition: all 0.3s ease;
-    }
-    body.dark-mode tbody tr:hover {
-        background: linear-gradient(90deg, #21262d, #30363d);
-        box-shadow: 0 0 15px #58a6ff;
-        transform: scale(1.01);
-    }
-
-    /* Dark Mode Graph Glow */
-    body.dark-mode .element-container iframe {
-        background: rgba(22, 27, 34, 0.5) !important;
-        backdrop-filter: blur(10px);
-        border-radius: 16px;
-        padding: 10px;
-        border: 2px solid #58a6ff;
-        box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff;
-        animation: pulse-glow-dark 3s infinite ease-in-out;
-    }
-
-    /* Glow Animations */
-    @keyframes pulse-glow {
-      0% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-      50% { box-shadow: 0 0 25px #40916c, 0 0 45px #2d6a4f; }
-      100% { box-shadow: 0 0 15px #74c69d, 0 0 30px #52b788; }
-    }
-    @keyframes pulse-glow-dark {
-      0% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-      50% { box-shadow: 0 0 25px #3b82f6, 0 0 45px #2563eb; }
-      100% { box-shadow: 0 0 15px #58a6ff, 0 0 30px #79c0ff; }
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-
-
-
-
-# --- Title and Logo ---
-st.title("📊 Clarity LCS Data Analysis")
-
-
-# --- Helper Functions ---
+# -----------------------------
+# Helper Functions
+# -----------------------------
 
 @st.cache_data(ttl=600)
-
 def cleaned(df):
-    df = df.rename(columns=lambda x: x.strip().lower())
-    required_columns = ['datetime', 'site', 'corrected_pm25', 'pm10']
-    df = df[[col for col in required_columns if col in df.columns]]
-    df = df.dropna(axis=1, how='all').dropna()
+    df = df.copy()
 
+    df.columns = [str(col).strip().lower() for col in df.columns]
 
-    df['year'] = df['datetime'].dt.year
-    df['month'] = df['datetime'].dt.to_period('M').astype(str)
-    df['quarter'] = df['datetime'].dt.to_period('Q').astype(str)
-    df['day'] = df['datetime'].dt.date
-    df['dayofweek'] = df['datetime'].dt.day_name()
-    df['weekday_type'] = df['datetime'].dt.weekday.apply(lambda x: 'Weekend' if x >= 5 else 'Weekday')
-    df['season'] = df['datetime'].dt.month.apply(lambda x: 'Harmattan' if x in [12, 1, 2] else 'Non-Harmattan')
+    required_columns = ["date", "site", "pm25", "pm10"]
+    missing_cols = [col for col in required_columns if col not in df.columns]
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
 
-    daily_counts = df.groupby(['site', 'month'])['day'].nunique().reset_index(name='daily_counts')
-    sufficient_sites = daily_counts[daily_counts['daily_counts'] >= 20][['site', 'month']]
-    df = df.merge(sufficient_sites, on=['site', 'month'])
+    df = df[required_columns].copy()
+
+    df["site"] = df["site"].astype(str).str.strip()
+    df["date"] = pd.to_datetime(df["date"], errors="coerce", dayfirst=True)
+    df["pm25"] = pd.to_numeric(df["pm25"], errors="coerce")
+    df["pm10"] = pd.to_numeric(df["pm10"], errors="coerce")
+
+    df = df.dropna(subset=["date", "site", "pm25", "pm10"])
+
+    df["year"] = df["date"].dt.year
+    df["month"] = df["date"].dt.to_period("M").astype(str)
+    df["quarter"] = df["date"].dt.to_period("Q").astype(str)
+    df["day"] = df["date"].dt.date
+    df["dayofweek"] = df["date"].dt.day_name()
+    df["weekday_type"] = np.where(df["date"].dt.weekday >= 5, "Weekend", "Weekday")
+    df["season"] = np.where(df["date"].dt.month.isin([12, 1, 2]), "Harmattan", "Non-Harmattan")
+
+    df = df.dropna()
     return df
+
 
 def parse_dates(df):
+    df = df.copy()
     for col in df.columns:
-        if 'date' in col.lower() or 'time' in col.lower():
-            try:
-                df['datetime'] = pd.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
-                df = df.dropna(subset=['datetime'])
-                return df
-            except:
-                continue
+        if "date" in str(col).lower():
+            parsed = pd.to_datetime(df[col], errors="coerce", dayfirst=True)
+            if parsed.notna().sum() > 0:
+                df[col] = parsed
     return df
+
 
 def standardize_columns(df):
-    pm25_cols = ['PM2.5', 'corrected_pm25', 'pm25_avg', 'pm2.5']
-    pm10_cols = ['pm10', 'PM10', 'pm_10']
-    site_cols = ['site', 'station', 'location']
+    df = df.copy()
 
+    pm25_cols = ["pm25", "pm2.5", "pm_2_5", "pm25_avg", "pm 2.5", "pm2_5", "PM2.5"]
+    pm10_cols = ["pm10", "pm_10", "pm 10", "PM10"]
+    site_cols = ["site", "station", "location"]
+
+    rename_map = {}
     for col in df.columns:
-        col_lower = col.strip().lower()
-        if col_lower in [c.lower() for c in pm25_cols]:
-            df.rename(columns={col: 'pm25'}, inplace=True)
-        if col_lower in [c.lower() for c in pm10_cols]:
-            df.rename(columns={col: 'pm10'}, inplace=True)
-        if col_lower in [c.lower() for c in site_cols]:
-            df.rename(columns={col: 'site'}, inplace=True)
-    return df
+        col_lower = str(col).strip().lower()
 
-def compute_aggregates(df, label, pollutant):
-    aggregates = {}
-    aggregates[f'{label} - Daily Avg ({pollutant})'] = df.groupby(['day', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Monthly Avg ({pollutant})'] = df.groupby(['month', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Quarterly Avg ({pollutant})'] = df.groupby(['quarter', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Yearly Avg ({pollutant})'] = df.groupby(['year', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Day of Week Avg ({pollutant})'] = df.groupby(['dayofweek', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Weekday Type Avg ({pollutant})'] = df.groupby(['weekday_type', 'site'])[pollutant].mean().reset_index().round(1)
-    aggregates[f'{label} - Season Avg ({pollutant})'] = df.groupby(['season', 'site'])[pollutant].mean().reset_index().round(1)
-    return aggregates
+        if col_lower in [c.lower() for c in pm25_cols]:
+            rename_map[col] = "pm25"
+        elif col_lower in [c.lower() for c in pm10_cols]:
+            rename_map[col] = "pm10"
+        elif col_lower in [c.lower() for c in site_cols]:
+            rename_map[col] = "site"
+
+    return df.rename(columns=rename_map)
+
+
+def to_csv_download(df):
+    return BytesIO(df.to_csv(index=False).encode("utf-8"))
+
+
+def unique_key(tab: str, widget: str, label: str) -> str:
+    return f"{widget}_{tab}_{label}"
+
+
+# -----------------------------
+# Completeness Validation
+# -----------------------------
+
+@st.cache_data(ttl=3600)
+def generate_full_schedule(anchor_date, start_year, end_year):
+    """
+    Generate a continuous 6-day monitoring schedule across multiple years.
+    """
+    anchor = pd.to_datetime(anchor_date).normalize()
+
+    start = pd.Timestamp(f"{start_year}-01-01")
+    end = pd.Timestamp(f"{end_year}-12-31")
+
+    current = anchor
+
+    while current > start:
+        current -= pd.Timedelta(days=6)
+
+    while current < start:
+        current += pd.Timedelta(days=6)
+
+    schedule = []
+    while current <= end:
+        schedule.append(current.normalize())
+        current += pd.Timedelta(days=6)
+
+    return pd.DatetimeIndex(schedule)
+
+
+def expected_six_day_samples_for_period(period_value, period_type, schedule):
+    """
+    Count expected samples in a month, quarter, or year using the strict 6-day schedule.
+    """
+    if period_type == "month":
+        p = pd.Period(str(period_value), freq="M")
+    elif period_type == "quarter":
+        p = pd.Period(str(period_value), freq="Q")
+    elif period_type == "year":
+        p = pd.Period(str(period_value), freq="Y")
+    else:
+        raise ValueError("period_type must be month, quarter, or year")
+
+    start = p.start_time.normalize()
+    end = p.end_time.normalize()
+
+    expected = ((schedule >= start) & (schedule <= end)).sum()
+    return max(int(expected), 1)
+
+
+def aggregate_with_six_day_completeness(df, pollutant, period_type, threshold=0.75):
+    """
+    Aggregate pollutant by period and validate completeness assuming a strict
+    6-day sampling sequence across the full monitoring timeline.
+    """
+    work = df.copy()
+    keep_cols = ["site", "day", "month", "quarter", "year", pollutant]
+    work = work[keep_cols].dropna().copy()
+
+    work["obs_day"] = pd.to_datetime(work["day"]).dt.normalize()
+
+    min_year = int(work["year"].min())
+    max_year = int(work["year"].max())
+    schedule = generate_full_schedule(ANCHOR_DATE, min_year, max_year)
+
+    if period_type == "month":
+        group_cols = ["site", "month", "quarter", "year"]
+        period_col = "month"
+    elif period_type == "quarter":
+        group_cols = ["site", "quarter", "year"]
+        period_col = "quarter"
+    elif period_type == "year":
+        group_cols = ["site", "year"]
+        period_col = "year"
+    else:
+        raise ValueError("period_type must be month, quarter, or year")
+
+    grouped = (
+        work.groupby(group_cols, as_index=False)
+        .agg(
+            value=(pollutant, "mean"),
+            observed_samples=("obs_day", "nunique")
+        )
+    )
+
+    grouped["expected_samples"] = grouped[period_col].apply(
+        lambda x: expected_six_day_samples_for_period(x, period_type, schedule)
+    )
+
+    grouped["completeness_percent"] = (
+        grouped["observed_samples"] / grouped["expected_samples"] * 100
+    ).round(1)
+
+    grouped["is_valid"] = grouped["completeness_percent"] >= (threshold * 100)
+    grouped["value"] = grouped["value"].round(1)
+
+    valid_df = grouped[grouped["is_valid"]].copy()
+    invalid_df = grouped[~grouped["is_valid"]].copy()
+
+    return valid_df, invalid_df
+
+
+# -----------------------------
+# Calculations
+# -----------------------------
+
+def calculate_day_pollutant(df, pollutant):
+    work = df[["site", "day", "month", "quarter", "year", pollutant]].dropna()
+    return (
+        work.groupby(["site", "day", "month", "quarter", "year"], as_index=False)[pollutant]
+        .mean()
+        .round(1)
+        .dropna()
+    )
+
+
+def calculate_month_pollutant(df, pollutant):
+    return aggregate_with_six_day_completeness(df, pollutant, "month", threshold=0.75)
+
+
+def calculate_quarter_pollutant(df, pollutant):
+    return aggregate_with_six_day_completeness(df, pollutant, "quarter", threshold=0.75)
+
+
+def calculate_year_pollutant(df, pollutant):
+    return aggregate_with_six_day_completeness(df, pollutant, "year", threshold=0.75)
+
+
+def calculate_dayofweek_pollutant(df, pollutant):
+    work = df[["site", "dayofweek", "quarter", "year", pollutant]].dropna()
+    return (
+        work.groupby(["site", "dayofweek", "quarter", "year"], as_index=False)[pollutant]
+        .mean()
+        .round(1)
+        .dropna()
+    )
+
 
 def calculate_exceedances(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'corrected_pm25': 'mean',
-        'pm10': 'mean'
-    })
-    pm25_exceed = daily_avg[daily_avg['corrected_pm25'] > 35].groupby(['year', 'site']).size().reset_index(name='PM25_Exceedance_Count')
-    pm10_exceed = daily_avg[daily_avg['pm10'] > 70].groupby(['year', 'site']).size().reset_index(name='PM10_Exceedance_Count')
-    total_days = daily_avg.groupby(['year', 'site']).size().reset_index(name='Total_Records')
+    work = df[["site", "day", "year", "quarter", "month", "pm25", "pm10"]].dropna()
 
-    exceedance = total_days.merge(pm25_exceed, on=['year', 'site'], how='left') \
-                           .merge(pm10_exceed, on=['year', 'site'], how='left')
-    exceedance.fillna(0, inplace=True)
-    exceedance['PM25_Exceedance_Percent'] = round((exceedance['PM25_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
-    exceedance['PM10_Exceedance_Percent'] = round((exceedance['PM10_Exceedance_Count'] / exceedance['Total_Records']) * 100, 1)
+    daily_avg = (
+        work.groupby(["site", "day", "year", "quarter", "month"], as_index=False)
+        .agg({"pm25": "mean", "pm10": "mean"})
+        .dropna()
+    )
 
-    return exceedance
+    pm25_exceed = (
+        daily_avg[daily_avg["pm25"] > 35]
+        .groupby(["year", "site"], as_index=False)
+        .size()
+        .rename(columns={"size": "pm25_Exceedance_Count"})
+    )
+
+    pm10_exceed = (
+        daily_avg[daily_avg["pm10"] > 70]
+        .groupby(["year", "site"], as_index=False)
+        .size()
+        .rename(columns={"size": "pm10_Exceedance_Count"})
+    )
+
+    total_days = (
+        daily_avg.groupby(["year", "site"], as_index=False)
+        .size()
+        .rename(columns={"size": "Total_Records"})
+    )
+
+    exceedance = (
+        total_days.merge(pm25_exceed, on=["year", "site"], how="left")
+        .merge(pm10_exceed, on=["year", "site"], how="left")
+        .fillna(0)
+    )
+
+    exceedance["pm25_Exceedance_Percent"] = (
+        exceedance["pm25_Exceedance_Count"] / exceedance["Total_Records"] * 100
+    ).round(1)
+
+    exceedance["pm10_Exceedance_Percent"] = (
+        exceedance["pm10_Exceedance_Count"] / exceedance["Total_Records"] * 100
+    ).round(1)
+
+    return exceedance.dropna()
+
 
 def calculate_min_max(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'pm25': 'mean',
-        'pm10': 'mean'
-    })
-    df_min_max = daily_avg.groupby(['year', 'site', 'month'], as_index=False).agg(
-        daily_avg_pm10_max=('pm10', lambda x: round(x.max(), 1)),
-        daily_avg_pm10_min=('pm10', lambda x: round(x.min(), 1)),
-        daily_avg_pm25_max=('pm25', lambda x: round(x.max(), 1)),
-        daily_avg_pm25_min=('pm25', lambda x: round(x.min(), 1))
-    )
-    return df_min_max
+    work = df[["site", "day", "year", "quarter", "month", "pm25", "pm10"]].dropna()
 
-def calculate_aqi_and_category(df):
-    daily_avg = df.groupby(['site', 'day', 'year', 'month'], as_index=False).agg({
-        'corrected_pm25': 'mean'
-    })
+    daily_avg = (
+        work.groupby(["site", "day", "year", "quarter", "month"], as_index=False)
+        .agg({"pm25": "mean", "pm10": "mean"})
+        .dropna()
+    )
+
+    result = (
+        daily_avg.groupby(["site", "year", "quarter", "month"], as_index=False)
+        .agg(
+            daily_avg_pm10_max=("pm10", lambda x: round(x.max(), 1)),
+            daily_avg_pm10_min=("pm10", lambda x: round(x.min(), 1)),
+            daily_avg_pm25_max=("pm25", lambda x: round(x.max(), 1)),
+            daily_avg_pm25_min=("pm25", lambda x: round(x.min(), 1))
+        )
+    )
+
+    return result.dropna()
+
+
+def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites", single_site=False):
+    work = df[["site", "day", "year", "quarter", "month", "pm25"]].dropna().copy()
+
+    daily_site_avg = (
+        work.groupby(["site", "day", "year", "quarter", "month"], as_index=False)
+        .agg(pm25=("pm25", lambda x: round(x.mean(), 1)))
+        .dropna()
+    )
+
     breakpoints = [
         (0.0, 9.0, 0, 50),
         (9.1, 35.4, 51, 100),
@@ -308,174 +328,918 @@ def calculate_aqi_and_category(df):
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg['AQI'] = daily_avg['corrected_pm25'].apply(calculate_aqi)
-    conditions = [
-        (daily_avg['AQI'] > 300),
-        (daily_avg['AQI'] > 200),
-        (daily_avg['AQI'] > 150),
-        (daily_avg['AQI'] > 100),
-        (daily_avg['AQI'] > 50),
-        (daily_avg['AQI'] >= 0)
-    ]
-    remarks = ['Hazardous', 'Very Unhealthy', 'Unhealthy', 'Unhealthy for Sensitive Groups', 'Moderate', 'Good']
-    daily_avg['AQI_Remark'] = np.select(conditions, remarks, default='Unknown')
+    daily_site_avg["AQI"] = daily_site_avg["pm25"].apply(calculate_aqi)
 
-    remarks_counts = daily_avg.groupby(['site', 'year', 'AQI_Remark']).size().reset_index(name='Count')
-    remarks_counts['Total_Count_Per_Site_Year'] = remarks_counts.groupby(['site', 'year'])['Count'].transform('sum')
-    remarks_counts['Percent'] = round((remarks_counts['Count'] / remarks_counts['Total_Count_Per_Site_Year']) * 100, 1)
+    conditions = [
+        (daily_site_avg["AQI"] >= 0) & (daily_site_avg["AQI"] <= 50),
+        (daily_site_avg["AQI"] > 50) & (daily_site_avg["AQI"] <= 100),
+        (daily_site_avg["AQI"] > 100) & (daily_site_avg["AQI"] <= 150),
+        (daily_site_avg["AQI"] > 150) & (daily_site_avg["AQI"] <= 200),
+        (daily_site_avg["AQI"] > 200) & (daily_site_avg["AQI"] <= 300),
+        (daily_site_avg["AQI"] > 300)
+    ]
+
+    remarks = [
+        "Good",
+        "Moderate",
+        "Unhealthy for Sensitive Groups",
+        "Unhealthy",
+        "Very Unhealthy",
+        "Hazardous"
+    ]
+
+    daily_site_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
+    daily_site_avg = daily_site_avg.dropna()
+
+    if single_site:
+        daily_avg = daily_site_avg.copy()
+        daily_avg["site_label"] = daily_avg["site"]
+    else:
+        daily_avg = daily_site_avg.copy()
+        daily_avg["site_label"] = site_mode_label
+
+    if single_site:
+        remarks_counts = (
+            daily_avg.groupby(["site_label", "year", "AQI_Remark"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+        )
+        remarks_counts["Total_Count_Per_Year"] = (
+            remarks_counts.groupby(["site_label", "year"])["Count"].transform("sum")
+        )
+    else:
+        remarks_counts = (
+            daily_avg.groupby(["year", "AQI_Remark"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+        )
+        remarks_counts["site_label"] = site_mode_label
+        remarks_counts["Total_Count_Per_Year"] = (
+            remarks_counts.groupby(["year"])["Count"].transform("sum")
+        )
+        remarks_counts = remarks_counts[
+            ["site_label", "year", "AQI_Remark", "Count", "Total_Count_Per_Year"]
+        ]
+
+    remarks_counts["Percent"] = (
+        remarks_counts["Count"] / remarks_counts["Total_Count_Per_Year"] * 100
+    ).round(1)
+
+    remarks_counts = remarks_counts.dropna()
 
     return daily_avg, remarks_counts
 
-def to_csv_download(df):
-    return BytesIO(df.to_csv(index=False).encode('utf-8'))
 
-def plot_chart(df, x, y, color, chart_type="line", title=""):
-    # Automatically detect Streamlit theme
-    streamlit_theme = st.get_option("theme.base")
-    theme = streamlit_theme if streamlit_theme else "Light"
-    
-    background = '#1c1c1c' if theme == 'dark' else 'white'
-    font_color = 'white' if theme == 'dark' else 'black'
-    
-    base = alt.Chart(df).encode(
-        x=x,
-        y=y,
-        color=color,
-        tooltip=[x, y, color]
-    ).properties(
-        width=700,
-        height=400,
-        title=alt.TitleParams(text=title, color=font_color)
-    ).configure(
-        background=background,
-        view={"stroke": None},
-        axis={"labelColor": font_color, "titleColor": font_color}
-    )
+# -----------------------------
+# Tab Renderers
+# -----------------------------
 
-    if chart_type == "line":
-        return base.mark_line(point=True)
-    else:
-        return base.mark_bar()
-# --- Main App ---
+def render_exceedances_tab(tab, dfs, selected_years):
+    with tab:
+        st.header("🌫️ Exceedances & Max/Min")
 
-uploaded_files = st.file_uploader("Upload up to 4 datasets", type=['csv', 'xlsx'], accept_multiple_files=True)
-
-if uploaded_files:
-    all_outputs = {}
-    site_options = set()
-    year_options = set()
-    dfs = {}
-
-    for file in uploaded_files:
-        label = file.name.split('.')[0]
-        ext = file.name.split('.')[-1]
-        df = pd.read_excel(file) if ext == 'xlsx' else pd.read_csv(file)
-
-        df = parse_dates(df)
-        df = standardize_columns(df)
-        df = cleaned(df)
-
-        if 'datetime' not in df.columns or 'corrected_pm25' not in df.columns or 'pm10' not in df.columns or 'site' not in df.columns:
-            st.warning(f"⚠️ Could not process {label}: missing columns.")
-            continue
-
-        dfs[label] = df
-        site_options.update(df['site'].unique())
-        year_options.update(df['year'].unique())
-
-    with st.sidebar:
-        selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
-        selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
-
-    tabs = st.tabs(["Aggregated Means", "Exceedances", "AQI Stats", "Min/Max Values"])
-
-    with tabs[0]:  # Aggregated Means
-        st.header("📊 Aggregated Means")
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_agg_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
-            for pollutant in ['corrected_pm25', 'pm10']:
-                if pollutant not in filtered_df.columns:
-                    continue
-                aggregates = compute_aggregates(filtered_df, label, pollutant)
-                for agg_label, agg_df in aggregates.items():
-                    st.markdown(f"**{agg_label}**")
-                    st.dataframe(agg_df, use_container_width=True)
-                    st.download_button(label=f"📥 Download {agg_label}", data=to_csv_download(agg_df), file_name=f"{label}_{agg_label.replace(' ', '_')}.csv", mime="text/csv")
-                    chart_type = "line" if any(t in agg_label for t in ['Daily', 'Monthly','Quarterly', 'Yearly']) else "bar"
-                    x_axis = agg_df.columns[0]
-                    chart = plot_chart(agg_df, x=x_axis, y=pollutant, color="site", chart_type=chart_type, title=agg_label)
-                    st.altair_chart(chart, use_container_width=True)
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                options=sorted(df["site"].unique()),
+                key=f"site_exc_{label}"
+            )
 
-    with tabs[1]:  # Exceedances
-        st.header("🚨 Exceedances")
-        for label, df in dfs.items():
-            st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_exc_{label}")
+            available_years = sorted(df["year"].unique())
+            selected_years_in_tab = st.multiselect(
+                f"Select Year(s) for {label}",
+                options=available_years,
+                default=selected_years if selected_years else available_years,
+                key=f"year_exc_{label}"
+            )
+
             filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+
+            if selected_years_in_tab:
+                filtered_df = filtered_df[filtered_df["year"].isin(selected_years_in_tab)]
             if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=f"quarter_exc_{label}"
+            )
+
+            selected_quarter_nums = [
+                f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters
+            ] if selected_years_in_tab else []
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+
+            filtered_df = filtered_df.dropna()
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
 
             exceedances = calculate_exceedances(filtered_df)
-            st.dataframe(exceedances, use_container_width=True)
-            st.download_button(f"⬇️ Download Exceedances - {label}", to_csv_download(exceedances), file_name=f"Exceedances_{label}.csv")
+            min_max = calculate_min_max(filtered_df)
 
-    with tabs[2]:  # AQI
+            st.dataframe(exceedances, use_container_width=True)
+            st.download_button(
+                label=f"⬇️ Download Exceedances - {label}",
+                data=to_csv_download(exceedances),
+                file_name=f"Exceedances_{label}.csv",
+                key=f"download_exceedances_{label}"
+            )
+
+            st.dataframe(min_max, use_container_width=True)
+            st.download_button(
+                label=f"⬇️ Download MinMax - {label}",
+                data=to_csv_download(min_max),
+                file_name=f"MinMax_{label}.csv",
+                key=f"download_minmax_{label}"
+            )
+
+
+def render_aqi_tab(tab, selected_years, dfs):
+    with tab:
         st.header("🌫️ AQI Stats")
+
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_aqi_{label}")
-            filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
 
-            daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
+            all_years = sorted(df["year"].dropna().unique())
+            default_years = all_years[-2:] if len(all_years) >= 2 else all_years
+
+            selected_years_in_tab = st.multiselect(
+                f"Select Year(s) for {label}",
+                options=all_years,
+                default=selected_years if selected_years else default_years,
+                key=f"years_aqi_{label}"
+            )
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                options=sorted(df["site"].unique()),
+                key=f"site_aqi_{label}"
+            )
+
+            filtered_df = df.copy()
+
+            if selected_years_in_tab:
+                filtered_df = filtered_df[filtered_df["year"].isin(selected_years_in_tab)]
+
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=unique_key("tab_aqi", "quarter", label)
+            ) or []
+
+            selected_quarter_nums = [
+                f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters
+            ] if selected_years_in_tab else []
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+
+            filtered_df = filtered_df.dropna()
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            if site_in_tab and len(site_in_tab) == 1:
+                site_mode_label = site_in_tab[0]
+                single_site = True
+                st.caption(f"AQI is based on the selected site: {site_mode_label}")
+            elif site_in_tab and len(site_in_tab) > 1:
+                site_mode_label = "Combined_Selected_Sites"
+                single_site = False
+                st.caption("AQI summary is based on the sum of site-level daily AQI records across the selected sites.")
+            else:
+                site_mode_label = "Combined_All_Filtered_Sites"
+                single_site = False
+                st.caption("AQI summary is based on the sum of site-level daily AQI records across all filtered sites.")
+
+            daily_avg, remarks_counts = calculate_aqi_and_category(
+                filtered_df,
+                site_mode_label=site_mode_label,
+                single_site=single_site
+            )
+
+            if daily_avg.empty:
+                st.warning(f"No AQI results available for {label}.")
+                continue
+
             st.dataframe(remarks_counts, use_container_width=True)
             st.dataframe(daily_avg, use_container_width=True)
-            st.download_button(f"⬇️ Download Daily Avg - {label}", to_csv_download(daily_avg), file_name=f"DailyAvg_{label}.csv")
-            st.download_button(f"⬇️ Download AQI - {label}", to_csv_download(remarks_counts), file_name=f"AQI_{label}.csv")
 
-            aqi_colors = {
-                'Good': '#00e400',
-                'Moderate': '#ffff00',
-                'Unhealthy for Sensitive Groups': '#ff7e00',
-                'Unhealthy': '#ff0000',
-                'Very Unhealthy': '#8f3f97',
-                'Hazardous': '#7e0023'
-            }
-            remarks_counts['Color'] = remarks_counts['AQI_Remark'].map(aqi_colors)
-            aqi_chart = alt.Chart(remarks_counts).mark_bar().encode(
-                x=alt.X('Percent:Q', title='% Time in AQI Category'),
-                y=alt.Y('AQI_Remark:N', sort='-x', title='AQI Category'),
-                color=alt.Color('AQI_Remark:N', scale=alt.Scale(domain=list(aqi_colors.keys()), range=list(aqi_colors.values())), legend=None),
-                tooltip=['site', 'year', 'AQI_Remark', 'Percent']
-            ).properties(width=700, height=400, title="AQI Remark Percentages")
-            st.altair_chart(aqi_chart, use_container_width=True)
+            st.download_button(
+                f"⬇️ Download Daily Avg - {label}",
+                to_csv_download(daily_avg),
+                file_name=f"DailyAvg_{label}.csv",
+                key=f"download_dailyavg_{label}"
+            )
 
-    with tabs[3]:  # Min/Max
-        st.header("🔥 Min/Max Values")
+            st.download_button(
+                f"⬇️ Download AQI - {label}",
+                to_csv_download(remarks_counts),
+                file_name=f"AQI_{label}.csv",
+                key=f"download_aqi_{label}"
+            )
+
+
+def render_daily_means_tab(tab, dfs, selected_years):
+    with tab:
+        st.header("📊 Daily Means")
+
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
-            site_in_tab = st.multiselect(f"Select Site(s) for {label}", sorted(df['site'].unique()), key=f"site_minmax_{label}")
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df["site"].unique()),
+                key=unique_key("tab5", "site", label)
+            )
+
             filtered_df = df.copy()
-            if selected_years:
-                filtered_df = filtered_df[filtered_df['year'].isin(selected_years)]
+            years_to_use = selected_years if selected_years else sorted(df["year"].unique())
+
+            if years_to_use:
+                filtered_df = filtered_df[filtered_df["year"].isin(years_to_use)]
             if site_in_tab:
-                filtered_df = filtered_df[filtered_df['site'].isin(site_in_tab)]
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
 
-            min_max = calculate_min_max(filtered_df)
-            st.dataframe(min_max, use_container_width=True)
-            st.download_button(f"⬇️ Download MinMax - {label}", to_csv_download(min_max), file_name=f"MinMax_{label}.csv")
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=unique_key("tab5", "quarter", label)
+            ) or []
 
+            selected_quarter_nums = [f"{year}{q}" for year in years_to_use for q in selected_quarters]
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+
+            filtered_df = filtered_df.dropna()
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            valid_pollutants = [p for p in ["pm25", "pm10"] if p in filtered_df.columns]
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab5", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab5", "charttype", label)
+            )
+
+            df_avg_list = []
+            for pollutant in selected_display_pollutants:
+                avg_df = calculate_day_pollutant(filtered_df, pollutant)
+                avg_df["pollutant"] = pollutant
+                avg_df = avg_df.rename(columns={pollutant: "value"})
+                df_avg_list.append(avg_df)
+
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
+                continue
+
+            df_avg = pd.concat(df_avg_list, ignore_index=True).dropna()
+
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x="day",
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=f"Daily Means - {label}",
+                    labels={"value": "µg/m³", "day": "Day"}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x="day",
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=f"Daily Means - {label}",
+                    labels={"value": "µg/m³", "day": "Day"}
+                )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg, use_container_width=True)
+
+
+def render_monthly_means_tab(tab, dfs, selected_years):
+    with tab:
+        st.header("📊 Monthly Means (75% completeness applied)")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df["site"].unique()),
+                key=unique_key("tab2", "site", label)
+            )
+
+            filtered_df = df.copy()
+            years_to_use = selected_years if selected_years else sorted(df["year"].unique())
+
+            if years_to_use:
+                filtered_df = filtered_df[filtered_df["year"].isin(years_to_use)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=unique_key("tab2", "quarter", label)
+            ) or []
+
+            selected_quarter_nums = [f"{year}{q}" for year in years_to_use for q in selected_quarters]
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+
+            filtered_df = filtered_df.dropna()
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            valid_pollutants = [p for p in ["pm25", "pm10"] if p in filtered_df.columns]
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab2", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab2", "charttype", label)
+            )
+
+            valid_list = []
+            invalid_list = []
+
+            for pollutant in selected_display_pollutants:
+                valid_df, invalid_df = calculate_month_pollutant(filtered_df, pollutant)
+                valid_df["pollutant"] = pollutant
+                valid_list.append(valid_df)
+
+                if not invalid_df.empty:
+                    invalid_df["pollutant"] = pollutant
+                    invalid_list.append(invalid_df)
+
+            if not valid_list:
+                st.warning(f"No monthly data met the 75% completeness rule for {label}.")
+                continue
+
+            df_avg = pd.concat(valid_list, ignore_index=True).dropna()
+
+            if invalid_list:
+                with st.expander(f"Show excluded monthly periods for {label}"):
+                    st.dataframe(pd.concat(invalid_list, ignore_index=True).dropna(), use_container_width=True)
+
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x="month",
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=f"Monthly Means - {label}",
+                    labels={"value": "µg/m³", "month": "Month"}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x="month",
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=f"Monthly Means - {label}",
+                    labels={"value": "µg/m³", "month": "Month"}
+                )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            with st.expander("Show Monthly Aggregated Data Table"):
+                st.dataframe(df_avg, use_container_width=True)
+
+            st.download_button(
+                f"⬇️ Download Monthly Avg - {label}",
+                to_csv_download(df_avg),
+                file_name=f"MonthlyAvg_{label}.csv",
+                key=f"download_monthly_{label}"
+            )
+
+
+def render_quarter_means_tab(tab, dfs, selected_years):
+    with tab:
+        st.header("📊 Quarterly Means (75% completeness applied)")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df["site"].unique()),
+                key=unique_key("tab1", "site", label)
+            )
+
+            filtered_df = df.copy()
+            years_to_use = selected_years if selected_years else sorted(df["year"].unique())
+
+            if years_to_use:
+                filtered_df = filtered_df[filtered_df["year"].isin(years_to_use)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=unique_key("tab1", "quarter", label)
+            ) or []
+
+            selected_quarter_nums = [f"{year}{q}" for year in years_to_use for q in selected_quarters]
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+
+            filtered_df = filtered_df.dropna()
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            valid_pollutants = [p for p in ["pm25", "pm10"] if p in filtered_df.columns]
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab1", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab1", "charttype", label)
+            )
+
+            valid_list = []
+            invalid_list = []
+
+            for pollutant in selected_display_pollutants:
+                valid_df, invalid_df = calculate_quarter_pollutant(filtered_df, pollutant)
+                valid_df["pollutant"] = pollutant
+                valid_list.append(valid_df)
+
+                if not invalid_df.empty:
+                    invalid_df["pollutant"] = pollutant
+                    invalid_list.append(invalid_df)
+
+            if not valid_list:
+                st.warning(f"No quarterly data met the 75% completeness rule for {label}.")
+                continue
+
+            df_avg = pd.concat(valid_list, ignore_index=True).dropna()
+
+            if invalid_list:
+                with st.expander(f"Show excluded quarterly periods for {label}"):
+                    st.dataframe(pd.concat(invalid_list, ignore_index=True).dropna(), use_container_width=True)
+
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x="quarter",
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=f"Quarterly Means - {label}",
+                    labels={"value": "µg/m³", "quarter": "Quarter"}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x="quarter",
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=f"Quarterly Means - {label}",
+                    labels={"value": "µg/m³", "quarter": "Quarter"}
+                )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            with st.expander("Show Quarterly Aggregated Data Table"):
+                st.dataframe(df_avg, use_container_width=True)
+
+            st.download_button(
+                f"⬇️ Download Quarterly Avg - {label}",
+                to_csv_download(df_avg),
+                file_name=f"QuarterlyAvg_{label}.csv",
+                key=f"download_quarterly_{label}"
+            )
+
+
+def render_dayofweek_means_tab(tab, dfs, selected_years):
+    with tab:
+        st.header("📊 Days of Week Means")
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+
+            site_in_tab = st.multiselect(
+                f"Select Site(s) for {label}",
+                sorted(df["site"].unique()),
+                key=unique_key("tab6", "site", label)
+            )
+
+            filtered_df = df.copy()
+            years_to_use = selected_years if selected_years else sorted(df["year"].unique())
+
+            if years_to_use:
+                filtered_df = filtered_df[filtered_df["year"].isin(years_to_use)]
+            if site_in_tab:
+                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
+
+            selected_quarters = st.multiselect(
+                f"Select Quarter(s) for {label}",
+                options=["Q1", "Q2", "Q3", "Q4"],
+                default=["Q1", "Q2", "Q3", "Q4"],
+                key=unique_key("tab6", "quarter", label)
+            ) or []
+
+            selected_quarter_nums = [f"{year}{q}" for year in years_to_use for q in selected_quarters]
+
+            if selected_quarter_nums:
+                filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+
+            filtered_df = filtered_df.dropna()
+
+            if filtered_df.empty:
+                st.warning(f"No data remaining for {label} after filtering.")
+                continue
+
+            valid_pollutants = [p for p in ["pm25", "pm10"] if p in filtered_df.columns]
+
+            selected_display_pollutants = st.multiselect(
+                f"Select Pollutants to Display for {label}",
+                options=["All"] + valid_pollutants,
+                default=["All"],
+                key=unique_key("tab6", "pollutants", label)
+            )
+
+            if "All" in selected_display_pollutants:
+                selected_display_pollutants = valid_pollutants
+
+            chart_type = st.radio(
+                f"Chart Type for {label}",
+                ["Line", "Bar"],
+                horizontal=True,
+                key=unique_key("tab6", "charttype", label)
+            )
+
+            df_avg_list = []
+            for pollutant in selected_display_pollutants:
+                avg_df = calculate_dayofweek_pollutant(filtered_df, pollutant)
+                avg_df["pollutant"] = pollutant
+                avg_df = avg_df.rename(columns={pollutant: "value"})
+                df_avg_list.append(avg_df)
+
+            if not df_avg_list:
+                st.warning(f"No data available for selected pollutants in {label}")
+                continue
+
+            df_avg = pd.concat(df_avg_list, ignore_index=True).dropna()
+
+            if chart_type == "Line":
+                fig = px.line(
+                    df_avg,
+                    x="dayofweek",
+                    y="value",
+                    color="pollutant",
+                    line_group="pollutant",
+                    markers=True,
+                    title=f"Day of Week Means - {label}",
+                    labels={"value": "µg/m³", "dayofweek": "Day of Week"}
+                )
+            else:
+                fig = px.bar(
+                    df_avg,
+                    x="dayofweek",
+                    y="value",
+                    color="site",
+                    barmode="group",
+                    facet_col="pollutant" if len(selected_display_pollutants) > 1 else None,
+                    title=f"Day of Week Means - {label}",
+                    labels={"value": "µg/m³", "dayofweek": "Day of Week"}
+                )
+
+            st.plotly_chart(fig, use_container_width=True)
+
+            with st.expander("Show Aggregated Data Table"):
+                st.dataframe(df_avg, use_container_width=True)
+
+
+# -----------------------------
+# Main App
+# -----------------------------
+
+uploaded_files = st.file_uploader(
+    "Upload up to 4 datasets",
+    type=["csv", "xlsx"],
+    accept_multiple_files=True
+)
+
+if uploaded_files:
+    dfs = {}
+    site_options = set()
+    year_options = set()
+
+    for file in uploaded_files:
+        label = file.name.rsplit(".", 1)[0]
+        ext = file.name.rsplit(".", 1)[-1].lower()
+
+        try:
+            df = pd.read_excel(file) if ext == "xlsx" else pd.read_csv(file)
+
+            df = parse_dates(df)
+            df = standardize_columns(df)
+            df = cleaned(df)
+
+            if not all(col in df.columns for col in ["date", "site", "pm25", "pm10"]):
+                st.warning(f"⚠️ Could not process {label}: missing required columns.")
+                continue
+
+            df = df.dropna()
+
+            dfs[label] = df
+            site_options.update(df["site"].dropna().unique())
+            year_options.update(df["year"].dropna().unique())
+
+        except Exception as e:
+            st.error(f"Error processing {label}: {e}")
+
+    if dfs:
+        with st.sidebar:
+            selected_years = st.multiselect("📅 Filter by Year", sorted(year_options))
+            selected_sites = st.multiselect("🏢 Filter by Site", sorted(site_options))
+
+        if selected_sites:
+            for label in list(dfs.keys()):
+                dfs[label] = dfs[label][dfs[label]["site"].isin(selected_sites)].dropna().copy()
+
+        tabs = st.tabs([
+            "Aggregated Means",
+            "Quarterly Means",
+            "Monthly Means",
+            "Exceedances & Max/Min Values",
+            "AQI Stats",
+            "Daily Means",
+            "Day of Week Means"
+        ])
+
+        render_quarter_means_tab(tabs[1], dfs, selected_years)
+        render_monthly_means_tab(tabs[2], dfs, selected_years)
+        render_exceedances_tab(tabs[3], dfs, selected_years)
+        render_aqi_tab(tabs[4], selected_years, dfs)
+        render_daily_means_tab(tabs[5], dfs, selected_years)
+        render_dayofweek_means_tab(tabs[6], dfs, selected_years)
+
+        with tabs[0]:
+            st.header("📊 Aggregated Means")
+
+            for label, df in dfs.items():
+                st.subheader(f"Dataset: {label}")
+
+                site_in_tab = st.multiselect(
+                    f"Select Site(s) for {label}",
+                    sorted(df["site"].unique()),
+                    key=f"site_agg_{label}"
+                )
+
+                filtered_df = df.copy()
+                if selected_years:
+                    filtered_df = filtered_df[filtered_df["year"].isin(selected_years)]
+                if site_in_tab:
+                    filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
+
+                filtered_df = filtered_df.dropna()
+
+                valid_pollutants = [p for p in ["pm25", "pm10"] if p in filtered_df.columns]
+                if not valid_pollutants:
+                    st.warning(f"No valid pollutants found in {label}")
+                    continue
+
+                selected_display_pollutants = st.multiselect(
+                    f"Select Pollutants to Display for {label}",
+                    options=["All"] + valid_pollutants,
+                    default=["All"],
+                    key=f"pollutants_{label}"
+                )
+
+                if "All" in selected_display_pollutants:
+                    selected_display_pollutants = valid_pollutants
+
+                aggregate_levels = [
+                    ("Daily Avg", ["day", "site"], None),
+                    ("Monthly Avg", ["month", "site"], "month"),
+                    ("Quarterly Avg", ["quarter", "site"], "quarter"),
+                    ("Yearly Avg", ["year", "site"], "year"),
+                    ("Day of Week Avg", ["dayofweek", "site"], None),
+                    ("Weekday Type Avg", ["weekday_type", "site"], None),
+                    ("Season Avg", ["season", "site"], None)
+                ]
+
+                for level_name, group_keys, period_type in aggregate_levels:
+                    agg_label = f"{label} - {level_name}"
+                    agg_dfs = []
+                    excluded_frames = []
+
+                    for pollutant in selected_display_pollutants:
+                        if period_type == "month":
+                            valid_df, invalid_df = aggregate_with_six_day_completeness(
+                                filtered_df, pollutant, "month", 0.75
+                            )
+                            temp = valid_df[group_keys + ["value"]].rename(columns={"value": pollutant})
+                            agg_dfs.append(temp)
+                            if not invalid_df.empty:
+                                invalid_df["pollutant"] = pollutant
+                                excluded_frames.append(invalid_df)
+
+                        elif period_type == "quarter":
+                            valid_df, invalid_df = aggregate_with_six_day_completeness(
+                                filtered_df, pollutant, "quarter", 0.75
+                            )
+                            temp = valid_df[group_keys + ["value"]].rename(columns={"value": pollutant})
+                            agg_dfs.append(temp)
+                            if not invalid_df.empty:
+                                invalid_df["pollutant"] = pollutant
+                                excluded_frames.append(invalid_df)
+
+                        elif period_type == "year":
+                            valid_df, invalid_df = aggregate_with_six_day_completeness(
+                                filtered_df, pollutant, "year", 0.75
+                            )
+                            temp = valid_df[group_keys + ["value"]].rename(columns={"value": pollutant})
+                            agg_dfs.append(temp)
+                            if not invalid_df.empty:
+                                invalid_df["pollutant"] = pollutant
+                                excluded_frames.append(invalid_df)
+
+                        else:
+                            temp = (
+                                filtered_df[group_keys + [pollutant]]
+                                .dropna()
+                                .groupby(group_keys, as_index=False)[pollutant]
+                                .mean()
+                                .round(1)
+                                .dropna()
+                            )
+                            agg_dfs.append(temp)
+
+                    if not agg_dfs:
+                        continue
+
+                    merged_df = reduce(
+                        lambda left, right: pd.merge(left, right, on=group_keys, how="outer"),
+                        agg_dfs
+                    ).dropna()
+
+                    if merged_df.empty:
+                        st.warning(f"No valid records for {agg_label}")
+                        continue
+
+                    display_cols = group_keys + [p for p in selected_display_pollutants if p in merged_df.columns]
+                    editable_df = merged_df[display_cols].dropna()
+
+                    st.data_editor(
+                        editable_df,
+                        use_container_width=True,
+                        disabled=True,
+                        key=f"editor_{label}_{agg_label}"
+                    )
+
+                    st.download_button(
+                        label=f"📥 Download {agg_label}",
+                        data=to_csv_download(editable_df),
+                        file_name=f"{label}_{agg_label.replace(' ', '_')}.csv",
+                        mime="text/csv",
+                        key=f"download_{label}_{agg_label}"
+                    )
+
+                    if excluded_frames:
+                        with st.expander(f"Show excluded periods for {agg_label}"):
+                            st.dataframe(
+                                pd.concat(excluded_frames, ignore_index=True).dropna(),
+                                use_container_width=True
+                            )
+
+                    st.markdown("---")
+
+                    with st.expander(f"📈 Show Charts for {agg_label}", expanded=("Yearly Avg" in agg_label)):
+                        x_axis = next(
+                            (col for col in editable_df.columns if col not in ["site"] + valid_pollutants),
+                            None
+                        )
+
+                        if not x_axis:
+                            st.warning(f"Could not determine x-axis for {agg_label}")
+                            continue
+
+                        safe_pollutants = [p for p in selected_display_pollutants if p in editable_df.columns]
+                        if not safe_pollutants:
+                            st.warning(f"No valid pollutant columns to plot for {agg_label}")
+                            continue
+
+                        try:
+                            df_melted = editable_df.melt(
+                                id_vars=["site", x_axis],
+                                value_vars=safe_pollutants,
+                                var_name="pollutant",
+                                value_name="value"
+                            ).dropna()
+
+                            chart_type_choice = st.selectbox(
+                                f"Select Chart Type for {agg_label}",
+                                options=["line", "bar"],
+                                index=0 if "Yearly" in agg_label else 1,
+                                key=f"chart_type_{label}_{agg_label}"
+                            )
+
+                            if chart_type_choice == "line":
+                                fig = px.line(
+                                    df_melted,
+                                    x=x_axis,
+                                    y="value",
+                                    color="pollutant",
+                                    line_group="site",
+                                    markers=True,
+                                    title=f"{agg_label} - {', '.join(safe_pollutants)}",
+                                    hover_data=["site", "pollutant", "value"]
+                                )
+                            else:
+                                fig = px.bar(
+                                    df_melted,
+                                    x=x_axis,
+                                    y="value",
+                                    color="pollutant",
+                                    barmode="group",
+                                    title=f"{agg_label} - {', '.join(safe_pollutants)}",
+                                    hover_data=["site", "pollutant", "value"]
+                                )
+
+                            st.plotly_chart(fig, use_container_width=True)
+
+                        except Exception as e:
+                            st.error(f"Error plotting chart: {e}")
+
+    else:
+        st.warning("No valid datasets were processed.")
 else:
     st.info("Upload CSV or Excel files from different air quality sources to begin.")
