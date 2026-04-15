@@ -26,9 +26,9 @@ st.set_page_config(
 # -------------------------
 # Completeness parameters
 # -------------------------
-DAILY_MIN_OBS = 18              # >= 18 hourly records for a valid daily mean
-PERIOD_MIN_CAPTURE = 0.75       # >= 75% of days in a period must be valid
-HOURLY_MIN_MINUTE_OBS = 45      # >= 45 one-minute records for a valid hour
+DAILY_MIN_OBS = 18
+PERIOD_MIN_CAPTURE = 0.75
+HOURLY_MIN_MINUTE_OBS = 45
 
 # -------------------------
 # Utilities
@@ -45,14 +45,11 @@ def unique_key(tab: str, widget: str, label: str) -> str:
 # Parsing & Standardization
 # -------------------------
 def robust_parse(series: pd.Series) -> pd.Series:
-    """Apply multiple parsing strategies to maximize datetime detection."""
     series = series.astype(str).str.strip()
 
-    # Strategy 1: dayfirst=True
     dt1 = pd.to_datetime(series, errors="coerce", dayfirst=True)
     dt = dt1.copy()
 
-    # Strategy 2: Unix timestamps (seconds & milliseconds)
     if dt.isna().mean() > 0.3:
         dt_sec = pd.to_datetime(series, errors="coerce", unit="s")
         dt = dt.fillna(dt_sec)
@@ -60,7 +57,6 @@ def robust_parse(series: pd.Series) -> pd.Series:
         dt_ms = pd.to_datetime(series, errors="coerce", unit="ms")
         dt = dt.fillna(dt_ms)
 
-    # Strategy 3: dateutil fallback
     if dt.isna().any():
         def safe_parse(x):
             try:
@@ -75,9 +71,6 @@ def robust_parse(series: pd.Series) -> pd.Series:
 
 
 def parse_dates(df: pd.DataFrame, debug: bool = False) -> pd.DataFrame:
-    """
-    Automatically detect the best datetime column and standardize to df['datetime'].
-    """
     best_col = None
     best_dt = None
     max_valid = 0
@@ -194,10 +187,6 @@ def cleaned(df: pd.DataFrame) -> pd.DataFrame:
 # Resolution detection
 # -------------------------
 def detect_data_resolution(df: pd.DataFrame, datetime_col: str = "datetime") -> str:
-    """
-    Detect whether the dataset is minute, hourly, or daily based on the
-    typical spacing between timestamps.
-    """
     if datetime_col not in df.columns:
         return "unknown"
 
@@ -240,11 +229,9 @@ def build_valid_daily_means(
     hourly_min_minute_obs: int = HOURLY_MIN_MINUTE_OBS,
 ) -> pd.DataFrame:
     """
-    Build valid daily means using automatic resolution detection.
-
     Rules:
-    - Minute data: hour is valid if >= 45 minute values; day is valid if >= 18 valid hours
-    - Hourly data: day is valid if >= 18 hourly values
+    - Minute data: valid hour = >= 45 minute values; valid day = >= 18 valid hours
+    - Hourly data: valid day = >= 18 hourly values
     - Daily data: day is already valid if at least one value exists
     """
     if pollutant not in df.columns or "datetime" not in df.columns or "site" not in df.columns:
@@ -264,57 +251,69 @@ def build_valid_daily_means(
         work["hour"] = work["datetime"].dt.floor("h")
 
         hourly = (
-            work.groupby(["site", "hour"])[pollutant]
-            .agg(n_minute_obs="count", value="mean")
-            .reset_index()
+            work.groupby(["site", "hour"], as_index=False)
+            .agg(
+                n_minute_obs=(pollutant, "count"),
+                hourly_mean=(pollutant, "mean")
+            )
         )
 
         hourly_valid = hourly[hourly["n_minute_obs"] >= hourly_min_minute_obs].copy()
         hourly_valid["day"] = hourly_valid["hour"].dt.floor("D")
 
         base = (
-            hourly_valid.groupby(["site", "day"])[pollutant]
-            .agg(n_obs="count", value="mean")
-            .reset_index()
+            hourly_valid.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=("hourly_mean", "count"),
+                daily_mean=("hourly_mean", "mean")
+            )
         )
 
         valid = base[base["n_obs"] >= daily_min_obs].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
 
     elif resolution == "hourly":
         work["day"] = work["datetime"].dt.floor("D")
 
         base = (
-            work.groupby(["site", "day"])[pollutant]
-            .agg(n_obs="count", value="mean")
-            .reset_index()
+            work.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=(pollutant, "count"),
+                daily_mean=(pollutant, "mean")
+            )
         )
 
         valid = base[base["n_obs"] >= daily_min_obs].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
 
     elif resolution == "daily":
         work["day"] = work["datetime"].dt.floor("D")
 
         daily = (
-            work.groupby(["site", "day"])[pollutant]
-            .agg(n_obs="count", value="mean")
-            .reset_index()
+            work.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=(pollutant, "count"),
+                daily_mean=(pollutant, "mean")
+            )
         )
 
         valid = daily[daily["n_obs"] >= 1].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
 
     else:
         work["day"] = work["datetime"].dt.floor("D")
 
         base = (
-            work.groupby(["site", "day"])[pollutant]
-            .agg(n_obs="count", value="mean")
-            .reset_index()
+            work.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=(pollutant, "count"),
+                daily_mean=(pollutant, "mean")
+            )
         )
 
         threshold = 1 if base["n_obs"].median() <= 1 else daily_min_obs
         valid = base[base["n_obs"] >= threshold].copy()
-
-    valid.rename(columns={"value": pollutant}, inplace=True)
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
 
     valid["year"] = valid["day"].dt.year
     valid["month"] = valid["day"].dt.to_period("M").astype(str)
@@ -346,7 +345,6 @@ def apply_period_completeness(
     total_days_fn,
     min_capture: float = PERIOD_MIN_CAPTURE,
 ) -> pd.DataFrame:
-    """Compute mean only if >= min_capture of days in the period have valid daily means."""
     if daily_valid.empty or pollutant not in daily_valid.columns:
         return pd.DataFrame(columns=group_cols + [pollutant])
 
@@ -362,7 +360,6 @@ def apply_period_completeness(
 
 
 def compute_aggregates(df: pd.DataFrame, label: str, pollutant: str):
-    """Returns dict of DataFrames for this pollutant with completeness applied."""
     aggregates = {}
     daily_valid = build_valid_daily_means(df, pollutant, DAILY_MIN_OBS, HOURLY_MIN_MINUTE_OBS)
 
@@ -469,11 +466,11 @@ def calculate_min_max(df: pd.DataFrame) -> pd.DataFrame:
 
     def safe_nanmax(x):
         arr = np.asarray(x, dtype=float)
-        return round(np.nanmax(arr), 1) if np.isfinite(np.nanmax(arr)) else np.nan
+        return np.nan if np.all(np.isnan(arr)) else round(np.nanmax(arr), 1)
 
     def safe_nanmin(x):
         arr = np.asarray(x, dtype=float)
-        return round(np.nanmin(arr), 1) if np.isfinite(np.nanmin(arr)) else np.nan
+        return np.nan if np.all(np.isnan(arr)) else round(np.nanmin(arr), 1)
 
     out = (
         daily.groupby(["site", "year", "quarter", "month"], as_index=False)
@@ -675,7 +672,7 @@ def render_aqi_tab(tab, selected_years, dfs):
 
             daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
             if daily_avg.empty:
-                st.warning(f"No valid daily pm25 for AQI calculation.")
+                st.warning("No valid daily pm25 for AQI calculation.")
                 continue
 
             st.dataframe(remarks_counts, use_container_width=True)
