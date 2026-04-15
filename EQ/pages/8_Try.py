@@ -4,6 +4,7 @@
 # - For minute data: >= 45 one-minute values = valid hour
 # - For minute/hourly data: >= 18 valid hours/records = valid day
 # - Period averages require >= 75% valid daily capture
+# - Includes excluded-data reporting after completeness validation
 
 import numpy as np
 import pandas as pd
@@ -108,10 +109,12 @@ def parse_dates(df: pd.DataFrame, debug: bool = False) -> pd.DataFrame:
               .reset_index(drop=True)
         )
 
-        print(f"✅ Using column '{best_col}' as datetime ({max_valid} valid values)")
+        if debug:
+            print(f"✅ Using column '{best_col}' as datetime ({max_valid} valid values)")
         return df
 
-    print("⚠️ No valid datetime column found")
+    if debug:
+        print("⚠️ No valid datetime column found")
     return df
 
 
@@ -138,12 +141,23 @@ def standardize_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def removal_box_plot(df: pd.DataFrame, col: str, lower_threshold: float, upper_threshold: float):
     filtered = df[(df[col] >= lower_threshold) & (df[col] <= upper_threshold)]
-    return filtered, (df[col] < lower_threshold).sum(), (df[col] > upper_threshold).sum()
+    return filtered, int((df[col] < lower_threshold).sum()), int((df[col] > upper_threshold).sum())
 
 
-def cleaned(df: pd.DataFrame) -> pd.DataFrame:
+def cleaned(df: pd.DataFrame):
     df = df.copy()
     df = df.rename(columns=lambda x: x.strip().lower())
+
+    cleaning_report = {
+        "rows_input": len(df),
+        "removed_missing_datetime_or_site": 0,
+        "removed_missing_pollutants": 0,
+        "pm25_below_range": 0,
+        "pm25_above_range": 0,
+        "pm10_below_range": 0,
+        "pm10_above_range": 0,
+        "rows_output": 0,
+    }
 
     required_columns = ["datetime", "site", "pm25", "pm10"]
     keep = [c for c in required_columns if c in df.columns]
@@ -156,17 +170,32 @@ def cleaned(df: pd.DataFrame) -> pd.DataFrame:
         if p in df.columns:
             df[p] = pd.to_numeric(df[p], errors="coerce")
 
+    before = len(df)
     pollutant_cols = [c for c in ["pm25", "pm10"] if c in df.columns]
+
     if pollutant_cols:
         df = df.dropna(subset=["datetime", "site"], how="any")
+        after_datetime_site = len(df)
+        cleaning_report["removed_missing_datetime_or_site"] = before - after_datetime_site
+
+        before_poll = len(df)
         df = df.dropna(subset=pollutant_cols, how="all")
+        cleaning_report["removed_missing_pollutants"] = before_poll - len(df)
     else:
         df = df.dropna(subset=["datetime", "site"], how="any")
+        cleaning_report["removed_missing_datetime_or_site"] = before - len(df)
 
     if "pm25" in df.columns:
-        df, _, _ = removal_box_plot(df, "pm25", 1, 500)
+        filtered, low, high = removal_box_plot(df, "pm25", 1, 500)
+        cleaning_report["pm25_below_range"] = low
+        cleaning_report["pm25_above_range"] = high
+        df = filtered
+
     if "pm10" in df.columns:
-        df, _, _ = removal_box_plot(df, "pm10", 1, 1000)
+        filtered, low, high = removal_box_plot(df, "pm10", 1, 1000)
+        cleaning_report["pm10_below_range"] = low
+        cleaning_report["pm10_above_range"] = high
+        df = filtered
 
     df["day"] = df["datetime"].dt.floor("D")
     df["year"] = df["datetime"].dt.year
@@ -180,7 +209,8 @@ def cleaned(df: pd.DataFrame) -> pd.DataFrame:
     sufficient_sites = daily_counts[daily_counts["daily_counts"] >= 1][["site", "month"]]
     df = df.merge(sufficient_sites, on=["site", "month"], how="inner")
 
-    return df
+    cleaning_report["rows_output"] = len(df)
+    return df, cleaning_report
 
 
 # -------------------------
@@ -354,9 +384,305 @@ def apply_period_completeness(
 
     out["total_days"] = out.apply(total_days_fn, axis=1)
     out["capture"] = out["valid_days"] / out["total_days"]
-
     out.loc[out["capture"] < min_capture, pollutant] = np.nan
+
     return out
+
+
+def validate_daily_means_with_report(
+    df: pd.DataFrame,
+    pollutant: str,
+    daily_min_obs: int = DAILY_MIN_OBS,
+    hourly_min_minute_obs: int = HOURLY_MIN_MINUTE_OBS,
+):
+    """
+    Returns:
+        valid_daily_df,
+        summary_df,
+        invalid_hours_df,
+        invalid_days_df
+    """
+    empty_valid = pd.DataFrame(columns=["site", "day", pollutant])
+    empty_summary = pd.DataFrame(columns=["metric", "value"])
+    empty_hours = pd.DataFrame()
+    empty_days = pd.DataFrame()
+
+    if pollutant not in df.columns or "datetime" not in df.columns or "site" not in df.columns:
+        return empty_valid, empty_summary, empty_hours, empty_days
+
+    work = df[["site", "datetime", pollutant]].copy()
+    work["datetime"] = pd.to_datetime(work["datetime"], errors="coerce")
+    work[pollutant] = pd.to_numeric(work[pollutant], errors="coerce")
+    work = work.dropna(subset=["site", "datetime", pollutant])
+
+    if work.empty:
+        return empty_valid, empty_summary, empty_hours, empty_days
+
+    resolution = detect_data_resolution(work, "datetime")
+    invalid_hours = pd.DataFrame()
+    invalid_days = pd.DataFrame()
+
+    if resolution == "minute":
+        work["hour"] = work["datetime"].dt.floor("h")
+
+        hourly = (
+            work.groupby(["site", "hour"], as_index=False)
+            .agg(
+                n_minute_obs=(pollutant, "count"),
+                hourly_mean=(pollutant, "mean")
+            )
+        )
+
+        invalid_hours = hourly[hourly["n_minute_obs"] < hourly_min_minute_obs].copy()
+        valid_hours = hourly[hourly["n_minute_obs"] >= hourly_min_minute_obs].copy()
+        valid_hours["day"] = valid_hours["hour"].dt.floor("D")
+
+        daily_base = (
+            valid_hours.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=("hourly_mean", "count"),
+                daily_mean=("hourly_mean", "mean")
+            )
+        )
+
+        invalid_days = daily_base[daily_base["n_obs"] < daily_min_obs].copy()
+        valid = daily_base[daily_base["n_obs"] >= daily_min_obs].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
+
+        summary = pd.DataFrame({
+            "metric": [
+                "pollutant",
+                "resolution_detected",
+                "records_after_basic_cleaning",
+                "hours_total",
+                "hours_excluded_lt_45min",
+                "hours_valid",
+                "days_total_from_valid_hours",
+                "days_excluded_lt_18hours",
+                "days_valid",
+            ],
+            "value": [
+                pollutant,
+                resolution,
+                len(work),
+                len(hourly),
+                len(invalid_hours),
+                len(valid_hours),
+                len(daily_base),
+                len(invalid_days),
+                len(valid),
+            ]
+        })
+
+    elif resolution == "hourly":
+        work["day"] = work["datetime"].dt.floor("D")
+
+        daily_base = (
+            work.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=(pollutant, "count"),
+                daily_mean=(pollutant, "mean")
+            )
+        )
+
+        invalid_days = daily_base[daily_base["n_obs"] < daily_min_obs].copy()
+        valid = daily_base[daily_base["n_obs"] >= daily_min_obs].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
+
+        summary = pd.DataFrame({
+            "metric": [
+                "pollutant",
+                "resolution_detected",
+                "records_after_basic_cleaning",
+                "days_total",
+                "days_excluded_lt_18hours",
+                "days_valid",
+            ],
+            "value": [
+                pollutant,
+                resolution,
+                len(work),
+                len(daily_base),
+                len(invalid_days),
+                len(valid),
+            ]
+        })
+
+    elif resolution == "daily":
+        work["day"] = work["datetime"].dt.floor("D")
+
+        daily_base = (
+            work.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=(pollutant, "count"),
+                daily_mean=(pollutant, "mean")
+            )
+        )
+
+        invalid_days = daily_base[daily_base["n_obs"] < 1].copy()
+        valid = daily_base[daily_base["n_obs"] >= 1].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
+
+        summary = pd.DataFrame({
+            "metric": [
+                "pollutant",
+                "resolution_detected",
+                "records_after_basic_cleaning",
+                "days_total",
+                "days_excluded",
+                "days_valid",
+            ],
+            "value": [
+                pollutant,
+                resolution,
+                len(work),
+                len(daily_base),
+                len(invalid_days),
+                len(valid),
+            ]
+        })
+
+    else:
+        work["day"] = work["datetime"].dt.floor("D")
+
+        daily_base = (
+            work.groupby(["site", "day"], as_index=False)
+            .agg(
+                n_obs=(pollutant, "count"),
+                daily_mean=(pollutant, "mean")
+            )
+        )
+
+        threshold = 1 if daily_base["n_obs"].median() <= 1 else daily_min_obs
+        invalid_days = daily_base[daily_base["n_obs"] < threshold].copy()
+        valid = daily_base[daily_base["n_obs"] >= threshold].copy()
+        valid.rename(columns={"daily_mean": pollutant}, inplace=True)
+
+        summary = pd.DataFrame({
+            "metric": [
+                "pollutant",
+                "resolution_detected",
+                "records_after_basic_cleaning",
+                "days_total",
+                f"days_excluded_lt_{threshold}_obs",
+                "days_valid",
+            ],
+            "value": [
+                pollutant,
+                resolution,
+                len(work),
+                len(daily_base),
+                len(invalid_days),
+                len(valid),
+            ]
+        })
+
+    if not valid.empty:
+        valid["year"] = valid["day"].dt.year
+        valid["month"] = valid["day"].dt.to_period("M").astype(str)
+        valid["quarter"] = valid["day"].dt.to_period("Q").astype(str)
+        valid["dayofweek"] = valid["day"].dt.day_name()
+        valid["weekday_type"] = valid["day"].dt.weekday.map(lambda x: "Weekend" if x >= 5 else "Weekday")
+        valid["season"] = valid["day"].dt.month.map(lambda m: "Harmattan" if m in [12, 1, 2] else "Non-Harmattan")
+        valid["source_resolution"] = resolution
+
+    return valid, summary, invalid_hours, invalid_days
+
+
+def summarize_period_capture(
+    daily_valid: pd.DataFrame,
+    pollutant: str,
+    period_name: str,
+    group_cols: list,
+    total_days_fn,
+    min_capture: float = PERIOD_MIN_CAPTURE,
+):
+    if daily_valid.empty or pollutant not in daily_valid.columns:
+        return pd.DataFrame(columns=group_cols + ["valid_days", "total_days", "capture", "status", "period_type", "pollutant"])
+
+    counts = daily_valid.groupby(group_cols)["day"].nunique().reset_index(name="valid_days")
+    counts["total_days"] = counts.apply(total_days_fn, axis=1)
+    counts["capture"] = counts["valid_days"] / counts["total_days"]
+    counts["status"] = np.where(counts["capture"] >= min_capture, "Included", "Excluded")
+    counts["period_type"] = period_name
+    counts["pollutant"] = pollutant
+    return counts
+
+
+def generate_dataset_validation_report(df: pd.DataFrame, cleaning_report: dict):
+    report = {
+        "cleaning_summary": pd.DataFrame([
+            {"metric": k, "value": v} for k, v in cleaning_report.items()
+        ])
+    }
+
+    for pollutant in [p for p in ["pm25", "pm10"] if p in df.columns]:
+        daily_valid, summary_df, invalid_hours_df, invalid_days_df = validate_daily_means_with_report(
+            df, pollutant, DAILY_MIN_OBS, HOURLY_MIN_MINUTE_OBS
+        )
+
+        monthly_capture = summarize_period_capture(
+            daily_valid,
+            pollutant,
+            "Monthly",
+            ["month", "site"],
+            total_days_fn=lambda r: pd.Period(r["month"], "M").days_in_month
+        )
+
+        quarterly_capture = summarize_period_capture(
+            daily_valid,
+            pollutant,
+            "Quarterly",
+            ["quarter", "site"],
+            total_days_fn=lambda r: _days_in_quarter(r["quarter"])
+        )
+
+        yearly_capture = summarize_period_capture(
+            daily_valid,
+            pollutant,
+            "Yearly",
+            ["year", "site"],
+            total_days_fn=lambda r: _days_in_year(r["year"])
+        )
+
+        def season_total_days(row):
+            y = int(row["year"])
+            s = row["season"]
+            if s == "Harmattan":
+                return (
+                    pd.Period(f"{y}-01", "M").days_in_month +
+                    pd.Period(f"{y}-02", "M").days_in_month +
+                    pd.Period(f"{y}-12", "M").days_in_month
+                )
+            else:
+                months = [f"{y}-{m:02d}" for m in range(3, 12)]
+                return sum(pd.Period(m, "M").days_in_month for m in months)
+
+        seasonal_capture = summarize_period_capture(
+            daily_valid,
+            pollutant,
+            "Season",
+            ["season", "year", "site"],
+            total_days_fn=season_total_days
+        )
+
+        period_capture = pd.concat(
+            [monthly_capture, quarterly_capture, yearly_capture, seasonal_capture],
+            ignore_index=True
+        )
+
+        excluded_periods = period_capture[period_capture["status"] == "Excluded"].copy()
+
+        report[pollutant] = {
+            "daily_validation_summary": summary_df,
+            "invalid_hours": invalid_hours_df,
+            "invalid_days": invalid_days_df,
+            "period_capture": period_capture,
+            "excluded_periods": excluded_periods,
+            "valid_daily": daily_valid,
+        }
+
+    return report
 
 
 def compute_aggregates(df: pd.DataFrame, label: str, pollutant: str):
@@ -419,6 +745,9 @@ def calculate_exceedances(df: pd.DataFrame) -> pd.DataFrame:
     pm25_daily = build_valid_daily_means(df, "pm25", DAILY_MIN_OBS, HOURLY_MIN_MINUTE_OBS)
     pm10_daily = build_valid_daily_means(df, "pm10", DAILY_MIN_OBS, HOURLY_MIN_MINUTE_OBS)
 
+    if pm25_daily.empty and pm10_daily.empty:
+        return pd.DataFrame()
+
     daily = pm25_daily[["site", "day", "year", "month", "quarter", "pm25"]].merge(
         pm10_daily[["site", "day", "pm10"]],
         on=["site", "day"],
@@ -457,6 +786,9 @@ def calculate_exceedances(df: pd.DataFrame) -> pd.DataFrame:
 def calculate_min_max(df: pd.DataFrame) -> pd.DataFrame:
     pm25_daily = build_valid_daily_means(df, "pm25", DAILY_MIN_OBS, HOURLY_MIN_MINUTE_OBS)
     pm10_daily = build_valid_daily_means(df, "pm10", DAILY_MIN_OBS, HOURLY_MIN_MINUTE_OBS)
+
+    if pm25_daily.empty and pm10_daily.empty:
+        return pd.DataFrame()
 
     daily = pm25_daily[["site", "day", "year", "month", "quarter", "pm25"]].merge(
         pm10_daily[["site", "day", "pm10"]],
@@ -571,7 +903,7 @@ def render_exceedances_tab(tab, dfs, selected_years):
                 key=f"site_exc_{label}",
             )
 
-            available_years = sorted(df["year"].unique())
+            available_years = sorted(df["year"].dropna().unique())
             selected_years_in_tab = st.multiselect(
                 f"Select Year(s) for {label}",
                 options=available_years,
@@ -604,22 +936,28 @@ def render_exceedances_tab(tab, dfs, selected_years):
                 continue
 
             exceedances = calculate_exceedances(filtered_df)
-            st.dataframe(exceedances, use_container_width=True)
-            st.download_button(
-                label=f"⬇️ Download Exceedances - {label}",
-                data=to_csv_download(exceedances),
-                file_name=f"Exceedances_{label}.csv",
-                key=f"download_exceedances_{label}",
-            )
+            if exceedances.empty:
+                st.warning("No exceedance output available for current selection.")
+            else:
+                st.dataframe(exceedances, use_container_width=True)
+                st.download_button(
+                    label=f"⬇️ Download Exceedances - {label}",
+                    data=to_csv_download(exceedances),
+                    file_name=f"Exceedances_{label}.csv",
+                    key=f"download_exceedances_{label}",
+                )
 
             min_max = calculate_min_max(filtered_df)
-            st.dataframe(min_max, use_container_width=True)
-            st.download_button(
-                label=f"⬇️ Download MinMax - {label}",
-                data=to_csv_download(min_max),
-                file_name=f"MinMax_{label}.csv",
-                key=f"download_minmax_{label}",
-            )
+            if min_max.empty:
+                st.warning("No min/max output available for current selection.")
+            else:
+                st.dataframe(min_max, use_container_width=True)
+                st.download_button(
+                    label=f"⬇️ Download MinMax - {label}",
+                    data=to_csv_download(min_max),
+                    file_name=f"MinMax_{label}.csv",
+                    key=f"download_minmax_{label}",
+                )
 
 
 def render_aqi_tab(tab, selected_years, dfs):
@@ -681,12 +1019,14 @@ def render_aqi_tab(tab, selected_years, dfs):
             st.download_button(
                 f"⬇️ Download Daily Avg - {label}",
                 to_csv_download(daily_avg),
-                file_name=f"DailyAvg_{label}.csv"
+                file_name=f"DailyAvg_{label}.csv",
+                key=f"download_dailyavg_{label}"
             )
             st.download_button(
                 f"⬇️ Download AQI - {label}",
                 to_csv_download(remarks_counts),
-                file_name=f"AQI_{label}.csv"
+                file_name=f"AQI_{label}.csv",
+                key=f"download_aqi_{label}"
             )
 
 
@@ -722,7 +1062,7 @@ def render_daily_means_tab(tab, dfs, selected_years):
                 key=unique_key("tab_daily", "quarter", label),
             ) or []
 
-            years_use = selected_years if selected_years else sorted(df["year"].unique())
+            years_use = selected_years if selected_years else sorted(df["year"].dropna().unique())
             selected_quarter_nums = [f"{year}{q}" for year in years_use for q in selected_quarters]
             filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
 
@@ -832,7 +1172,7 @@ def render_dayofweek_means_tab(tab, dfs, selected_years):
                 key=unique_key("tab_dow", "quarter", label),
             ) or []
 
-            years_use = selected_years if selected_years else sorted(df["year"].unique())
+            years_use = selected_years if selected_years else sorted(df["year"].dropna().unique())
             selected_quarter_nums = [f"{year}{q}" for year in years_use for q in selected_quarters]
             filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
 
@@ -873,6 +1213,11 @@ def render_dayofweek_means_tab(tab, dfs, selected_years):
 
             df_avg = pd.concat(out_list, ignore_index=True)
 
+            weekday_order = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+            if "dayofweek" in df_avg.columns:
+                df_avg["dayofweek"] = pd.Categorical(df_avg["dayofweek"], categories=weekday_order, ordered=True)
+                df_avg = df_avg.sort_values("dayofweek")
+
             if chart_type == "Line":
                 fig = px.line(
                     df_avg,
@@ -899,6 +1244,81 @@ def render_dayofweek_means_tab(tab, dfs, selected_years):
                 st.dataframe(df_avg, use_container_width=True)
 
 
+def render_validation_report_tab(tab, dfs):
+    with tab:
+        st.header("🧾 Validation / Excluded Data Report")
+        st.caption(
+            f"This report shows records and periods excluded during cleaning and completeness validation. "
+            f"Rules applied: valid hour for minute data ≥ {HOURLY_MIN_MINUTE_OBS} one-minute values, "
+            f"valid day for minute/hourly data ≥ {DAILY_MIN_OBS} hourly values, "
+            f"period capture ≥ {int(PERIOD_MIN_CAPTURE * 100)}% valid days."
+        )
+
+        for label, df in dfs.items():
+            st.subheader(f"Dataset: {label}")
+            validation_report = df.attrs.get("validation_report", {})
+
+            cleaning_summary = validation_report.get("cleaning_summary", pd.DataFrame())
+            if not cleaning_summary.empty:
+                st.markdown("### Basic Cleaning Summary")
+                st.dataframe(cleaning_summary, use_container_width=True)
+                st.download_button(
+                    f"⬇️ Download Cleaning Summary - {label}",
+                    data=to_csv_download(cleaning_summary),
+                    file_name=f"{label}_cleaning_summary.csv",
+                    key=f"dl_cleaning_summary_{label}",
+                )
+
+            for pollutant in [p for p in ["pm25", "pm10"] if p in validation_report]:
+                st.markdown(f"## {pollutant.upper()}")
+                p_report = validation_report[pollutant]
+
+                st.markdown("#### Daily Completeness Summary")
+                st.dataframe(p_report["daily_validation_summary"], use_container_width=True)
+
+                if not p_report["invalid_hours"].empty:
+                    st.markdown("#### Excluded Hours")
+                    st.dataframe(p_report["invalid_hours"], use_container_width=True)
+                    st.download_button(
+                        f"⬇️ Download Excluded Hours - {label} - {pollutant}",
+                        data=to_csv_download(p_report["invalid_hours"]),
+                        file_name=f"{label}_{pollutant}_excluded_hours.csv",
+                        key=f"dl_invalid_hours_{label}_{pollutant}",
+                    )
+
+                if not p_report["invalid_days"].empty:
+                    st.markdown("#### Excluded Days")
+                    st.dataframe(p_report["invalid_days"], use_container_width=True)
+                    st.download_button(
+                        f"⬇️ Download Excluded Days - {label} - {pollutant}",
+                        data=to_csv_download(p_report["invalid_days"]),
+                        file_name=f"{label}_{pollutant}_excluded_days.csv",
+                        key=f"dl_invalid_days_{label}_{pollutant}",
+                    )
+
+                if not p_report["period_capture"].empty:
+                    st.markdown("#### Period Capture Report")
+                    st.dataframe(p_report["period_capture"], use_container_width=True)
+                    st.download_button(
+                        f"⬇️ Download Period Capture - {label} - {pollutant}",
+                        data=to_csv_download(p_report["period_capture"]),
+                        file_name=f"{label}_{pollutant}_period_capture.csv",
+                        key=f"dl_period_capture_{label}_{pollutant}",
+                    )
+
+                if not p_report["excluded_periods"].empty:
+                    st.markdown("#### Excluded Periods (< 75% Capture)")
+                    st.dataframe(p_report["excluded_periods"], use_container_width=True)
+                    st.download_button(
+                        f"⬇️ Download Excluded Periods - {label} - {pollutant}",
+                        data=to_csv_download(p_report["excluded_periods"]),
+                        file_name=f"{label}_{pollutant}_excluded_periods.csv",
+                        key=f"dl_excluded_periods_{label}_{pollutant}",
+                    )
+
+                st.markdown("---")
+
+
 # -------------------------
 # Main app UI
 # -------------------------
@@ -919,8 +1339,8 @@ site_options = set()
 year_options = set()
 
 for file in uploaded_files:
-    label = file.name.split(".")[0]
-    ext = file.name.split(".")[-1].lower()
+    label = file.name.rsplit(".", 1)[0]
+    ext = file.name.rsplit(".", 1)[-1].lower()
 
     try:
         raw = pd.read_excel(file) if ext == "xlsx" else pd.read_csv(file)
@@ -930,7 +1350,7 @@ for file in uploaded_files:
 
     df = parse_dates(raw)
     df = standardize_columns(df)
-    df = cleaned(df)
+    df, cleaning_report = cleaned(df)
 
     if "datetime" not in df.columns or "site" not in df.columns:
         st.warning(f"⚠️ Could not process {label}: missing datetime/site.")
@@ -940,10 +1360,16 @@ for file in uploaded_files:
         st.warning(f"⚠️ Could not process {label}: missing both pm25 and pm10.")
         continue
 
+    if df.empty:
+        st.warning(f"⚠️ {label} has no usable data after cleaning.")
+        continue
+
     resolution_label = get_dataset_resolution_label(df)
 
     dfs[label] = df
     dfs[label].attrs["resolution"] = resolution_label
+    dfs[label].attrs["cleaning_report"] = cleaning_report
+    dfs[label].attrs["validation_report"] = generate_dataset_validation_report(df, cleaning_report)
 
     site_options.update(df["site"].dropna().unique().tolist())
     year_options.update(df["year"].dropna().unique().tolist())
@@ -966,6 +1392,7 @@ tabs = st.tabs([
     "AQI Stats",
     "Daily Means",
     "Day of Week Means",
+    "Validation / Excluded Data Report",
 ])
 
 # -------------------------
@@ -1144,3 +1571,4 @@ render_exceedances_tab(tabs[1], dfs, selected_years)
 render_aqi_tab(tabs[2], selected_years, dfs)
 render_daily_means_tab(tabs[3], dfs, selected_years)
 render_dayofweek_means_tab(tabs[4], dfs, selected_years)
+render_validation_report_tab(tabs[5], dfs)
