@@ -19,7 +19,7 @@ st.title("📊 Gravimetric Data Analyser Tool")
 # -----------------------------
 # Global Setting
 # -----------------------------
-ANCHOR_DATE = "2025-01-01"  # change this if the monitoring cycle started on a different date
+ANCHOR_DATE = "2025-01-03"  # change this if the monitoring cycle started on a different date
 
 
 # -----------------------------
