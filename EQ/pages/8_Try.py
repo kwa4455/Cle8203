@@ -55,10 +55,10 @@ def robust_parse(series: pd.Series) -> pd.Series:
     dt1 = pd.to_datetime(series, errors="coerce", dayfirst=True)
 
     # Strategy 2: dayfirst=False
-    #dt2 = pd.to_datetime(series, errors="coerce", dayfirst=False)
+    dt2 = pd.to_datetime(series, errors="coerce", dayfirst=False)
 
     # Combine both
-    dt = dt1.fillna(nan)
+    dt = dt1.fillna(dt2)
 
     # Strategy 3: Unix timestamps (seconds & milliseconds)
     if dt.isna().mean() > 0.3:
