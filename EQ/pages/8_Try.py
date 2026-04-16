@@ -1,7 +1,7 @@
 # app.py
 # Streamlit Air Quality Aggregation App
 # - Detects minute / hourly / daily input automatically
-# - For minute data: >= 45 one-minute values = valid hour
+# - For minute data: >= 30 one-minute values = valid hour
 # - For minute/hourly data: >= 18 valid hours/records = valid day
 # - Period averages require >= 75% valid daily capture
 # - Includes excluded-data reporting after completeness validation
@@ -29,7 +29,7 @@ st.set_page_config(
 # -------------------------
 DAILY_MIN_OBS = 18
 PERIOD_MIN_CAPTURE = 0.75
-HOURLY_MIN_MINUTE_OBS = 35
+HOURLY_MIN_MINUTE_OBS = 30
 
 # -------------------------
 # Utilities
