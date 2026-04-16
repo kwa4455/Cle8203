@@ -29,7 +29,7 @@ st.set_page_config(
 # -------------------------
 DAILY_MIN_OBS = 18
 PERIOD_MIN_CAPTURE = 0.75
-HOURLY_MIN_MINUTE_OBS = 45
+HOURLY_MIN_MINUTE_OBS = 35
 
 # -------------------------
 # Utilities
