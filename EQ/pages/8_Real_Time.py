@@ -27,9 +27,9 @@ st.set_page_config(
 # -------------------------
 # Completeness parameters
 # -------------------------
-DAILY_MIN_OBS = 0
-PERIOD_MIN_CAPTURE = 0.10
-HOURLY_MIN_MINUTE_OBS = 0
+DAILY_MIN_OBS = 18
+PERIOD_MIN_CAPTURE = 0.75
+HOURLY_MIN_MINUTE_OBS = 45
 
 # -------------------------
 # Utilities
