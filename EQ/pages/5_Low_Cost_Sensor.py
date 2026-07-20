@@ -1,4 +1,6 @@
 
+
+# -*- coding: utf-8 -*-
 # app.py
 # Streamlit Air Quality Aggregation App (75% completeness rule + Q1–Q4 filter in Aggregated Means + All-years option)
 
@@ -1199,9 +1201,10 @@ render_completeness_tab(tabs[5], dfs, selected_years, selected_sites)
 
 Library
 /
-app_with_completeness_report.py
+app_with_completeness_report_fixed.py
 
 
+# -*- coding: utf-8 -*-
 # app.py
 # Streamlit Air Quality Aggregation App (75% completeness rule + Q1–Q4 filter in Aggregated Means + All-years option)
 
