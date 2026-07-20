@@ -627,10 +627,14 @@ def calculate_min_max(df: pd.DataFrame) -> pd.DataFrame:
 # -------------------------
 # AQI (valid daily pm25 only)
 # -------------------------
-def calculate_aqi_and_category(df: pd.DataFrame):
-    daily = build_valid_daily_means(df, "pm25", DAILY_MIN_OBS)
-    if daily.empty:
-        return pd.DataFrame(), pd.DataFrame()
+def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites", single_site=False):
+    work = df[["site", "day", "year", "quarter", "month", "pm25"]].dropna().copy()
+
+    daily_site_avg = (
+        work.groupby(["site", "day", "year", "quarter", "month"], as_index=False)
+        .agg(pm25=("pm25", lambda x: round(x.mean(), 1)))
+        .dropna()
+    )
 
     breakpoints = [
         (0.0, 9.0, 0, 50),
@@ -639,37 +643,76 @@ def calculate_aqi_and_category(df: pd.DataFrame):
         (55.5, 125.4, 151, 200),
         (125.5, 225.4, 201, 300),
         (225.5, 325.4, 301, 500),
-        (325.5, 99999.9, 501, 999),
+        (325.5, 99999.9, 501, 999)
     ]
 
     def calculate_aqi(pm):
-        if pd.isna(pm):
-            return np.nan
         for low, high, aqi_low, aqi_high in breakpoints:
             if low <= pm <= high:
                 return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
         return np.nan
 
-    daily_avg = daily[["site","day", "year", "quarter", "month", "pm25"]].copy()
-    daily_avg["pm25"] = daily_avg["pm25"].round(1)
-    daily_avg["AQI"] = daily_avg["pm25"].apply(calculate_aqi)
+    daily_site_avg["AQI"] = daily_site_avg["pm25"].apply(calculate_aqi)
 
     conditions = [
-        (daily_avg["AQI"] >= 0) & (daily_avg["AQI"] <= 50),
-        (daily_avg["AQI"] > 50) & (daily_avg["AQI"] <= 100),
-        (daily_avg["AQI"] > 100) & (daily_avg["AQI"] <= 150),
-        (daily_avg["AQI"] > 150) & (daily_avg["AQI"] <= 200),
-        (daily_avg["AQI"] > 200) & (daily_avg["AQI"] <= 300),
-        (daily_avg["AQI"] > 300),
+        (daily_site_avg["AQI"] >= 0) & (daily_site_avg["AQI"] <= 50),
+        (daily_site_avg["AQI"] > 50) & (daily_site_avg["AQI"] <= 100),
+        (daily_site_avg["AQI"] > 100) & (daily_site_avg["AQI"] <= 150),
+        (daily_site_avg["AQI"] > 150) & (daily_site_avg["AQI"] <= 200),
+        (daily_site_avg["AQI"] > 200) & (daily_site_avg["AQI"] <= 300),
+        (daily_site_avg["AQI"] > 300)
     ]
-    remarks = ["Good", "Moderate", "Unhealthy for Sensitive Groups", "Unhealthy", "Very Unhealthy", "Hazardous"]
-    daily_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
 
-    remarks_counts = daily_avg.groupby(["year", "AQI_Remark"]).size().reset_index(name="Count")
-    remarks_counts["Total_Count_Per_Year"] = remarks_counts.groupby("year")["Count"].transform("sum")
-    remarks_counts["Percent"] = round((remarks_counts["Count"] / remarks_counts["Total_Count_Per_Year"]) * 100, 1)
+    remarks = [
+        "Good",
+        "Moderate",
+        "Unhealthy for Sensitive Groups",
+        "Unhealthy",
+        "Very Unhealthy",
+        "Hazardous"
+    ]
+
+    daily_site_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
+    daily_site_avg = daily_site_avg.dropna()
+
+    if single_site:
+        daily_avg = daily_site_avg.copy()
+        daily_avg["site_label"] = daily_avg["site"]
+    else:
+        daily_avg = daily_site_avg.copy()
+        daily_avg["site_label"] = site_mode_label
+
+    if single_site:
+        remarks_counts = (
+            daily_avg.groupby(["site_label", "year", "AQI_Remark"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+        )
+        remarks_counts["Total_Count_Per_Year"] = (
+            remarks_counts.groupby(["site_label", "year"])["Count"].transform("sum")
+        )
+    else:
+        remarks_counts = (
+            daily_avg.groupby(["year", "AQI_Remark"], as_index=False)
+            .size()
+            .rename(columns={"size": "Count"})
+        )
+        remarks_counts["site_label"] = site_mode_label
+        remarks_counts["Total_Count_Per_Year"] = (
+            remarks_counts.groupby(["year"])["Count"].transform("sum")
+        )
+        remarks_counts = remarks_counts[
+            ["site_label", "year", "AQI_Remark", "Count", "Total_Count_Per_Year"]
+        ]
+
+    remarks_counts["Percent"] = (
+        remarks_counts["Count"] / remarks_counts["Total_Count_Per_Year"] * 100
+    ).round(1)
+
+    remarks_counts = remarks_counts.dropna()
 
     return daily_avg, remarks_counts
+
 
 
 # -------------------------
