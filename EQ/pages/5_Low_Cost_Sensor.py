@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # app.py
 # Streamlit Air Quality Aggregation App (75% completeness rule + Q1–Q4 filter in Aggregated Means + All-years option)
 
