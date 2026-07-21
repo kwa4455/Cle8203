@@ -626,40 +626,132 @@ def calculate_min_max(df: pd.DataFrame) -> pd.DataFrame:
 # -------------------------
 # AQI (valid daily pm25 only)
 # -------------------------
-def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites", single_site=False):
-    work = df[["site", "day", "year", "quarter", "month", "pm25"]].dropna().copy()
+def calculate_aqi_and_category(
+    df,
+    site_mode_label="Combined_All_Filtered_Sites",
+    single_site=False
+):
 
-    daily_site_avg = (
-        work.groupby(["site", "day", "year", "quarter", "month"], as_index=False)
-        .agg(pm25=("pm25", lambda x: round(x.mean(), 1)))
-        .dropna()
+    # ---------------------------------------------------------
+    # BUILD VALID DAILY PM2.5 MEANS
+    # Only days with >= DAILY_MIN_OBS are retained
+    # ---------------------------------------------------------
+    daily_site_avg = build_valid_daily_means(
+        df,
+        "pm25",
+        DAILY_MIN_OBS
+    ).copy()
+
+    if daily_site_avg.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    # Keep relevant columns
+    daily_site_avg = daily_site_avg[
+        [
+            "site",
+            "day",
+            "year",
+            "quarter",
+            "month",
+            "pm25"
+        ]
+    ].copy()
+
+    # PM2.5 used for AQI calculation
+    daily_site_avg["pm25"] = (
+        pd.to_numeric(
+            daily_site_avg["pm25"],
+            errors="coerce"
+        )
+        .round(1)
     )
 
+    daily_site_avg = daily_site_avg.dropna(
+        subset=["pm25"]
+    )
+
+    if daily_site_avg.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    # ---------------------------------------------------------
+    # AQI BREAKPOINTS
+    # ---------------------------------------------------------
     breakpoints = [
-        (0.0, 9.0, 0, 50),
-        (9.1, 35.4, 51, 100),
-        (35.5, 55.4, 101, 150),
-        (55.5, 125.4, 151, 200),
-        (125.5, 225.4, 201, 300),
-        (225.5, 325.4, 301, 500),
+        (0.0,   9.0,     0,   50),
+        (9.1,   35.4,   51,  100),
+        (35.5,  55.4,  101,  150),
+        (55.5,  125.4, 151,  200),
+        (125.5, 225.4, 201,  300),
+        (225.5, 325.4, 301,  500),
         (325.5, 99999.9, 501, 999)
     ]
 
+    # ---------------------------------------------------------
+    # AQI CALCULATION
+    # ---------------------------------------------------------
     def calculate_aqi(pm):
-        for low, high, aqi_low, aqi_high in breakpoints:
-            if low <= pm <= high:
-                return round(((pm - low) * (aqi_high - aqi_low) / (high - low)) + aqi_low)
+
+        if pd.isna(pm):
+            return np.nan
+
+        for (
+            conc_low,
+            conc_high,
+            aqi_low,
+            aqi_high
+        ) in breakpoints:
+
+            if conc_low <= pm <= conc_high:
+
+                aqi = (
+                    ((pm - conc_low) *
+                     (aqi_high - aqi_low) /
+                     (conc_high - conc_low))
+                    + aqi_low
+                )
+
+                return round(aqi)
+
         return np.nan
 
-    daily_site_avg["AQI"] = daily_site_avg["pm25"].apply(calculate_aqi)
+    daily_site_avg["AQI"] = (
+        daily_site_avg["pm25"]
+        .apply(calculate_aqi)
+    )
 
+    # ---------------------------------------------------------
+    # AQI CATEGORY
+    # ---------------------------------------------------------
     conditions = [
-        (daily_site_avg["AQI"] >= 0) & (daily_site_avg["AQI"] <= 50),
-        (daily_site_avg["AQI"] > 50) & (daily_site_avg["AQI"] <= 100),
-        (daily_site_avg["AQI"] > 100) & (daily_site_avg["AQI"] <= 150),
-        (daily_site_avg["AQI"] > 150) & (daily_site_avg["AQI"] <= 200),
-        (daily_site_avg["AQI"] > 200) & (daily_site_avg["AQI"] <= 300),
-        (daily_site_avg["AQI"] > 300)
+
+        (
+            (daily_site_avg["AQI"] >= 0) &
+            (daily_site_avg["AQI"] <= 50)
+        ),
+
+        (
+            (daily_site_avg["AQI"] > 50) &
+            (daily_site_avg["AQI"] <= 100)
+        ),
+
+        (
+            (daily_site_avg["AQI"] > 100) &
+            (daily_site_avg["AQI"] <= 150)
+        ),
+
+        (
+            (daily_site_avg["AQI"] > 150) &
+            (daily_site_avg["AQI"] <= 200)
+        ),
+
+        (
+            (daily_site_avg["AQI"] > 200) &
+            (daily_site_avg["AQI"] <= 300)
+        ),
+
+        (
+            daily_site_avg["AQI"] > 300
+        )
     ]
 
     remarks = [
@@ -671,44 +763,170 @@ def calculate_aqi_and_category(df, site_mode_label="Combined_All_Filtered_Sites"
         "Hazardous"
     ]
 
-    daily_site_avg["AQI_Remark"] = np.select(conditions, remarks, default="Unknown")
-    daily_site_avg = daily_site_avg.dropna()
+    daily_site_avg["AQI_Remark"] = np.select(
+        conditions,
+        remarks,
+        default="Unknown"
+    )
 
-    if single_site:
-        daily_avg = daily_site_avg.copy()
-        daily_avg["site_label"] = daily_avg["site"]
-    else:
-        daily_avg = daily_site_avg.copy()
-        daily_avg["site_label"] = site_mode_label
+    daily_site_avg = daily_site_avg.dropna(
+        subset=["AQI"]
+    )
 
+    if daily_site_avg.empty:
+        return pd.DataFrame(), pd.DataFrame()
+
+    # ---------------------------------------------------------
+    # SITE LABEL
+    # ---------------------------------------------------------
     if single_site:
-        remarks_counts = (
-            daily_avg.groupby(["site_label", "year", "AQI_Remark"], as_index=False)
-            .size()
-            .rename(columns={"size": "Count"})
+
+        # Preserve actual selected site names
+        daily_avg = daily_site_avg.copy()
+
+        daily_avg["site_label"] = (
+            daily_avg["site"]
+            .astype(str)
         )
-        remarks_counts["Total_Count_Per_Year"] = (
-            remarks_counts.groupby(["site_label", "year"])["Count"].transform("sum")
-        )
+
     else:
+
+        # No site specifically selected
+        daily_avg = daily_site_avg.copy()
+
+        daily_avg["site_label"] = (
+            site_mode_label
+        )
+
+    # ---------------------------------------------------------
+    # CATEGORY COUNTS
+    # ---------------------------------------------------------
+    if single_site:
+
+        # Each selected site calculated separately
         remarks_counts = (
-            daily_avg.groupby(["year", "AQI_Remark"], as_index=False)
+            daily_avg
+            .groupby(
+                [
+                    "site_label",
+                    "year",
+                    "AQI_Remark"
+                ],
+                as_index=False
+            )
             .size()
-            .rename(columns={"size": "Count"})
+            .rename(
+                columns={
+                    "size": "Count"
+                }
+            )
         )
-        remarks_counts["site_label"] = site_mode_label
-        remarks_counts["Total_Count_Per_Year"] = (
-            remarks_counts.groupby(["year"])["Count"].transform("sum")
+
+        remarks_counts[
+            "Total_Count_Per_Year"
+        ] = (
+            remarks_counts
+            .groupby(
+                [
+                    "site_label",
+                    "year"
+                ]
+            )["Count"]
+            .transform("sum")
         )
+
+    else:
+
+        # All filtered sites shown together
+        remarks_counts = (
+            daily_avg
+            .groupby(
+                [
+                    "year",
+                    "AQI_Remark"
+                ],
+                as_index=False
+            )
+            .size()
+            .rename(
+                columns={
+                    "size": "Count"
+                }
+            )
+        )
+
+        remarks_counts[
+            "site_label"
+        ] = site_mode_label
+
+        remarks_counts[
+            "Total_Count_Per_Year"
+        ] = (
+            remarks_counts
+            .groupby("year")["Count"]
+            .transform("sum")
+        )
+
         remarks_counts = remarks_counts[
-            ["site_label", "year", "AQI_Remark", "Count", "Total_Count_Per_Year"]
+            [
+                "site_label",
+                "year",
+                "AQI_Remark",
+                "Count",
+                "Total_Count_Per_Year"
+            ]
         ]
 
+    # ---------------------------------------------------------
+    # PERCENT
+    # ---------------------------------------------------------
     remarks_counts["Percent"] = (
-        remarks_counts["Count"] / remarks_counts["Total_Count_Per_Year"] * 100
+        (
+            remarks_counts["Count"] /
+            remarks_counts["Total_Count_Per_Year"]
+        ) * 100
     ).round(1)
 
-    remarks_counts = remarks_counts.dropna()
+    # ---------------------------------------------------------
+    # SORTING
+    # ---------------------------------------------------------
+    category_order = [
+        "Good",
+        "Moderate",
+        "Unhealthy for Sensitive Groups",
+        "Unhealthy",
+        "Very Unhealthy",
+        "Hazardous"
+    ]
+
+    remarks_counts["AQI_Remark"] = pd.Categorical(
+        remarks_counts["AQI_Remark"],
+        categories=category_order,
+        ordered=True
+    )
+
+    remarks_counts = (
+        remarks_counts
+        .sort_values(
+            [
+                "site_label",
+                "year",
+                "AQI_Remark"
+            ]
+        )
+        .reset_index(drop=True)
+    )
+
+    daily_avg = (
+        daily_avg
+        .sort_values(
+            [
+                "site",
+                "day"
+            ]
+        )
+        .reset_index(drop=True)
+    )
 
     return daily_avg, remarks_counts
 
@@ -781,15 +999,24 @@ def render_exceedances_tab(tab, dfs, selected_years):
             )
 
 
-def render_aqi_tab(tab, selected_years, dfs):
+def render_aqi_tab(tab, dfs, selected_years):
     with tab:
-        st.header("🌫️ AQI Stats (valid daily pm25 only)")
+        st.header("🌫️ AQI Stats (valid daily PM₂.₅ only)")
 
         for label, df in dfs.items():
             st.subheader(f"Dataset: {label}")
 
+            # -------------------------------------------------
+            # YEAR FILTER
+            # -------------------------------------------------
             all_years = sorted(df["year"].dropna().unique())
-            default_years = all_years[-2:] if len(all_years) >= 2 else all_years
+
+            default_years = (
+                all_years[-2:]
+                if len(all_years) >= 2
+                else all_years
+            )
+
             selected_years_in_tab = st.multiselect(
                 f"Select Year(s) for {label}",
                 options=all_years,
@@ -797,42 +1024,163 @@ def render_aqi_tab(tab, selected_years, dfs):
                 key=f"years_aqi_{label}",
             )
 
+            # -------------------------------------------------
+            # SITE FILTER
+            # -------------------------------------------------
+            available_sites = sorted(
+                df["site"].dropna().astype(str).unique()
+            )
+
             site_in_tab = st.multiselect(
                 f"Select Site(s) for {label}",
-                sorted(df["site"].unique()),
+                options=available_sites,
                 key=f"site_aqi_{label}",
             )
 
+            # -------------------------------------------------
+            # APPLY YEAR + SITE FILTERS
+            # -------------------------------------------------
             filtered_df = df.copy()
-            if selected_years_in_tab:
-                filtered_df = filtered_df[filtered_df["year"].isin(selected_years_in_tab)]
-            if site_in_tab:
-                filtered_df = filtered_df[filtered_df["site"].isin(site_in_tab)]
 
+            if selected_years_in_tab:
+                filtered_df = filtered_df[
+                    filtered_df["year"].isin(selected_years_in_tab)
+                ]
+
+            if site_in_tab:
+                filtered_df = filtered_df[
+                    filtered_df["site"].isin(site_in_tab)
+                ]
+
+            # -------------------------------------------------
+            # QUARTER FILTER
+            # -------------------------------------------------
             selected_quarters = st.multiselect(
                 f"Select Quarter(s) for {label}",
                 options=["Q1", "Q2", "Q3", "Q4"],
                 default=["Q1", "Q2", "Q3", "Q4"],
-                key=unique_key("tab_aqi", "quarter", label),
+                key=unique_key(
+                    "tab_aqi",
+                    "quarter",
+                    label
+                ),
             ) or []
 
-            selected_quarter_nums = [f"{year}{q}" for year in selected_years_in_tab for q in selected_quarters]
-            filtered_df = filtered_df[filtered_df["quarter"].isin(selected_quarter_nums)]
+            selected_quarter_nums = [
+                f"{year}{quarter}"
+                for year in selected_years_in_tab
+                for quarter in selected_quarters
+            ]
 
+            if selected_quarter_nums:
+                filtered_df = filtered_df[
+                    filtered_df["quarter"].isin(
+                        selected_quarter_nums
+                    )
+                ]
+
+            # -------------------------------------------------
+            # CHECK FILTERED DATA
+            # -------------------------------------------------
             if filtered_df.empty:
-                st.warning(f"No data remaining for {label} after filtering.")
+                st.warning(
+                    f"No data remaining for {label} "
+                    f"after filtering."
+                )
                 continue
 
-            daily_avg, remarks_counts = calculate_aqi_and_category(filtered_df)
+            # -------------------------------------------------
+            # IMPORTANT:
+            # If user selected specific sites,
+            # retain their actual site names.
+            #
+            # If no site selected,
+            # show Combined_All_Filtered_Sites.
+            # -------------------------------------------------
+            show_individual_sites = len(site_in_tab) > 0
+
+            daily_avg, remarks_counts = (
+                calculate_aqi_and_category(
+                    filtered_df,
+                    site_mode_label=(
+                        "Combined_All_Filtered_Sites"
+                    ),
+                    single_site=show_individual_sites
+                )
+            )
+
+            # -------------------------------------------------
+            # CHECK AQI RESULTS
+            # -------------------------------------------------
             if daily_avg.empty:
-                st.warning(f"No valid daily pm25 (>= {DAILY_MIN_OBS} obs/day) for AQI calculation.")
+                st.warning(
+                    f"No valid daily PM₂.₅ data "
+                    f"(≥ {DAILY_MIN_OBS} observations/day) "
+                    f"available for AQI calculation."
+                )
                 continue
 
-            st.dataframe(remarks_counts, use_container_width=True)
-            st.dataframe(daily_avg, use_container_width=True)
+            # -------------------------------------------------
+            # DISPLAY SELECTED SITE INFORMATION
+            # -------------------------------------------------
+            if site_in_tab:
+                if len(site_in_tab) == 1:
+                    st.success(
+                        f"Showing AQI results for: "
+                        f"**{site_in_tab[0]}**"
+                    )
+                else:
+                    st.success(
+                        "Showing AQI results separately for: "
+                        + ", ".join(site_in_tab)
+                    )
+            else:
+                st.info(
+                    "No individual site selected. "
+                    "AQI statistics are shown as "
+                    "**Combined_All_Filtered_Sites**."
+                )
 
-            st.download_button(f"⬇️ Download Daily Avg - {label}", to_csv_download(daily_avg), file_name=f"DailyAvg_{label}.csv")
-            st.download_button(f"⬇️ Download AQI - {label}", to_csv_download(remarks_counts), file_name=f"AQI_{label}.csv")
+            # -------------------------------------------------
+            # AQI SUMMARY TABLE
+            # -------------------------------------------------
+            st.markdown("### AQI Category Summary")
+
+            st.dataframe(
+                remarks_counts,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # -------------------------------------------------
+            # DAILY AQI TABLE
+            # -------------------------------------------------
+            st.markdown("### Daily AQI Results")
+
+            st.dataframe(
+                daily_avg,
+                use_container_width=True,
+                hide_index=True
+            )
+
+            # -------------------------------------------------
+            # DOWNLOAD BUTTONS
+            # -------------------------------------------------
+            st.download_button(
+                label=f"⬇️ Download Daily AQI - {label}",
+                data=to_csv_download(daily_avg),
+                file_name=f"Daily_AQI_{label}.csv",
+                mime="text/csv",
+                key=f"download_daily_aqi_{label}",
+            )
+
+            st.download_button(
+                label=f"⬇️ Download AQI Summary - {label}",
+                data=to_csv_download(remarks_counts),
+                file_name=f"AQI_Summary_{label}.csv",
+                mime="text/csv",
+                key=f"download_aqi_summary_{label}",
+            )f"⬇️ Download AQI - {label}", to_csv_download(remarks_counts), file_name=f"AQI_{label}.csv")
 
 
 def calculate_day_pollutant(df: pd.DataFrame, pollutant: str) -> pd.DataFrame:
