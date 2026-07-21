@@ -1233,7 +1233,7 @@ with tabs[0]:
 
 # ---- Other tabs ----
 render_exceedances_tab(tabs[1], dfs, selected_years)
-render_aqi_tab(tabs[2], dfs, selected_years)
+render_aqi_tab(tabs[2], selected_years, dfs)
 render_daily_means_tab(tabs[3], dfs, selected_years)
 render_dayofweek_means_tab(tabs[4], dfs, selected_years)
 render_completeness_tab(tabs[5], dfs, selected_years, selected_sites)
