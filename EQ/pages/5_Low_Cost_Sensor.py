@@ -182,6 +182,23 @@ def site_col_of(df):
     return None
 
 
+def site_series(fid, df):
+    """Site value for every row, taken from site / Location Name / site_name,
+    or from the file's site name if none of those columns exists."""
+    sc = site_col_of(df)
+    if sc:
+        return df[sc].astype(str)
+    stem = os.path.splitext(os.path.basename(S["raw"][fid]["name"].split("::")[-1]))[0]
+    return pd.Series(stem, index=df.index)
+
+
+def with_site(fid, df, cols):
+    """Selected columns plus a 'site' column (placed first)."""
+    out = df[cols].copy()
+    out["site"] = site_series(fid, df)
+    return out[["site"] + [c for c in out.columns if c != "site"]]
+
+
 # ---------------------------------------------------------------------------
 # Cleaning
 # ---------------------------------------------------------------------------
@@ -508,15 +525,23 @@ with tab_merge:
                            "common to all files can be merged.")
             chosen = st.multiselect("Headings to include in the merge", common, default=common,
                                     key=f"mcols_{source}")
+            st.caption("A **site** column is always added to the merged data "
+                       "(from site / Location Name / site_name, or the file's site name).")
+            all_sites = sorted(set().union(*[set(site_series(i, options[i]).unique()) for i in sel]))
+            chosen_sites = st.multiselect("Sites to include", all_sites, default=all_sites,
+                                          key=f"msites_{source}")
             merge_name = st.text_input("Name for merged dataset", value=f"merged_{source.split()[0].lower()}")
 
             if st.button("Merge", type="primary"):
-                if not chosen:
+                if not chosen and not chosen_sites:
                     st.error("Select at least one heading.")
+                elif not chosen_sites:
+                    st.error("Select at least one site.")
                 elif not merge_name.strip():
                     st.error("Enter a name for the merged dataset.")
                 else:
-                    merged = pd.concat([options[i][chosen] for i in sel], ignore_index=True)
+                    merged = pd.concat([with_site(i, options[i], chosen) for i in sel], ignore_index=True)
+                    merged = merged[merged["site"].isin(chosen_sites)].reset_index(drop=True)
                     target = S["merged_raw"] if source == "Raw data" else S["merged_clean"]
                     target[merge_name.strip()] = merged
                     st.success(f"Merged {len(sel)} files → {len(merged):,} rows.")
