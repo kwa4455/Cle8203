@@ -203,7 +203,7 @@ def with_site(fid, df, cols):
 # Cleaning
 # ---------------------------------------------------------------------------
 def clean_df(df, monitor, flatline_threshold, remove_flatline_data,
-             lower_threshold, upper_threshold, apply_correction):
+             lower_threshold, upper_threshold, apply_correction, hourly=False):
     summary_log = []
     df = df.copy()
 
@@ -285,7 +285,39 @@ def clean_df(df, monitor, flatline_threshold, remove_flatline_data,
             - 0.08 * df["sample_rh"]
             + 19.82
         )
-        summary_log.append("LCS PM2.5 correction applied")
+        # corrected value becomes 'pm25'; the original reading is kept as 'raw_pm25'
+        if "raw_pm25" in df.columns:
+            df = df.drop(columns=["raw_pm25"])
+        df = df.rename(columns={"pm25": "raw_pm25"})
+        df = df.rename(columns={"corrected_pm25": "pm25"})
+        summary_log.append("LCS PM2.5 correction applied "
+                           "(corrected value saved as 'pm25', original saved as 'raw_pm25')")
+
+    # =========================
+    # HOURLY AVERAGE (optional)
+    # =========================
+    if hourly:
+        rows_before = len(df)
+        original_cols = list(df.columns)
+        df["datetime"] = df["datetime"].dt.floor("h")
+        keys = ([site_col] if site_col else []) + ["datetime"]
+        agg = {}
+        for c in df.columns:
+            if c in keys:
+                continue
+            if c == "flatline_flag":
+                agg[c] = "max"      # hour is flagged if any reading in it was flagged
+            elif c == "flatline_run_length":
+                agg[c] = "max"
+            elif pd.api.types.is_numeric_dtype(df[c]):
+                agg[c] = "mean"
+            else:
+                agg[c] = "first"
+        df = df.groupby(keys, as_index=False, dropna=False).agg(agg)
+        df = df[original_cols].sort_values(keys).reset_index(drop=True)
+        summary_log.append(f"Converted to hourly averages: {rows_before} rows → {len(df)} rows")
+    else:
+        summary_log.append("Original time resolution maintained")
 
     stats = {"events": events, "flagged": total_flagged}
     return df.reset_index(drop=True), summary_log, flat_detail, stats
@@ -456,6 +488,8 @@ with tab_clean:
         remove_flatline_data = c1.checkbox("Remove flat-line data (otherwise flag only)", value=True)
         lower_threshold = c2.number_input("Lower PM2.5 threshold", value=0.0)
         upper_threshold = c3.number_input("Upper PM2.5 threshold", value=1000.0)
+        resolution = c3.radio("Time resolution", ["Maintain original", "Convert to hourly average"])
+        hourly = resolution == "Convert to hourly average"
 
         selected = st.multiselect(
             "Files to clean",
@@ -476,7 +510,7 @@ with tab_clean:
                 m = S["raw"][fid]
                 res, log, flat, stats = clean_df(
                     m["df"], m["monitor"], int(flatline_threshold), remove_flatline_data,
-                    lower_threshold, upper_threshold, apply_correction,
+                    lower_threshold, upper_threshold, apply_correction, hourly,
                 )
                 if res is None:
                     st.error(f"{m['name']}: {log[0]}")
