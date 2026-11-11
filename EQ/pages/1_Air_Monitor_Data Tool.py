@@ -132,6 +132,11 @@ def unique_name(name: str) -> str:
 
 def add_raw(name, monitor, df):
     df = df.copy()
+    # Standardise the site heading on upload
+    site_rename = {"Air Gradient": "Location Name", "Airqo": "site_name"}
+    old_site = site_rename.get(monitor)
+    if old_site and old_site in df.columns and "site" not in df.columns:
+        df = df.rename(columns={old_site: "site"})
     site_created = False
     if not any(c in df.columns for c in SITE_COLS):
         stem = os.path.splitext(os.path.basename(name.split("::")[-1]))[0]
