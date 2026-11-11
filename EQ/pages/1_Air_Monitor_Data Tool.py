@@ -491,8 +491,8 @@ with tab_clean:
         flatline_threshold = c1.number_input("Flat-line threshold (consecutive identical PM2.5 values)",
                                              min_value=2, value=6, step=1)
         remove_flatline_data = c1.checkbox("Remove flat-line data (otherwise flag only)", value=True)
-        lower_threshold = c2.number_input("Lower PM2.5 threshold", value=0.0)
-        upper_threshold = c3.number_input("Upper PM2.5 threshold", value=1000.0)
+        lower_threshold = c2.number_input("Lower PM2.5 threshold", value=1.0)
+        upper_threshold = c3.number_input("Upper PM2.5 threshold", value=500.0)
         resolution = c3.radio("Time resolution", ["Maintain original", "Convert to hourly average"])
         hourly = resolution == "Convert to hourly average"
 
