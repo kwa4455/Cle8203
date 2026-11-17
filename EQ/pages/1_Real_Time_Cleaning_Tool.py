@@ -10,7 +10,7 @@ import zipfile
 import pandas as pd
 import streamlit as st
 
-st.set_page_config(page_title="Air Monitor Data Tool", page_icon="🌫️", layout="wide")
+st.set_page_config(page_title="Real Time Cleaning Tool", page_icon="🌫️", layout="wide")
 
 # ---------------------------------------------------------------------------
 # Monitor definitions
